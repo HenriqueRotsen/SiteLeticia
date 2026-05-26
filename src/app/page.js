@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import Reveal from "@/components/Reveal";
 
 const credentials = [
   "Formada em Enfermagem",
@@ -55,7 +56,7 @@ export default function Home() {
       </header>
 
       <section className="mx-auto grid min-h-[calc(100vh-73px)] max-w-7xl items-center gap-12 px-5 py-10 sm:px-8 lg:grid-cols-[1fr_0.92fr] lg:gap-16">
-        <div>
+        <Reveal variant="left">
           <p className="mb-5 inline-flex rounded-full bg-olive-100 px-4 py-2 text-sm font-semibold text-olive-800">
             Nutrição clínica, bariátrica e de precisão
           </p>
@@ -72,31 +73,37 @@ export default function Home() {
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <Link
               href="/fila-de-espera"
-              className="inline-flex items-center justify-center rounded-2xl bg-olive-700 px-6 py-4 text-sm font-bold uppercase tracking-[0.14em] text-white transition hover:bg-olive-800"
+              className="interactive-lift inline-flex items-center justify-center rounded-2xl bg-olive-700 px-6 py-4 text-sm font-bold uppercase tracking-[0.14em] text-white transition hover:bg-olive-800"
             >
               Entrar na lista
             </Link>
             <a
               href="#sobre"
-              className="inline-flex items-center justify-center rounded-2xl border border-olive-700/25 px-6 py-4 text-sm font-bold uppercase tracking-[0.14em] text-graphite transition hover:border-olive-700 hover:bg-white/60"
+              className="interactive-lift inline-flex items-center justify-center rounded-2xl border border-olive-700/25 px-6 py-4 text-sm font-bold uppercase tracking-[0.14em] text-graphite transition hover:border-olive-700 hover:bg-white/60"
             >
               Conhecer a Leticia
             </a>
           </div>
 
           <div className="mt-10 grid gap-3 sm:grid-cols-3">
-            {credentials.map((item) => (
-              <div
+            {credentials.map((item, index) => (
+              <Reveal
                 key={item}
-                className="border-l-2 border-olive-500 bg-white/40 px-4 py-3 text-sm font-medium leading-6 text-graphite/78"
+                variant="up"
+                delay={120 + index * 90}
+                className="interactive-lift border-l-2 border-olive-500 bg-white/40 px-4 py-3 text-sm font-medium leading-6 text-graphite/78"
               >
                 {item}
-              </div>
+              </Reveal>
             ))}
           </div>
-        </div>
+        </Reveal>
 
-        <div className="relative overflow-hidden rounded-[2rem] border border-white/70 bg-white/45 shadow-soft">
+        <Reveal
+          variant="scale"
+          delay={160}
+          className="interactive-lift relative overflow-hidden rounded-[2rem] border border-white/70 bg-white/45 shadow-soft"
+        >
           <Image
             src="/leticia1.jpeg"
             alt="Leticia Cunha"
@@ -114,21 +121,21 @@ export default function Home() {
               Cuidado nutricional para uma vida mais saudável, possível e sustentável.
             </p>
           </div>
-        </div>
+        </Reveal>
       </section>
 
       <section id="sobre" className="bg-white/45 px-5 py-16 sm:px-8 lg:py-20">
         <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
-          <div>
+          <Reveal variant="left">
             <p className="text-sm font-semibold uppercase tracking-[0.2em] text-olive-700">
               Sobre a Leticia
             </p>
             <h2 className="mt-4 text-3xl font-semibold leading-tight text-graphite sm:text-4xl">
               Uma trajetória que conecta saúde, ciência e experiência de vida.
             </h2>
-          </div>
+          </Reveal>
 
-          <div className="space-y-8">
+          <Reveal variant="right" className="space-y-8">
             <p className="text-lg leading-8 text-graphite/72">
               Após perder 50 kg depois da cirurgia bariátrica em 2022, Leticia
               passou a fomentar um estilo de vida saudável com responsabilidade,
@@ -138,14 +145,17 @@ export default function Home() {
             </p>
 
             <div className="grid gap-4 md:grid-cols-3">
-              {pillars.map((pillar) => (
-                <article
+              {pillars.map((pillar, index) => (
+                <Reveal
+                  as="article"
                   key={pillar.title}
-                  className="rounded-2xl border border-olive-900/10 bg-porcelain p-5"
+                  variant="up"
+                  delay={index * 90}
+                  className="interactive-lift rounded-2xl border border-olive-900/10 bg-porcelain p-5"
                 >
                   <h3 className="text-base font-semibold text-graphite">{pillar.title}</h3>
                   <p className="mt-3 text-sm leading-6 text-graphite/68">{pillar.text}</p>
-                </article>
+                </Reveal>
               ))}
             </div>
 
@@ -155,7 +165,7 @@ export default function Home() {
                 {specialties.map((specialty) => (
                   <span
                     key={specialty}
-                    className="rounded-full border border-olive-700/20 bg-olive-50 px-4 py-2 text-sm font-semibold text-olive-900"
+                    className="interactive-lift rounded-full border border-olive-700/20 bg-olive-50 px-4 py-2 text-sm font-semibold text-olive-900"
                   >
                     {specialty}
                   </span>
@@ -170,12 +180,12 @@ export default function Home() {
               </p>
               <Link
                 href="/fila-de-espera"
-                className="mt-5 inline-flex rounded-2xl bg-olive-500 px-5 py-3 text-sm font-bold uppercase tracking-[0.14em] text-white transition hover:bg-olive-400"
+                className="interactive-lift mt-5 inline-flex rounded-2xl bg-olive-500 px-5 py-3 text-sm font-bold uppercase tracking-[0.14em] text-white transition hover:bg-olive-400"
               >
                 Acessar lista de espera
               </Link>
             </div>
-          </div>
+          </Reveal>
         </div>
       </section>
     </main>

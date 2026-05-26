@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import WaitlistBox from "@/components/WaitlistBox";
+import Reveal from "@/components/Reveal";
 
 const highlights = [
   "Atendimento individualizado",
@@ -36,7 +37,10 @@ export default function WaitlistPage() {
 
       <section className="mx-auto grid min-h-[calc(100vh-73px)] max-w-7xl items-center gap-12 px-5 py-10 sm:px-8 lg:grid-cols-[1.02fr_0.98fr] lg:gap-16 lg:py-12">
         <div className="order-2 lg:order-1">
-          <div className="relative overflow-hidden rounded-[2rem] border border-white/70 bg-white/45 shadow-soft">
+          <Reveal
+            variant="scale"
+            className="interactive-lift relative overflow-hidden rounded-[2rem] border border-white/70 bg-white/45 shadow-soft"
+          >
             <Image
               src="/leticia2.jpeg"
               alt="Leticia Cunha"
@@ -51,11 +55,11 @@ export default function WaitlistPage() {
                 Nutrição clínica, estética e performance
               </p>
             </div>
-          </div>
+          </Reveal>
         </div>
 
         <div className="order-1 flex flex-col justify-center lg:order-2">
-          <div className="max-w-2xl">
+          <Reveal variant="right" className="max-w-2xl">
             <p className="mb-4 inline-flex rounded-full bg-olive-100 px-4 py-2 text-sm font-semibold text-olive-800">
               Agenda em preparação
             </p>
@@ -67,9 +71,12 @@ export default function WaitlistPage() {
               a agenda da Leticia Cunha está em preparação. Cadastre-se para manter
               sua prioridade e acompanhe sua posição na fila em tempo real.
             </p>
-          </div>
+          </Reveal>
 
-          <div className="mt-6 rounded-2xl border border-olive-500/25 bg-olive-50 px-5 py-4 text-olive-900">
+          <Reveal
+            delay={120}
+            className="interactive-lift mt-6 rounded-2xl border border-olive-500/25 bg-olive-50 px-5 py-4 text-olive-900"
+          >
             <p className="text-sm font-semibold uppercase tracking-[0.16em] opacity-75">
               Previsão de início
             </p>
@@ -77,22 +84,24 @@ export default function WaitlistPage() {
               Os atendimentos estão previstos para começar entre janeiro e fevereiro
               de 2027. A lista organiza os interessados por ordem de cadastro.
             </p>
-          </div>
+          </Reveal>
 
           <div className="mt-8 grid gap-3 sm:grid-cols-3">
-            {highlights.map((item) => (
-              <div
+            {highlights.map((item, index) => (
+              <Reveal
                 key={item}
-                className="border-l-2 border-olive-500 bg-white/40 px-4 py-3 text-sm font-medium text-graphite/78"
+                variant="up"
+                delay={180 + index * 90}
+                className="interactive-lift border-l-2 border-olive-500 bg-white/40 px-4 py-3 text-sm font-medium text-graphite/78"
               >
                 {item}
-              </div>
+              </Reveal>
             ))}
           </div>
 
-          <div id="consulta" className="mt-10 scroll-mt-28">
+          <Reveal id="consulta" delay={240} className="mt-10 scroll-mt-28">
             <WaitlistBox />
-          </div>
+          </Reveal>
         </div>
       </section>
     </main>

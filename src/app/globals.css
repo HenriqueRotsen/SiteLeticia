@@ -19,7 +19,7 @@ body {
   min-height: 100vh;
   margin: 0;
   background:
-    radial-gradient(circle at top left, rgba(120, 136, 68, 0.16), transparent 34rem),
+    radial-gradient(circle at top left, rgba(122, 66, 36, 0.14), transparent 34rem),
     linear-gradient(135deg, #fbfaf5 0%, #f2eee4 100%);
   color: #252824;
   font-family:
@@ -34,6 +34,76 @@ select {
 }
 
 ::selection {
-  background: #cfd6b1;
+  background: #d3b295;
   color: #252824;
+}
+
+.reveal {
+  opacity: 0;
+  transition:
+    opacity 720ms ease,
+    transform 720ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 720ms ease;
+  will-change: opacity, transform, filter;
+}
+
+.reveal-up {
+  transform: translateY(14px);
+}
+
+.reveal-left {
+  transform: translateX(-18px);
+}
+
+.reveal-right {
+  transform: translateX(18px);
+}
+
+.reveal-scale {
+  filter: blur(4px);
+  transform: scale(0.97);
+}
+
+.reveal.is-visible {
+  filter: blur(0);
+  opacity: 1;
+  transform: translate3d(0, 0, 0) scale(1);
+}
+
+.interactive-lift {
+  transition:
+    border-color 220ms ease,
+    box-shadow 220ms ease,
+    transform 220ms ease,
+    background-color 220ms ease,
+    color 220ms ease;
+}
+
+.interactive-lift:hover {
+  border-color: rgba(79, 40, 25, 0.28);
+  box-shadow: 0 18px 48px rgba(37, 40, 36, 0.12);
+  transform: translateY(-4px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .reveal,
+  .interactive-lift {
+    transition: none;
+  }
+
+  .reveal,
+  .reveal-up,
+  .reveal-left,
+  .reveal-right,
+  .reveal-scale,
+  .reveal.is-visible,
+  .interactive-lift:hover {
+    filter: none;
+    opacity: 1;
+    transform: none;
+  }
 }
