@@ -9,9 +9,9 @@ const highlights = [
 ];
 
 export const metadata = {
-  title: "Fila de Espera | Letícia Cunha",
+  title: "Fila de Espera | Leticia Cunha",
   description:
-    "Entre na lista de prioridade e acompanhe sua posição na fila de espera da Letícia Cunha."
+    "Entre na lista de prioridade e acompanhe sua posição na fila de espera da Leticia Cunha."
 };
 
 export default function WaitlistPage() {
@@ -23,7 +23,7 @@ export default function WaitlistPage() {
             href="/"
             className="text-sm font-semibold uppercase tracking-[0.2em] text-olive-800"
           >
-            Letícia Cunha | Nutrição
+            Leticia Cunha | Nutrição
           </Link>
           <a
             href="#consulta"
@@ -39,7 +39,7 @@ export default function WaitlistPage() {
           <div className="relative overflow-hidden rounded-[2rem] border border-white/70 bg-white/45 shadow-soft">
             <Image
               src="/leticia2.jpeg"
-              alt="Letícia Cunha"
+              alt="Leticia Cunha"
               width={3024}
               height={4032}
               priority
@@ -64,7 +64,7 @@ export default function WaitlistPage() {
             </h1>
             <p className="mt-6 max-w-xl text-lg leading-8 text-graphite/72">
               Para garantir um atendimento humanizado, estratégico e individualizado,
-              a agenda da Letícia Cunha está em preparação. Cadastre-se para manter
+              a agenda da Leticia Cunha está em preparação. Cadastre-se para manter
               sua prioridade e acompanhe sua posição na fila em tempo real.
             </p>
           </div>

@@ -157,7 +157,7 @@ export default function AdminDashboard() {
             Dashboard da lista
           </h1>
           <p className="mt-3 text-sm leading-6 text-graphite/68">
-            Acesse com o usuário e senha definidos para a Letícia.
+            Acesse com o usuário e senha definidos para a Leticia.
           </p>
 
           <form className="mt-6 space-y-4" onSubmit={handleLogin}>

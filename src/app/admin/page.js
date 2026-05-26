@@ -1,7 +1,7 @@
 import AdminDashboard from "@/components/AdminDashboard";
 
 export const metadata = {
-  title: "Admin | Letícia Cunha",
+  title: "Admin | Leticia Cunha",
   description: "Dashboard restrito da lista de espera."
 };
 

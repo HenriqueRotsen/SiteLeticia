@@ -25,7 +25,7 @@ const pillars = [
   },
   {
     title: "Experiência real de transformação",
-    text: "Após perder 50 kg depois da cirurgia bariátrica em 2022, Letícia une vivência e formação para acolher com responsabilidade."
+    text: "Após perder 50 kg depois da cirurgia bariátrica em 2022, Leticia une vivência e formação para acolher com responsabilidade."
   }
 ];
 
@@ -35,7 +35,7 @@ export default function Home() {
       <header className="sticky top-0 z-30 border-b border-olive-900/10 bg-porcelain/85 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-4 sm:px-8">
           <a href="#" className="text-sm font-semibold uppercase tracking-[0.2em] text-olive-800">
-            Letícia Cunha | Nutrição
+            Leticia Cunha | Nutrição
           </a>
           <nav className="flex items-center gap-3">
             <a
@@ -63,7 +63,7 @@ export default function Home() {
             Nutrição baseada em ciência, história clínica e cuidado individual.
           </h1>
           <p className="mt-6 max-w-2xl text-lg leading-8 text-graphite/72">
-            Letícia Cunha é formada em Enfermagem, cursa Nutrição e faz
+            Leticia Cunha é formada em Enfermagem, cursa Nutrição e faz
             mestrado em Nutrição Clínica pela UFMG. Sua atuação nasce da
             união entre formação técnica, vivência pessoal e um compromisso:
             atender cada paciente da melhor forma para aquele indivíduo.
@@ -80,7 +80,7 @@ export default function Home() {
               href="#sobre"
               className="inline-flex items-center justify-center rounded-2xl border border-olive-700/25 px-6 py-4 text-sm font-bold uppercase tracking-[0.14em] text-graphite transition hover:border-olive-700 hover:bg-white/60"
             >
-              Conhecer a Letícia
+              Conhecer a Leticia
             </a>
           </div>
 
@@ -99,7 +99,7 @@ export default function Home() {
         <div className="relative overflow-hidden rounded-[2rem] border border-white/70 bg-white/45 shadow-soft">
           <Image
             src="/leticia1.jpeg"
-            alt="Letícia Cunha"
+            alt="Leticia Cunha"
             width={2021}
             height={2374}
             priority
@@ -108,7 +108,7 @@ export default function Home() {
           />
           <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-graphite/80 via-graphite/20 to-transparent p-6 text-white sm:p-8">
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-olive-100">
-              Letícia Cunha
+              Leticia Cunha
             </p>
             <p className="mt-2 max-w-sm text-xl font-semibold">
               Cuidado nutricional para uma vida mais saudável, possível e sustentável.
@@ -121,7 +121,7 @@ export default function Home() {
         <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.2em] text-olive-700">
-              Sobre a Letícia
+              Sobre a Leticia
             </p>
             <h2 className="mt-4 text-3xl font-semibold leading-tight text-graphite sm:text-4xl">
               Uma trajetória que conecta saúde, ciência e experiência de vida.
@@ -130,7 +130,7 @@ export default function Home() {
 
           <div className="space-y-8">
             <p className="text-lg leading-8 text-graphite/72">
-              Após perder 50 kg depois da cirurgia bariátrica em 2022, Letícia
+              Após perder 50 kg depois da cirurgia bariátrica em 2022, Leticia
               passou a fomentar um estilo de vida saudável com responsabilidade,
               acolhimento e base científica. Sua proposta não é entregar um plano
               genérico, mas construir estratégias alimentares coerentes com o
