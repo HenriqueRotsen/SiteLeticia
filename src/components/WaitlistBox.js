@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 
 const goals = [
   "Emagrecimento",
+  "Cirurgia Bariátrica",
   "Saúde intestinal",
   "Medicina de precisão",
   "Nutrição clínica",

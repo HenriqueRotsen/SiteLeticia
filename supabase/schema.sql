@@ -13,6 +13,7 @@ create table if not exists public.waitlist (
   constraint waitlist_goal_check check (
     goal in (
       'Emagrecimento',
+      'Cirurgia Bariátrica',
       'Saúde intestinal',
       'Medicina de precisão',
       'Nutrição clínica',
