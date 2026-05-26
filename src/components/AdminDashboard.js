@@ -16,6 +16,12 @@ function formatPhone(phone) {
   return phone.replace(/(\d{2})(\d{5})(\d{0,4})/, "($1) $2-$3");
 }
 
+function getWhatsappLink(phone) {
+  if (!phone) return "#";
+  const digits = phone.startsWith("55") ? phone : `55${phone}`;
+  return `https://wa.me/${digits}`;
+}
+
 function formatDate(value) {
   return new Intl.DateTimeFormat("pt-BR", {
     dateStyle: "short",
@@ -302,8 +308,16 @@ export default function AdminDashboard() {
                         <td className="px-5 py-4">
                           <p className="font-semibold text-graphite">{item.full_name}</p>
                         </td>
-                        <td className="px-5 py-4 text-graphite/72">
-                          {formatPhone(item.phone)}
+                        <td className="px-5 py-4">
+                          <a
+                            href={getWhatsappLink(item.phone)}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="font-semibold text-olive-700 underline-offset-4 transition hover:text-olive-900 hover:underline"
+                            title={`Abrir conversa com ${item.full_name} no WhatsApp`}
+                          >
+                            {formatPhone(item.phone)}
+                          </a>
                         </td>
                         <td className="px-5 py-4 text-graphite/72">{item.goal}</td>
                         <td className="px-5 py-4">
