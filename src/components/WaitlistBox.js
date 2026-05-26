@@ -1,5 +1,6 @@
 "use client";
 
+import Script from "next/script";
 import { useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
@@ -33,10 +34,6 @@ function formatPhone(value) {
   if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
 
   return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
-}
-
-function isDuplicatePhone(error) {
-  return error?.code === "23505" || error?.message?.toLowerCase().includes("duplicate");
 }
 
 function Feedback({ feedback }) {
@@ -85,6 +82,27 @@ export default function WaitlistBox() {
     setFeedback(null);
   }
 
+  async function getRecaptchaToken() {
+    const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
+
+    if (!siteKey) {
+      throw new Error("Proteção anti-spam ainda não configurada.");
+    }
+
+    if (!window.grecaptcha) {
+      throw new Error("Proteção anti-spam ainda está carregando. Tente novamente.");
+    }
+
+    return new Promise((resolve, reject) => {
+      window.grecaptcha.ready(() => {
+        window.grecaptcha
+          .execute(siteKey, { action: "waitlist_signup" })
+          .then(resolve)
+          .catch(() => reject(new Error("Não foi possível validar o reCAPTCHA.")));
+      });
+    });
+  }
+
   async function handleSignup(event) {
     event.preventDefault();
     setFeedback(null);
@@ -102,20 +120,37 @@ export default function WaitlistBox() {
 
     setLoading(true);
 
-    const { error } = await supabase.from("waitlist").insert({
-      full_name: fullName,
-      phone,
-      goal: signup.goal
+    let recaptchaToken;
+
+    try {
+      recaptchaToken = await getRecaptchaToken();
+    } catch (error) {
+      setLoading(false);
+      setFeedback({
+        type: "error",
+        message: error.message
+      });
+      return;
+    }
+
+    const response = await fetch("/api/waitlist/signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        fullName,
+        phone,
+        goal: signup.goal,
+        recaptchaToken
+      })
     });
+    const result = await response.json();
 
     setLoading(false);
 
-    if (error) {
+    if (!response.ok) {
       setFeedback({
         type: "error",
-        message: isDuplicatePhone(error)
-          ? "Esse WhatsApp já está na lista. Use a aba de consulta para acompanhar sua posição."
-          : "Não foi possível concluir o cadastro agora. Tente novamente em alguns instantes."
+        message: result.message || "Não foi possível concluir o cadastro agora."
       });
       return;
     }
@@ -203,6 +238,13 @@ export default function WaitlistBox() {
 
   return (
     <section className="rounded-[1.75rem] border border-white/80 bg-porcelain/95 p-4 shadow-soft sm:p-6">
+      {process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY ? (
+        <Script
+          src={`https://www.google.com/recaptcha/api.js?render=${process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY}`}
+          strategy="afterInteractive"
+        />
+      ) : null}
+
       <div className="grid rounded-full bg-linen p-1 sm:grid-cols-2">
         {tabs.map((tab) => (
           <button

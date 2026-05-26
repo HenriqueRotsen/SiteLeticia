@@ -28,13 +28,6 @@ create index if not exists waitlist_status_id_idx on public.waitlist (status, id
 
 alter table public.waitlist enable row level security;
 
-drop policy if exists "Public can join waitlist" on public.waitlist;
-create policy "Public can join waitlist"
-on public.waitlist
-for insert
-to anon
-with check (status = 'waiting');
-
 drop policy if exists "Public can consult waitlist" on public.waitlist;
 create policy "Public can consult waitlist"
 on public.waitlist
