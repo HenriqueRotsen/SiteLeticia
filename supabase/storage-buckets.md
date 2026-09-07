@@ -1,5 +1,10 @@
 -- Buckets de storage (executar no Supabase Storage ou SQL)
--- Criar buckets: progress-photos, lab-reports (privados)
+-- Criar buckets privados:
+--   progress-photos
+--   lab-reports
+--   diet-plans
+--
 -- Policies exemplo (ajustar no dashboard):
 -- progress-photos: upload/read apenas owner path = patient_id/*
 -- lab-reports: upload nutritionist + read patient published reports via signed URLs
+-- diet-plans: upload/read apenas nutricionista (path = patient_id/*)

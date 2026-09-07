@@ -76,10 +76,31 @@ export const availabilityBlockSchema = z.object({
   reason: z.string().max(500).optional()
 });
 
+export const dietSupplementSchema = z.object({
+  productName: z.string().min(1),
+  dosage: z.string().min(1),
+  posology: z.string().min(1),
+  notes: z.string().optional().nullable(),
+  sortOrder: z.number().int().default(0)
+});
+
+export const dietReferralSchema = z.object({
+  specialty: z.string().min(1),
+  professionalName: z.string().optional().nullable(),
+  reason: z.string().min(1),
+  urgency: z.enum(["routine", "priority"]).default("routine"),
+  notes: z.string().optional().nullable(),
+  sortOrder: z.number().int().default(0)
+});
+
 export const dietPlanSchema = z.object({
   title: z.string().min(1),
-  notes: z.string().optional(),
+  notes: z.string().optional().nullable(),
   status: z.enum(["draft", "active", "archived"]).default("active"),
+  source: z.enum(["manual", "fatsecret_csv", "fatsecret_pdf"]).default("manual"),
+  sourcePdfPath: z.string().optional().nullable(),
+  extractionSummary: z.string().optional().nullable(),
+  extractionMethod: z.string().optional().nullable(),
   meals: z
     .array(
       z.object({
@@ -88,18 +109,29 @@ export const dietPlanSchema = z.object({
         items: z
           .array(
             z.object({
-              source: z.enum(["taco", "tbca", "usda", "off", "fatsecret", "custom"]),
+              source: z.enum([
+                "taco",
+                "tbca",
+                "usda",
+                "off",
+                "fatsecret",
+                "fatsecret_csv",
+                "fatsecret_pdf",
+                "custom"
+              ]),
               externalId: z.string().nullable().optional(),
               label: z.string(),
               quantity: z.number().positive(),
               portionG: z.number().positive(),
-              nutritionSnapshot: z.record(z.any()).optional()
+              nutritionSnapshot: z.record(z.any()).optional().nullable()
             })
           )
           .default([])
       })
     )
-    .default([])
+    .default([]),
+  supplements: z.array(dietSupplementSchema).default([]),
+  referrals: z.array(dietReferralSchema).default([])
 });
 
 export const bodyMeasurementSchema = z.object({
@@ -129,6 +161,9 @@ export const patientAnthropometricsSchema = z.object({
   bodyFatPercent: z.number().min(3).max(70).nullable().optional(),
   activityLevel: z
     .enum(["sedentary", "light", "moderate", "heavy", "very_heavy"])
+    .optional(),
+  bmrFormula: z
+    .enum(["mifflin", "harris", "fao_who", "katch"])
     .optional()
 });
 

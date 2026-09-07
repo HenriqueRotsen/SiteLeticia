@@ -4,6 +4,10 @@ import { loginSchema } from "@/lib/validation/schemas";
 import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { getClientIp } from "@/lib/audit";
 
+function resolveHomePath(role) {
+  return role === "nutritionist" ? "/admin" : "/app";
+}
+
 export async function POST(request) {
   const ip = getClientIp(request);
   const rate = checkRateLimit(`login:${ip}`, { limit: 10, windowMs: 15 * 60_000 });
@@ -17,7 +21,7 @@ export async function POST(request) {
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({
+  const { data, error } = await supabase.auth.signInWithPassword({
     email: body.email,
     password: body.password
   });
@@ -26,5 +30,24 @@ export async function POST(request) {
     return NextResponse.json({ message: "E-mail ou senha inválidos." }, { status: 401 });
   }
 
-  return NextResponse.json({ ok: true });
+  const userId = data.user?.id;
+  let role = "patient";
+
+  if (userId) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (profile?.role === "nutritionist") {
+      role = "nutritionist";
+    }
+  }
+
+  return NextResponse.json({
+    ok: true,
+    role,
+    redirectTo: resolveHomePath(role)
+  });
 }

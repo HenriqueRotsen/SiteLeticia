@@ -110,6 +110,7 @@ export async function PATCH(request, { params }) {
   if (body.heightCm !== undefined) updates.height_cm = body.heightCm;
   if (body.bodyFatPercent !== undefined) updates.body_fat_percent = body.bodyFatPercent;
   if (body.activityLevel !== undefined) updates.activity_level = body.activityLevel;
+  if (body.bmrFormula !== undefined) updates.bmr_formula = body.bmrFormula;
 
   const { data: patient, error } = await supabase
     .from("patients")

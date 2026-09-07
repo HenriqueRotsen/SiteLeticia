@@ -11,7 +11,8 @@ describe("food measures", () => {
       quantity: 2,
       portionG: 15,
       measureUnit: "colher_sopa",
-      measureAmount: 2
+      measureAmount: 2,
+      gramsPerUnit: 15
     });
   });
 
@@ -21,6 +22,25 @@ describe("food measures", () => {
       portionG: 150,
       measureUnit: "gramas",
       measureAmount: 150
+    });
+  });
+
+  it("supports portions in units", () => {
+    expect(toStoredPortion("unidades", 2)).toEqual({
+      quantity: 2,
+      portionG: 100,
+      measureUnit: "unidades",
+      measureAmount: 2,
+      gramsPerUnit: 100
+    });
+    expect(formatMeasureLabel("unidades", 2)).toBe("2 unidades (200g)");
+
+    expect(toStoredPortion("unidades", 2, 50)).toEqual({
+      quantity: 2,
+      portionG: 50,
+      measureUnit: "unidades",
+      measureAmount: 2,
+      gramsPerUnit: 50
     });
   });
 

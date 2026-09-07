@@ -53,4 +53,19 @@ describe("computePatientMetabolism", () => {
     expect(result.getKcal).toBeGreaterThan(result.tmbKcal);
     expect(computeGet(result.tmbKcal, "moderate")).toBeCloseTo(result.getKcal, 0);
   });
+
+  it("uses the selected formula for TMB and GET", () => {
+    const result = computePatientMetabolism({
+      sex: "female",
+      weightKg: 65,
+      heightCm: 165,
+      ageYears: 35,
+      activityLevel: "light",
+      primaryFormula: BMR_FORMULAS.HARRIS_BENEDICT
+    });
+
+    expect(result.primaryFormula).toBe(BMR_FORMULAS.HARRIS_BENEDICT);
+    expect(result.tmbKcal).toBe(result.formulas[BMR_FORMULAS.HARRIS_BENEDICT]);
+    expect(result.getKcal).toBe(Math.round(result.tmbKcal * 1.375));
+  });
 });

@@ -18,6 +18,16 @@ export const MEASURE_UNITS = [
     min: 1
   },
   {
+    id: "unidades",
+    label: "Unidades",
+    // Conversão padrão usada quando o CSV não informa o peso unitário.
+    gramsPerUnit: 100,
+    singular: "unidade",
+    plural: "unidades",
+    step: 1,
+    min: 1
+  },
+  {
     id: "litros",
     label: "Litros (L)",
     gramsPerUnit: 1000,
@@ -81,7 +91,7 @@ export function normalizeMeasureAmount(measureUnit, value) {
   return Math.max(unit.min, amount);
 }
 
-export function toStoredPortion(measureUnit, measureAmount) {
+export function toStoredPortion(measureUnit, measureAmount, gramsPerUnitOverride = null) {
   const unit = getMeasureUnit(measureUnit);
   const amount = normalizeMeasureAmount(measureUnit, measureAmount);
 
@@ -90,18 +100,25 @@ export function toStoredPortion(measureUnit, measureAmount) {
     return { quantity: 1, portionG, measureUnit, measureAmount: amount };
   }
 
+  const gramsPerUnit =
+    Number.isFinite(Number(gramsPerUnitOverride)) &&
+    Number(gramsPerUnitOverride) > 0
+      ? Number(gramsPerUnitOverride)
+      : unit.gramsPerUnit;
+
   return {
     quantity: amount,
-    portionG: unit.gramsPerUnit,
+    portionG: gramsPerUnit,
     measureUnit,
-    measureAmount: amount
+    measureAmount: amount,
+    gramsPerUnit
   };
 }
 
 export function extractPer100g(snapshot) {
   if (!snapshot || snapshot.kcal == null) return null;
 
-  const { measureUnit, measureAmount, ...nutrition } = snapshot;
+  const { measureUnit, measureAmount, gramsPerUnit, ...nutrition } = snapshot;
   return nutrition.kcal != null ? nutrition : null;
 }
 
@@ -109,7 +126,11 @@ export function restoreMeasureFromStored(quantity, portionG, snapshot) {
   const per100g = extractPer100g(snapshot) || snapshot;
 
   if (snapshot?.measureUnit && snapshot?.measureAmount != null) {
-    const stored = toStoredPortion(snapshot.measureUnit, snapshot.measureAmount);
+    const stored = toStoredPortion(
+      snapshot.measureUnit,
+      snapshot.measureAmount,
+      snapshot.gramsPerUnit
+    );
     return { ...stored, per100g };
   }
 
@@ -130,7 +151,7 @@ export function restoreMeasureFromStored(quantity, portionG, snapshot) {
   return { ...toStoredPortion("gramas", qty * portion), per100g };
 }
 
-export function formatMeasureLabel(measureUnit, measureAmount) {
+export function formatMeasureLabel(measureUnit, measureAmount, gramsPerUnitOverride = null) {
   const amount = normalizeMeasureAmount(measureUnit, measureAmount);
 
   if (measureUnit === "gramas") {
@@ -148,7 +169,11 @@ export function formatMeasureLabel(measureUnit, measureAmount) {
 
   const unit = getMeasureUnit(measureUnit);
   const label = amount === 1 ? unit.singular : unit.plural;
-  const totalG = amount * unit.gramsPerUnit;
+  const gramsPerUnit =
+    Number.isFinite(Number(gramsPerUnitOverride)) && Number(gramsPerUnitOverride) > 0
+      ? Number(gramsPerUnitOverride)
+      : unit.gramsPerUnit;
+  const totalG = amount * gramsPerUnit;
   return `${amount} ${label} (${totalG}g)`;
 }
 
@@ -156,6 +181,7 @@ export function measureQuantityLabel(measureUnit) {
   if (measureUnit === "gramas") return "Quantidade (g)";
   if (measureUnit === "ml") return "Quantidade (ml)";
   if (measureUnit === "litros") return "Quantidade (L)";
+  if (measureUnit === "unidades") return "Quantidade (unidades)";
   return "Quantidade";
 }
 

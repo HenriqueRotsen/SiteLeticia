@@ -1,637 +1,672 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "next/navigation";
-import { Plus, Trash2, Activity } from "lucide-react";
+import { useParams, useRouter } from "next/navigation";
+import {
+  Activity,
+  ArrowLeft,
+  ArrowRight,
+  CheckCircle2,
+  FileUp,
+  RefreshCw,
+  Save,
+  UserRound
+} from "lucide-react";
 import AdminShell from "@/components/layout/AdminShell";
-import FatSecretAttribution from "@/components/ui/FatSecretAttribution";
+import { Card, btnPrimary, btnSecondary, inputClassName } from "@/components/layout/AppShell";
 import BmrPanel from "@/components/ui/BmrPanel";
 import DietNutrientAnalysis from "@/components/ui/DietNutrientAnalysis";
-import FoodSourceToggles, { buildSearchPlaceholder } from "@/components/ui/FoodSourceToggles";
-import MealNutrientAnalysis from "@/components/ui/MealNutrientAnalysis";
+import CsvUploadZone from "@/components/ui/CsvUploadZone";
+import MealDietAccordion from "@/components/ui/MealDietAccordion";
 import Modal from "@/components/ui/Modal";
+import PlanWizardStepper from "@/components/ui/PlanWizardStepper";
+import ReferralList from "@/components/ui/ReferralList";
+import SupplementPrescriptionList from "@/components/ui/SupplementPrescriptionList";
 import { computePatientMetabolism } from "@/lib/metabolism/bmr";
+import { sanitizePer100g, sumNutrition, FATSECRET_REPORT_KEYS } from "@/lib/foods/nutrition";
 import {
-  DEFAULT_FOOD_SOURCES,
-  FOOD_SOURCES,
-  foodSourceLabel,
-  usesFatSecretInResults
-} from "@/lib/foods/sources";
-import { Card, inputClassName } from "@/components/layout/AppShell";
-import {
-  formatPer100g,
-  formatScaledNutrition,
-  sanitizePer100g,
-  sumNutrition
-} from "@/lib/foods/nutrition";
-import {
-  MEASURE_UNITS,
   buildNutritionSnapshot,
-  formatMeasureLabel,
-  getMeasureUnit,
-  measureQuantityLabel,
-  normalizeMeasureAmount,
   restoreMeasureFromStored,
   toStoredPortion
 } from "@/lib/foods/measures";
 
-const DEFAULT_MEAL_NAMES = ["Café da manhã", "Almoço", "Lanche", "Jantar"];
-
-function defaultPlanTitle(patientName) {
-  const name = patientName?.trim();
-  return name ? `Plano Alimentar - ${name}` : "Plano Alimentar";
+function formatPlanDate(date = new Date()) {
+  return date.toLocaleDateString("pt-BR");
 }
 
-function createMeal(name, items = []) {
+function defaultPlanTitle(patientName, date = new Date()) {
+  const name = patientName?.trim() || "Paciente";
+  return `Plano Alimentar - ${name} - ${formatPlanDate(date)}`;
+}
+
+function emptyDraft(patientName) {
   return {
-    clientId: crypto.randomUUID(),
-    name,
-    items
+    title: defaultPlanTitle(patientName),
+    notes: "",
+    status: "active",
+    source: "fatsecret_csv",
+    sourcePdfPath: null,
+    extractionSummary: null,
+    extractionMethod: null,
+    meals: [],
+    supplements: [],
+    referrals: []
   };
 }
 
-function createItem(food) {
-  const defaultGrams = food.defaultPortionG || 100;
-  const portion = toStoredPortion("gramas", defaultGrams);
-
-  return {
-    clientId: crypto.randomUUID(),
-    source: food.source,
-    externalId: food.externalId,
-    label: food.label,
-    per100g: food.per100g ? sanitizePer100g(food.per100g) : null,
-    measureUnit: portion.measureUnit,
-    measureAmount: portion.measureAmount,
-    quantity: portion.quantity,
-    portionG: portion.portionG
-  };
+function mapSupplements(plan) {
+  return (plan.diet_supplements || plan.supplements || []).map((item, index) => ({
+    clientId: item.id || crypto.randomUUID(),
+    productName: item.product_name || item.productName || "",
+    dosage: item.dosage || "",
+    posology: item.posology || "",
+    notes: item.notes || "",
+    sortOrder: item.sort_order ?? item.sortOrder ?? index
+  }));
 }
 
-function MealSearchPanel({ onAddFood, addingId, enabledSources }) {
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState([]);
-  const [capabilities, setCapabilities] = useState({});
-  const [loadingSearch, setLoadingSearch] = useState(false);
-  const [searchError, setSearchError] = useState("");
+function mapReferrals(plan) {
+  return (plan.diet_referrals || plan.referrals || []).map((item, index) => ({
+    clientId: item.id || crypto.randomUUID(),
+    specialty: item.specialty || "",
+    professionalName: item.professional_name || item.professionalName || "",
+    reason: item.reason || "",
+    urgency: item.urgency || "routine",
+    notes: item.notes || "",
+    sortOrder: item.sort_order ?? item.sortOrder ?? index
+  }));
+}
 
-  useEffect(() => {
-    fetch("/api/foods/capabilities")
-      .then((response) => response.json())
-      .then((data) => setCapabilities(data.capabilities || {}))
-      .catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    if (query.length < 2) {
-      setResults([]);
-      setSearchError("");
-      return;
-    }
-
-    const controller = new AbortController();
-    setLoadingSearch(true);
-    setSearchError("");
-    const sources = enabledSources.join(",");
-
-    const t = setTimeout(() => {
-      fetch(
-        `/api/foods/search?q=${encodeURIComponent(query)}&provider=mixed&sources=${encodeURIComponent(sources)}`,
-        { signal: controller.signal }
+function rebuildItemSnapshot(item, patch = {}) {
+  const next = { ...item, ...patch };
+  const measureUnit = next.measureUnit || "gramas";
+  const measureAmount = Number(next.measureAmount ?? next.portionG) || 100;
+  const isAbsoluteMeasure = ["gramas", "ml", "litros"].includes(measureUnit);
+  const gramsPerUnit = !isAbsoluteMeasure
+    ? Number(
+        next.gramsPerUnit ||
+          next.nutritionSnapshot?.gramsPerUnit ||
+          Number(item.portionG || 100)
       )
-        .then(async (response) => {
-          const data = await response.json();
-          if (!response.ok) {
-            throw new Error(data.message || "Erro na busca.");
-          }
-          return data;
-        })
-        .then((data) => {
-          setResults(data.results || []);
-          if (data.capabilities) setCapabilities(data.capabilities);
-        })
-        .catch((error) => {
-          if (error.name === "AbortError") return;
-          setResults([]);
-          setSearchError(error.message || "Não foi possível buscar alimentos.");
-        })
-        .finally(() => {
-          if (!controller.signal.aborted) {
-            setLoadingSearch(false);
-          }
+    : null;
+  const stored = toStoredPortion(measureUnit, measureAmount, gramsPerUnit);
+  const per100g = next.per100g ? sanitizePer100g(next.per100g) : null;
+  const baseSnapshot = buildNutritionSnapshot(per100g, stored.measureUnit, stored.measureAmount) || {};
+
+  const reportValues = {};
+  for (const key of FATSECRET_REPORT_KEYS) {
+    reportValues[key] =
+      per100g && Object.prototype.hasOwnProperty.call(per100g, key)
+        ? per100g[key]
+        : next.nutritionSnapshot?.[key] ?? null;
+  }
+
+  return {
+    ...next,
+    quantity: stored.quantity,
+    portionG: stored.portionG,
+    measureUnit: stored.measureUnit,
+    measureAmount: stored.measureAmount,
+    gramsPerUnit: stored.gramsPerUnit,
+    per100g: per100g ? { ...per100g, ...reportValues } : reportValues,
+    nutritionSnapshot: {
+      ...baseSnapshot,
+      ...reportValues,
+      amountLabel: next.nutritionSnapshot?.amountLabel,
+      portionEstimated: Boolean(next.nutritionSnapshot?.portionEstimated),
+      measureUnit: stored.measureUnit,
+      measureAmount: stored.measureAmount,
+      ...(stored.gramsPerUnit ? { gramsPerUnit: stored.gramsPerUnit } : {})
+    }
+  };
+}
+
+function mapApiPlanToDraft(plan) {
+  if (!plan) return null;
+
+  return {
+    title: plan.title || "Plano Alimentar",
+    notes: plan.notes || "",
+    status: plan.status || "active",
+    source: plan.source || "fatsecret_csv",
+    sourcePdfPath: plan.source_pdf_path || plan.sourcePdfPath || null,
+    extractionSummary: plan.extraction_summary || plan.extractionSummary || null,
+    extractionMethod: plan.extraction_method || plan.extractionMethod || null,
+    meals: (plan.diet_meals || plan.meals || []).map((meal, index) => ({
+      clientId: meal.id || crypto.randomUUID(),
+      name: meal.name,
+      sortOrder: meal.sort_order ?? meal.sortOrder ?? index,
+      items: (meal.diet_items || meal.items || []).map((item) => {
+        const restored = restoreMeasureFromStored(
+          item.quantity,
+          item.portion_g ?? item.portionG,
+          item.nutrition_snapshot || item.nutritionSnapshot
+        );
+
+        return rebuildItemSnapshot({
+          clientId: item.id || crypto.randomUUID(),
+          source: item.source || "fatsecret_csv",
+          externalId: item.external_id ?? item.externalId ?? null,
+          label: item.label,
+          quantity: restored.quantity,
+          portionG: restored.portionG,
+          measureUnit: restored.measureUnit,
+          measureAmount: restored.measureAmount,
+          per100g: restored.per100g ? sanitizePer100g(restored.per100g) : null,
+          nutritionSnapshot:
+            item.nutrition_snapshot ||
+            item.nutritionSnapshot ||
+            buildNutritionSnapshot(restored.per100g, restored.measureUnit, restored.measureAmount)
         });
-    }, 300);
+      })
+    })),
+    supplements: mapSupplements(plan),
+    referrals: mapReferrals(plan)
+  };
+}
 
-    return () => {
-      clearTimeout(t);
-      controller.abort();
-    };
-  }, [query, enabledSources]);
-
-  const missingUsda =
-    enabledSources.includes(FOOD_SOURCES.USDA) && capabilities.usdaConfigured === false;
-  const missingFatSecret =
-    enabledSources.includes(FOOD_SOURCES.FATSECRET) && capabilities.fatsecretConfigured === false;
-
-  return (
-    <div className="mb-4 rounded-xl border border-dashed border-olive-900/15 bg-linen/30 p-3">
-      <label className="mb-1 block text-xs font-medium text-graphite/60">Buscar alimento</label>
-      <input
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        className={inputClassName()}
-        placeholder={buildSearchPlaceholder(enabledSources)}
-      />
-
-      {missingUsda ? (
-        <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-900">
-          USDA selecionado, mas USDA_API_KEY não está configurada no servidor.
-        </p>
-      ) : null}
-
-      {missingFatSecret ? (
-        <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-900">
-          FatSecret selecionado, mas as chaves não estão configuradas ou o IP não está liberado.
-        </p>
-      ) : null}
-
-      <div className="mt-3 max-h-48 space-y-2 overflow-y-auto">
-        {loadingSearch ? <p className="text-sm text-graphite/60">Buscando...</p> : null}
-        {searchError ? (
-          <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-            {searchError}
-          </p>
-        ) : null}
-        {!loadingSearch && !searchError && query.length >= 2 && results.length === 0 ? (
-          <p className="text-sm text-graphite/60">Nenhum alimento encontrado.</p>
-        ) : null}
-        {results.map((item) => (
-          <button
-            key={`${item.source}-${item.externalId}`}
-            type="button"
-            disabled={addingId === item.externalId}
-            onClick={() => onAddFood(item)}
-            className="block w-full rounded-lg border border-olive-900/10 bg-white px-3 py-2 text-left text-sm hover:bg-olive-50 disabled:opacity-60"
-          >
-            <span className="font-medium text-graphite">{item.label}</span>
-            <span className="ml-2 text-xs font-medium text-olive-700">{foodSourceLabel(item.source)}</span>
-            {formatPer100g(item.per100g) ? (
-              <span className="mt-1 block text-xs text-graphite/60">{formatPer100g(item.per100g)}</span>
-            ) : null}
-          </button>
-        ))}
-      </div>
-
-      {usesFatSecretInResults(results) ? (
-        <FatSecretAttribution className="mt-3 border-t border-olive-900/5 pt-2" />
-      ) : null}
-    </div>
+function draftItemsForAnalysis(meals) {
+  return (meals || []).flatMap((meal) =>
+    (meal.items || []).map((item) => ({
+      per100g: item.per100g,
+      quantity: item.quantity,
+      portionG: item.portionG,
+      portionEstimated: Boolean(item.nutritionSnapshot?.portionEstimated)
+    }))
   );
 }
 
-function mapPlanToMeals(plan) {
-  return (plan.diet_meals || [])
-    .sort((a, b) => a.sort_order - b.sort_order)
-    .map((meal) =>
-      createMeal(
-        meal.name,
-        (meal.diet_items || []).map((item) => {
-          const restored = restoreMeasureFromStored(item.quantity, item.portion_g, item.nutrition_snapshot);
-
-          return {
-            clientId: item.id,
-            source: item.source,
-            externalId: item.external_id,
-            label: item.label,
-            per100g: restored.per100g ? sanitizePer100g(restored.per100g) : null,
-            measureUnit: restored.measureUnit,
-            measureAmount: restored.measureAmount,
-            quantity: restored.quantity,
-            portionG: restored.portionG
-          };
-        })
-      )
-    );
+function sanitizeListForSave(items, requiredKeys) {
+  return (items || [])
+    .map((item, index) => ({ ...item, sortOrder: index }))
+    .filter((item) => requiredKeys.every((key) => String(item[key] || "").trim()));
 }
 
-export default function AdminDietBuilderPage() {
+export default function PacienteDietaPage() {
   const params = useParams();
-  const [addingId, setAddingId] = useState(null);
-  const [foodSources, setFoodSources] = useState(DEFAULT_FOOD_SOURCES);
-  const [searchCapabilities, setSearchCapabilities] = useState({});
+  const router = useRouter();
+  const patientId = params.id;
+
   const [patient, setPatient] = useState(null);
-  const [title, setTitle] = useState("Plano Alimentar");
-  const [meals, setMeals] = useState(() => DEFAULT_MEAL_NAMES.map((name) => createMeal(name)));
-  const [feedback, setFeedback] = useState("");
+  const [draft, setDraft] = useState(null);
+  const [pendingCsvFile, setPendingCsvFile] = useState(null);
+  const [extracting, setExtracting] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [tmbOpen, setTmbOpen] = useState(false);
-
-  const allItems = useMemo(() => meals.flatMap((meal) => meal.items), [meals]);
-  const planTotals = useMemo(() => sumNutrition(allItems), [allItems]);
-  const targetGetKcal = useMemo(() => {
-    if (!patient) return null;
-
-    const metabolism = computePatientMetabolism({
-      sex: patient.sex,
-      birthDate: patient.birth_date,
-      heightCm: patient.height_cm,
-      weightKg: patient.latest_weight_kg,
-      bodyFatPercent: patient.body_fat_percent,
-      activityLevel: patient.activity_level || "sedentary"
-    });
-
-    return metabolism.ok ? metabolism.getKcal : null;
-  }, [patient]);
+  const [feedback, setFeedback] = useState("");
+  const [feedbackTone, setFeedbackTone] = useState("neutral");
+  const [extractMeta, setExtractMeta] = useState(null);
+  const [metabolismOpen, setMetabolismOpen] = useState(false);
+  const [publishSuccessOpen, setPublishSuccessOpen] = useState(false);
+  const [wizardStep, setWizardStep] = useState(1);
+  const [maxReached, setMaxReached] = useState(1);
 
   useEffect(() => {
-    fetch("/api/foods/capabilities")
-      .then((response) => response.json())
-      .then((data) => setSearchCapabilities(data.capabilities || {}))
-      .catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-
     Promise.all([
-      fetch(`/api/admin/patients/${params.id}`).then(async (response) => {
-        const data = await response.json();
-        if (!response.ok) {
-          throw new Error(data.message || "Erro ao carregar paciente.");
-        }
-        return data;
-      }),
-      fetch(`/api/patients/${params.id}/diet`).then((response) => response.json())
+      fetch(`/api/admin/patients/${patientId}`).then((r) => r.json()),
+      fetch(`/api/patients/${patientId}/diet`).then((r) => r.json())
     ])
       .then(([patientData, dietData]) => {
-        if (cancelled) return;
+        const nextPatient = patientData.patient || null;
+        setPatient(nextPatient);
 
-        const patientName = patientData.patient?.full_name;
-        const defaultTitle = defaultPlanTitle(patientName);
-        setPatient(patientData.patient || null);
-        const plan =
-          dietData.dietPlans?.find((row) => row.status === "active") || dietData.dietPlans?.[0];
+        const active =
+          (dietData.dietPlans || []).find((plan) => plan.status === "active") ||
+          (dietData.dietPlans || [])[0];
 
-        if (plan) {
-          setTitle(plan.title || defaultTitle);
-          const loadedMeals = mapPlanToMeals(plan);
-          if (loadedMeals.length) setMeals(loadedMeals);
-        } else {
-          setTitle(defaultTitle);
-        }
+        setDraft(active ? mapApiPlanToDraft(active) : emptyDraft(nextPatient?.full_name));
       })
-      .catch(() => {});
+      .catch(() => {
+        setFeedbackTone("error");
+        setFeedback("Não foi possível carregar o paciente/dieta.");
+      });
+  }, [patientId]);
 
-    return () => {
-      cancelled = true;
-    };
-  }, [params.id]);
+  const planTotals = useMemo(() => sumNutrition(draftItemsForAnalysis(draft?.meals)), [draft]);
 
-  function updateMeals(updater) {
-    setMeals((current) => (typeof updater === "function" ? updater(current) : updater));
+  const metabolism = useMemo(
+    () =>
+      computePatientMetabolism({
+        sex: patient?.sex,
+        birthDate: patient?.birth_date,
+        heightCm: patient?.height_cm,
+        weightKg: patient?.latest_weight_kg,
+        bodyFatPercent: patient?.body_fat_percent,
+        activityLevel: patient?.activity_level,
+        primaryFormula: patient?.bmr_formula
+      }),
+    [patient]
+  );
+
+  function goToStep(nextStep) {
+    setWizardStep(nextStep);
+    setMaxReached((current) => Math.max(current, nextStep));
+    setFeedback("");
   }
 
-  async function addFood(mealId, item) {
-    setAddingId(item.externalId);
-    try {
-      let food = item;
+  async function handleCsvUpload(file) {
+    setExtracting(true);
+    setFeedback("");
+    setExtractMeta(null);
+    setPendingCsvFile(file || null);
 
-      if (food.source === "fatsecret") {
-        const res = await fetch(`/api/foods/fatsecret/${encodeURIComponent(item.externalId)}`);
-        const data = await res.json();
-        if (res.ok && data.food?.per100g?.kcal) {
-          food = data.food;
-        } else if (!food.per100g?.kcal) {
-          setFeedback("Não foi possível carregar os nutrientes deste alimento do FatSecret.");
-          return;
-        }
-      } else if (food.source === "usda") {
-        const res = await fetch(`/api/foods/usda/${encodeURIComponent(item.externalId)}`);
-        const data = await res.json();
-        if (res.ok && data.food?.per100g?.kcal) {
-          food = data.food;
-        } else if (!food.per100g?.kcal) {
-          setFeedback("Não foi possível carregar os nutrientes deste alimento do USDA.");
-          return;
-        }
-      }
+    const planTitle = defaultPlanTitle(patient?.full_name);
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("title", planTitle);
 
-      updateMeals((current) =>
-        current.map((meal) =>
-          meal.clientId === mealId ? { ...meal, items: [...meal.items, createItem(food)] } : meal
-        )
-      );
-      setFeedback("");
-    } finally {
-      setAddingId(null);
+    const response = await fetch(`/api/patients/${patientId}/diet/extract`, {
+      method: "POST",
+      body: formData
+    });
+
+    const data = await response.json().catch(() => ({}));
+    setExtracting(false);
+
+    if (!response.ok) {
+      setPendingCsvFile(null);
+      setFeedbackTone("error");
+      setFeedback(data.message || "Falha ao extrair a dieta do CSV.");
+      return;
+    }
+
+    const nextDraft = mapApiPlanToDraft({
+      ...data.plan,
+      title: planTitle,
+      notes: "",
+      diet_meals: (data.plan?.meals || []).map((meal, index) => ({
+        ...meal,
+        sort_order: meal.sortOrder ?? index,
+        diet_items: (meal.items || []).map((item) => ({
+          ...item,
+          portion_g: item.portionG,
+          nutrition_snapshot: item.nutritionSnapshot
+        }))
+      })),
+      diet_supplements: draft?.supplements || [],
+      diet_referrals: draft?.referrals || []
+    });
+
+    setDraft({
+      ...nextDraft,
+      supplements: draft?.supplements || [],
+      referrals: draft?.referrals || []
+    });
+    setExtractMeta({
+      summary: data.summary,
+      method: data.method,
+      warning: data.warning
+    });
+
+    if (!nextDraft?.meals?.length) {
+      setFeedbackTone("error");
+      setFeedback("Nenhuma refeição encontrada no CSV.");
     }
   }
 
-  function removeItem(mealId, itemId) {
-    updateMeals((current) =>
-      current.map((meal) =>
-        meal.clientId === mealId
-          ? { ...meal, items: meal.items.filter((item) => item.clientId !== itemId) }
-          : meal
-      )
-    );
+  function updateDraftField(field, value) {
+    setDraft((current) => ({ ...current, [field]: value }));
   }
 
-  function updateItem(mealId, itemId, patch) {
-    updateMeals((current) =>
-      current.map((meal) =>
-        meal.clientId === mealId
-          ? {
-              ...meal,
-              items: meal.items.map((item) => {
-                if (item.clientId !== itemId) return item;
-
-                const measureUnit = patch.measureUnit ?? item.measureUnit;
-                let measureAmount = item.measureAmount;
-
-                if (patch.measureAmount != null) {
-                  measureAmount = normalizeMeasureAmount(measureUnit, patch.measureAmount);
-                } else if (patch.measureUnit != null) {
-                  measureAmount = normalizeMeasureAmount(measureUnit, item.measureAmount);
-                }
-
-                const stored = toStoredPortion(measureUnit, measureAmount);
-
-                return {
-                  ...item,
-                  ...patch,
-                  measureUnit: stored.measureUnit,
-                  measureAmount: stored.measureAmount,
-                  quantity: stored.quantity,
-                  portionG: stored.portionG
-                };
-              })
-            }
-          : meal
-      )
-    );
+  function updateItem(mealClientId, itemClientId, patch) {
+    setDraft((current) => ({
+      ...current,
+      meals: current.meals.map((meal) => {
+        if (meal.clientId !== mealClientId) return meal;
+        return {
+          ...meal,
+          items: meal.items.map((item) =>
+            item.clientId === itemClientId ? rebuildItemSnapshot(item, patch) : item
+          )
+        };
+      })
+    }));
   }
 
-  function renameMeal(mealId, name) {
-    updateMeals((current) =>
-      current.map((meal) => (meal.clientId === mealId ? { ...meal, name } : meal))
-    );
-  }
-
-  function addMeal() {
-    const meal = createMeal("Nova refeição");
-    updateMeals((current) => [...current, meal]);
-  }
-
-  function removeMeal(mealId) {
-    if (meals.length <= 1) return;
-    updateMeals((current) => current.filter((meal) => meal.clientId !== mealId));
+  function removeItem(mealClientId, itemClientId) {
+    setDraft((current) => ({
+      ...current,
+      meals: current.meals
+        .map((meal) => {
+          if (meal.clientId !== mealClientId) return meal;
+          return {
+            ...meal,
+            items: meal.items.filter((item) => item.clientId !== itemClientId)
+          };
+        })
+        .filter((meal) => meal.items.length > 0)
+    }));
   }
 
   async function savePlan() {
-    const mealsWithItems = meals.filter((meal) => meal.items.length > 0);
-    if (!mealsWithItems.length) {
-      setFeedback("Adicione ao menos um alimento em alguma refeição.");
+    if (!draft?.meals?.length) {
+      setFeedbackTone("error");
+      setFeedback("Importe um CSV com refeições antes de publicar.");
+      goToStep(1);
       return;
     }
 
     setSaving(true);
     setFeedback("");
 
-    const res = await fetch(`/api/patients/${params.id}/diet`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title,
-        status: "active",
-        meals: mealsWithItems.map((meal, index) => ({
-          name: meal.name.trim() || `Refeição ${index + 1}`,
-          sortOrder: index,
-          items: meal.items.map((item) => {
-            const stored = toStoredPortion(item.measureUnit, item.measureAmount);
-
-            return {
-              source: item.source,
-              externalId: item.externalId,
-              label: item.label,
-              quantity: stored.quantity,
-              portionG: stored.portionG,
-              nutritionSnapshot: buildNutritionSnapshot(
-                item.per100g,
-                item.measureUnit,
-                item.measureAmount
-              )
-            };
-          })
+    const payload = {
+      title: draft.title,
+      notes: draft.notes || null,
+      status: "active",
+      source: "fatsecret_csv",
+      sourcePdfPath: draft.sourcePdfPath || null,
+      extractionSummary: draft.extractionSummary || extractMeta?.summary || null,
+      extractionMethod: draft.extractionMethod || extractMeta?.method || null,
+      meals: draft.meals.map((meal, index) => ({
+        name: meal.name,
+        sortOrder: index,
+        items: meal.items.map((item) => ({
+          source: item.source || "fatsecret_csv",
+          externalId: item.externalId,
+          label: item.label,
+          quantity: item.quantity,
+          portionG: item.portionG,
+          nutritionSnapshot:
+            item.nutritionSnapshot ||
+            buildNutritionSnapshot(
+              item.per100g,
+              item.measureUnit || "gramas",
+              item.measureAmount || item.portionG
+            )
         }))
-      })
-    });
+      })),
+      supplements: sanitizeListForSave(draft.supplements, ["productName", "dosage", "posology"]).map(
+        (item, index) => ({
+          productName: item.productName.trim(),
+          dosage: item.dosage.trim(),
+          posology: item.posology.trim(),
+          notes: item.notes?.trim() || null,
+          sortOrder: index
+        })
+      ),
+      referrals: sanitizeListForSave(draft.referrals, ["specialty", "reason"]).map((item, index) => ({
+        specialty: item.specialty.trim(),
+        professionalName: item.professionalName?.trim() || null,
+        reason: item.reason.trim(),
+        urgency: item.urgency || "routine",
+        notes: item.notes?.trim() || null,
+        sortOrder: index
+      }))
+    };
 
-    const data = await res.json();
+    let response;
+    if (pendingCsvFile) {
+      const formData = new FormData();
+      formData.append("plan", JSON.stringify(payload));
+      formData.append("file", pendingCsvFile);
+      response = await fetch(`/api/patients/${patientId}/diet`, {
+        method: "POST",
+        body: formData
+      });
+    } else {
+      response = await fetch(`/api/patients/${patientId}/diet`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+    }
+
+    const data = await response.json().catch(() => ({}));
     setSaving(false);
-    setFeedback(res.ok ? "Plano salvo." : data.message || "Erro ao salvar.");
+
+    if (!response.ok) {
+      setFeedbackTone("error");
+      setFeedback(data.message || "Erro ao salvar plano.");
+      return;
+    }
+
+    setPendingCsvFile(null);
+    setFeedback("");
+    setPublishSuccessOpen(true);
+  }
+
+  function goToPatient() {
+    setPublishSuccessOpen(false);
+    router.push(`/admin/pacientes/${patientId}`);
   }
 
   return (
-    <AdminShell title="Montar dieta" breadcrumbs={["Admin", "Dieta"]} userName="Letícia">
-      <Card className="mb-4 overflow-hidden border-olive-600/25 bg-gradient-to-br from-olive-200/70 via-olive-100/80 to-porcelain p-0 shadow-soft ring-1 ring-olive-700/15">
-        <div className="border-b border-olive-700/10 bg-olive-700/90 px-5 py-3 sm:px-6">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-porcelain/75">
-            Configuração do plano
-          </p>
+    <AdminShell
+      title="Prescrição"
+      breadcrumbs={["Admin", "Pacientes", patient?.full_name || "...", "Prescrição"]}
+    >
+      <div className="mb-5 rounded-2xl border border-olive-900/10 bg-porcelain/90 px-4 py-4 sm:px-5">
+        <PlanWizardStepper step={wizardStep} maxReached={maxReached} onStepChange={goToStep} />
+      </div>
+
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          {metabolism.ok ? (
+            <span className="rounded-full bg-olive-100 px-3 py-1.5 text-xs text-olive-900">
+              GET <strong className="font-semibold">{Math.round(metabolism.getKcal)} kcal</strong>
+            </span>
+          ) : null}
+          <button type="button" className={btnSecondary()} onClick={() => setMetabolismOpen(true)}>
+            <Activity className="h-4 w-4" strokeWidth={1.75} />
+            Metabolismo
+          </button>
         </div>
-        <div className="p-5 sm:p-6">
-          <div className="flex flex-wrap items-end gap-3">
-            <div className="min-w-0 flex-1">
-              <label className="mb-1 block text-xs font-medium text-olive-900/70">Título do plano</label>
-              <input
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className={inputClassName()}
-                placeholder="Plano Alimentar - Nome do paciente"
+        {wizardStep === 1 ? (
+          <button
+            type="button"
+            className={btnSecondary()}
+            disabled={extracting}
+            onClick={() => {
+              setDraft(emptyDraft(patient?.full_name));
+              setPendingCsvFile(null);
+              setExtractMeta(null);
+              setFeedback("");
+              setWizardStep(1);
+              setMaxReached(1);
+            }}
+          >
+            <RefreshCw className="h-4 w-4" strokeWidth={1.75} />
+            Limpar
+          </button>
+        ) : null}
+      </div>
+
+      {wizardStep === 1 ? (
+        <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(360px,0.8fr)]">
+          <div className="space-y-5">
+            <Card>
+              <CsvUploadZone
+                label="CSV FatSecret"
+                hint="Detailed Report · até 2 MB"
+                uploading={extracting}
+                onFileSelect={handleCsvUpload}
               />
-            </div>
-            <button
-              type="button"
-              onClick={() => setTmbOpen(true)}
-              className="inline-flex items-center gap-2 rounded-xl border border-olive-700/15 bg-white px-3 py-2.5 text-sm font-semibold text-olive-800 shadow-sm hover:bg-olive-50"
-            >
-              <Activity className="h-4 w-4" />
-              TMB
-            </button>
-            <button
-              type="button"
-              onClick={addMeal}
-              className="inline-flex items-center gap-2 rounded-xl border border-olive-700/15 bg-white px-3 py-2.5 text-sm font-medium text-olive-800 shadow-sm hover:bg-olive-50"
-            >
-              <Plus className="h-4 w-4" />
-              Refeição
-            </button>
+
+              <div className="mt-5 grid gap-3 border-t border-olive-900/10 pt-5">
+                <label className="block text-sm text-graphite/70">
+                  Título
+                  <input
+                    className={`mt-1 ${inputClassName()}`}
+                    value={draft?.title || ""}
+                    onChange={(event) => updateDraftField("title", event.target.value)}
+                  />
+                </label>
+                <label className="block text-sm text-graphite/70">
+                  Observações
+                  <textarea
+                    rows={2}
+                    className={`mt-1 ${inputClassName()}`}
+                    value={draft?.notes || ""}
+                    onChange={(event) => updateDraftField("notes", event.target.value)}
+                    placeholder="Opcional"
+                  />
+                </label>
+              </div>
+            </Card>
+
+            {(draft?.meals || []).map((meal) => (
+              <MealDietAccordion
+                key={meal.clientId}
+                meal={meal}
+                onUpdateItem={updateItem}
+                onRemoveItem={removeItem}
+              />
+            ))}
+
+            {!draft?.meals?.length ? (
+              <Card>
+                <div className="flex flex-col items-center py-10 text-center">
+                  <FileUp className="h-8 w-8 text-olive-700" strokeWidth={1.5} />
+                  <p className="mt-3 text-sm text-graphite/55">Envie o CSV para montar o plano.</p>
+                </div>
+              </Card>
+            ) : null}
+
+            {feedback && wizardStep === 1 ? (
+              <p
+                className={`text-sm ${
+                  feedbackTone === "error"
+                    ? "text-red-700"
+                    : feedbackTone === "success"
+                      ? "text-olive-800"
+                      : "text-graphite/60"
+                }`}
+              >
+                {feedback}
+              </p>
+            ) : null}
           </div>
-          <FoodSourceToggles
-            enabledSources={foodSources}
-            onChange={setFoodSources}
-            capabilities={searchCapabilities}
-            className="mt-4"
+
+          <div className="space-y-4 xl:sticky xl:top-5">
+            {draft?.meals?.length ? (
+              <DietNutrientAnalysis
+                totals={planTotals}
+                items={draftItemsForAnalysis(draft.meals)}
+                mealCount={draft.meals.length}
+                itemCount={draft.meals.reduce((sum, meal) => sum + meal.items.length, 0)}
+                targetKcal={metabolism.ok ? metabolism.getKcal : null}
+                patientGoal={patient?.goal}
+              />
+            ) : (
+              <Card title="Total do plano">
+                <p className="text-sm text-graphite/50">A análise aparece após importar o CSV.</p>
+              </Card>
+            )}
+          </div>
+        </div>
+      ) : null}
+
+      {wizardStep === 2 ? (
+        <div className="mx-auto max-w-6xl space-y-5">
+          <SupplementPrescriptionList
+            items={draft?.supplements || []}
+            onChange={(supplements) => updateDraftField("supplements", supplements)}
           />
         </div>
-      </Card>
+      ) : null}
 
-      <Modal open={tmbOpen} onClose={() => setTmbOpen(false)} title="Taxa Metabólica Basal (TMB)">
+      {wizardStep === 3 ? (
+        <div className="mx-auto max-w-6xl space-y-5">
+          <ReferralList
+            items={draft?.referrals || []}
+            onChange={(referrals) => updateDraftField("referrals", referrals)}
+          />
+
+          {feedback && feedbackTone === "error" ? (
+            <p className="text-sm text-red-700">{feedback}</p>
+          ) : null}
+        </div>
+      ) : null}
+
+      <div className="sticky bottom-4 z-20 mt-8">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-olive-900/10 bg-porcelain/95 px-4 py-3 shadow-lg backdrop-blur">
+          {wizardStep === 1 ? (
+            <>
+              <span className="text-sm text-graphite/45">
+                {draft?.meals?.length
+                  ? `${draft.meals.length} refeições`
+                  : "Sem refeições ainda"}
+              </span>
+              <button
+                type="button"
+                className={btnPrimary()}
+                disabled={!draft?.meals?.length || extracting}
+                onClick={() => goToStep(2)}
+              >
+                Continuar
+                <ArrowRight className="h-4 w-4" strokeWidth={1.75} />
+              </button>
+            </>
+          ) : null}
+
+          {wizardStep === 2 ? (
+            <>
+              <button type="button" className={btnSecondary()} onClick={() => goToStep(1)}>
+                <ArrowLeft className="h-4 w-4" strokeWidth={1.75} />
+                Voltar
+              </button>
+              <button type="button" className={btnPrimary()} onClick={() => goToStep(3)}>
+                Continuar
+                <ArrowRight className="h-4 w-4" strokeWidth={1.75} />
+              </button>
+            </>
+          ) : null}
+
+          {wizardStep === 3 ? (
+            <>
+              <button type="button" className={btnSecondary()} onClick={() => goToStep(2)}>
+                <ArrowLeft className="h-4 w-4" strokeWidth={1.75} />
+                Voltar
+              </button>
+              <button
+                type="button"
+                className={btnPrimary()}
+                disabled={saving || extracting || !draft?.meals?.length}
+                onClick={savePlan}
+              >
+                <Save className="h-4 w-4" strokeWidth={1.75} />
+                {saving ? "Publicando..." : "Publicar plano"}
+              </button>
+            </>
+          ) : null}
+        </div>
+      </div>
+
+      <Modal
+        open={metabolismOpen}
+        onClose={() => setMetabolismOpen(false)}
+        title="Metabolismo (TMB / GET)"
+        size="lg"
+      >
         <BmrPanel
           patient={patient}
-          planKcal={Math.round(planTotals.kcal)}
-          onSaved={setPatient}
+          planKcal={planTotals.kcal || 0}
+          onSaved={(nextPatient) => setPatient(nextPatient)}
         />
       </Modal>
 
-      <div className="mb-4 grid gap-4">
-        {meals.map((meal) => {
-          return (
-            <Card key={meal.clientId}>
-              <div className="mb-4 flex flex-wrap items-center gap-3">
-                <input
-                  value={meal.name}
-                  onChange={(e) => renameMeal(meal.clientId, e.target.value)}
-                  className={`min-w-[180px] flex-1 ${inputClassName()}`}
-                  placeholder="Nome da refeição"
-                />
-                {meals.length > 1 ? (
-                  <button
-                    type="button"
-                    onClick={() => removeMeal(meal.clientId)}
-                    className="inline-flex items-center gap-1 rounded-lg px-2 py-2 text-xs font-medium text-rose-700 hover:bg-rose-50"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                    Remover refeição
-                  </button>
-                ) : null}
-              </div>
-
-              <MealSearchPanel
-                addingId={addingId}
-                enabledSources={foodSources}
-                onAddFood={(item) => addFood(meal.clientId, item)}
-              />
-
-              {!meal.items.length ? (
-                <p className="text-sm text-graphite/50">Nenhum alimento nesta refeição.</p>
-              ) : (
-                <ul className="space-y-3">
-                  {meal.items.map((item) => (
-                    <li
-                      key={item.clientId}
-                      className="rounded-xl border border-olive-900/10 bg-linen/40 p-3"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="font-medium text-graphite">{item.label}</p>
-                          {formatPer100g(item.per100g) ? (
-                            <p className="mt-1 text-xs text-graphite/50">{formatPer100g(item.per100g)}</p>
-                          ) : null}
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => removeItem(meal.clientId, item.clientId)}
-                          className="rounded-lg p-2 text-graphite/45 hover:bg-rose-50 hover:text-rose-700"
-                          aria-label={`Remover ${item.label}`}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-
-                      <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                        <label className="block text-xs text-graphite/60">
-                          Medida
-                          <select
-                            value={item.measureUnit}
-                            onChange={(e) =>
-                              updateItem(meal.clientId, item.clientId, { measureUnit: e.target.value })
-                            }
-                            className={`mt-1 ${inputClassName()}`}
-                          >
-                            {MEASURE_UNITS.map((unit) => (
-                              <option key={unit.id} value={unit.id}>
-                                {unit.label}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                        <label className="block text-xs text-graphite/60">
-                          {measureQuantityLabel(item.measureUnit)}
-                          <input
-                            type="number"
-                            min={getMeasureUnit(item.measureUnit).min}
-                            step={getMeasureUnit(item.measureUnit).step}
-                            value={item.measureAmount}
-                            onChange={(e) =>
-                              updateItem(meal.clientId, item.clientId, { measureAmount: e.target.value })
-                            }
-                            className={`mt-1 ${inputClassName()}`}
-                          />
-                        </label>
-                      </div>
-
-                      <p className="mt-2 text-xs text-graphite/55">
-                        Porção: {formatMeasureLabel(item.measureUnit, item.measureAmount)}
-                      </p>
-
-                      {formatScaledNutrition(item.per100g, item.quantity, item.portionG) ? (
-                        <p className="mt-3 text-sm font-medium text-olive-800">
-                          {formatScaledNutrition(item.per100g, item.quantity, item.portionG)}
-                        </p>
-                      ) : null}
-                    </li>
-                  ))}
-                </ul>
-              )}
-
-              {meal.items.length ? (
-                <MealNutrientAnalysis
-                  mealName={meal.name}
-                  items={meal.items}
-                  patientGoal={patient?.goal}
-                />
-              ) : null}
-            </Card>
-          );
-        })}
-      </div>
-
-      {usesFatSecretInResults(allItems) ? (
-        <Card className="mb-4 bg-linen/40">
-          <FatSecretAttribution />
-        </Card>
-      ) : null}
-
-      <DietNutrientAnalysis
-        totals={planTotals}
-        items={allItems}
-        itemCount={allItems.length}
-        mealCount={meals.filter((meal) => meal.items.length).length}
-        targetKcal={targetGetKcal}
-        targetLabel="Meta (GET)"
-        patientGoal={patient?.goal}
-      />
-
-      <Card>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h3 className="font-semibold">Salvar plano alimentar</h3>
-            <p className="mt-1 text-sm text-graphite/60">
-              Revise a análise acima antes de publicar para o paciente.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={savePlan}
-            disabled={saving || allItems.length === 0}
-            className="rounded-xl bg-olive-700 px-5 py-3 text-sm font-semibold text-white hover:bg-olive-800 disabled:opacity-50"
-          >
-            {saving ? "Salvando..." : "Salvar plano"}
+      <Modal
+        open={publishSuccessOpen}
+        onClose={goToPatient}
+        size="sm"
+      >
+        <div className="flex flex-col items-center px-2 pb-2 pt-1 text-center">
+          <span className="flex h-16 w-16 items-center justify-center rounded-full bg-olive-100 text-olive-700">
+            <CheckCircle2 className="h-9 w-9" strokeWidth={1.75} />
+          </span>
+          <h3 className="mt-4 text-xl font-semibold text-graphite">Plano publicado</h3>
+          <p className="mt-2 max-w-sm text-sm text-graphite/60">
+            A prescrição de{" "}
+            <span className="font-medium text-graphite">
+              {patient?.full_name || "paciente"}
+            </span>{" "}
+            já está disponível.
+          </p>
+          <button type="button" className={`${btnPrimary()} mt-6 w-full sm:w-auto`} onClick={goToPatient}>
+            <UserRound className="h-4 w-4" strokeWidth={1.75} />
+            Ir para o paciente
           </button>
         </div>
-        {feedback ? <p className="mt-3 text-sm">{feedback}</p> : null}
-      </Card>
+      </Modal>
     </AdminShell>
   );
 }

@@ -84,9 +84,10 @@ export const demoAvailabilityRules = [
 
 export const demoDietPlan = {
   id: "diet-1",
-  title: "Plano alimentar — semana 1",
+  title: "Plano alimentar FatSecret · semana 1",
   notes: "Beba 2L de água por dia. Evite ultraprocessados.",
   status: "active",
+  source: "fatsecret_csv",
   diet_meals: [
     {
       id: "meal-1",
@@ -98,15 +99,30 @@ export const demoDietPlan = {
           label: "Aveia, flocos",
           quantity: 1,
           portion_g: 40,
-          source: "fatsecret",
-          nutrition_snapshot: { kcal: 394, protein_g: 13.9, carbs_g: 66.6, fat_g: 8.5 }
+          source: "fatsecret_csv",
+          nutrition_snapshot: {
+            kcal: 394,
+            protein_g: 13.9,
+            carbs_g: 66.6,
+            fat_g: 8.5,
+            measureUnit: "gramas",
+            measureAmount: 40
+          }
         },
         {
           id: "item-2",
           label: "Banana, nanica",
           quantity: 1,
           portion_g: 80,
-          source: "taco"
+          source: "fatsecret_csv",
+          nutrition_snapshot: {
+            kcal: 89,
+            protein_g: 1.1,
+            carbs_g: 22.8,
+            fat_g: 0.3,
+            measureUnit: "gramas",
+            measureAmount: 80
+          }
         }
       ]
     },
@@ -120,16 +136,61 @@ export const demoDietPlan = {
           label: "Peito de frango, grelhado",
           quantity: 1,
           portion_g: 120,
-          source: "taco"
+          source: "fatsecret_csv",
+          nutrition_snapshot: {
+            kcal: 165,
+            protein_g: 31,
+            carbs_g: 0,
+            fat_g: 3.6,
+            measureUnit: "gramas",
+            measureAmount: 120
+          }
         },
         {
           id: "item-4",
           label: "Arroz, branco, cozido",
           quantity: 1,
           portion_g: 100,
-          source: "taco"
+          source: "fatsecret_csv",
+          nutrition_snapshot: {
+            kcal: 130,
+            protein_g: 2.7,
+            carbs_g: 28,
+            fat_g: 0.3,
+            measureUnit: "gramas",
+            measureAmount: 100
+          }
         }
       ]
+    }
+  ],
+  diet_supplements: [
+    {
+      id: "sup-1",
+      sort_order: 0,
+      product_name: "Whey Protein Isolado",
+      dosage: "30 g",
+      posology: "1x ao dia, após o treino",
+      notes: null
+    },
+    {
+      id: "sup-2",
+      sort_order: 1,
+      product_name: "Vitamina D3",
+      dosage: "2000 UI",
+      posology: "1x ao dia, com o almoço",
+      notes: null
+    }
+  ],
+  diet_referrals: [
+    {
+      id: "ref-1",
+      sort_order: 0,
+      specialty: "Endocrinologista",
+      professional_name: null,
+      reason: "Avaliação de tireoide e metabolismo",
+      urgency: "routine",
+      notes: null
     }
   ]
 };

@@ -3,10 +3,18 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { ChevronRight, LogOut, Menu, User, X } from "lucide-react";
+import {
+  ChevronRight,
+  LogOut,
+  Menu,
+  PanelLeftClose,
+  PanelLeftOpen,
+  User,
+  X
+} from "lucide-react";
 import NotificationBell from "@/components/ui/NotificationBell";
 
-function NavItem({ href, label, icon: Icon, onNavigate }) {
+function NavItem({ href, label, icon: Icon, onNavigate, collapsed = false }) {
   const pathname = usePathname();
   const exactOnly = href === "/admin" || href === "/app";
   const active =
@@ -17,14 +25,17 @@ function NavItem({ href, label, icon: Icon, onNavigate }) {
     <Link
       href={href}
       onClick={onNavigate}
-      className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
+      title={collapsed ? label : undefined}
+      className={`flex items-center rounded-xl py-2.5 text-sm font-medium transition-colors ${
+        collapsed ? "justify-center px-2" : "gap-3 px-3"
+      } ${
         active
           ? "bg-olive-100 text-olive-900"
           : "text-graphite/60 hover:bg-porcelain hover:text-graphite"
       }`}
     >
       {Icon ? <Icon className="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} /> : null}
-      <span className="truncate">{label}</span>
+      {!collapsed ? <span className="truncate">{label}</span> : null}
     </Link>
   );
 }
@@ -90,33 +101,44 @@ function UserProfileChip({ name, href, label = "Meu perfil", active = false }) {
   );
 }
 
-function SidebarBrand() {
+function SidebarBrand({ collapsed }) {
   return (
-    <div className="flex items-center gap-3 border-b border-olive-900/10 px-5 py-5">
+    <div
+      className={`flex items-center border-b border-olive-900/10 py-5 ${
+        collapsed ? "flex-col gap-3 px-3" : "gap-3 px-5"
+      }`}
+    >
       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-olive-700 text-sm font-bold text-white shadow-sm">
         LC
       </div>
-      <div className="min-w-0">
-        <p className="truncate text-sm font-semibold text-graphite">Letícia Cunha</p>
-        <p className="text-xs text-graphite/45">Plataforma</p>
-      </div>
+      {!collapsed ? (
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold text-graphite">Letícia Cunha</p>
+          <p className="text-xs text-graphite/45">Plataforma</p>
+        </div>
+      ) : null}
     </div>
   );
 }
 
-function NavSections({ sections, onNavigate }) {
+function NavSections({ sections, onNavigate, collapsed = false }) {
   return (
-    <nav className="space-y-6">
+    <nav className={collapsed ? "space-y-4" : "space-y-6"}>
       {sections.map((section) => (
         <div key={section.label || "main"}>
-          {section.label ? (
+          {section.label && !collapsed ? (
             <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-wider text-graphite/40">
               {section.label}
             </p>
           ) : null}
           <div className="space-y-0.5">
             {section.items.map((item) => (
-              <NavItem key={item.href} {...item} onNavigate={onNavigate} />
+              <NavItem
+                key={item.href}
+                {...item}
+                collapsed={collapsed}
+                onNavigate={onNavigate}
+              />
             ))}
           </div>
         </div>
@@ -138,6 +160,7 @@ export default function AppShell({
 }) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const flatNav = useMemo(() => navSections.flatMap((section) => section.items), [navSections]);
   const mobileNav = flatNav.slice(0, 4);
 
@@ -152,24 +175,54 @@ export default function AppShell({
     };
   }, [menuOpen]);
 
+  useEffect(() => {
+    setSidebarCollapsed(window.localStorage.getItem("sidebar-collapsed") === "true");
+  }, []);
+
+  function toggleSidebar() {
+    setSidebarCollapsed((current) => {
+      const next = !current;
+      window.localStorage.setItem("sidebar-collapsed", String(next));
+      return next;
+    });
+  }
+
   return (
     <div className="min-h-[100dvh] w-full bg-linen text-graphite">
       <aside
-        className="fixed bottom-0 left-0 top-[var(--demo-banner-height,0px)] z-30 hidden w-[272px] flex-col border-r border-olive-900/10 bg-porcelain/95 lg:flex"
+        className={`fixed bottom-0 left-0 top-[var(--demo-banner-height,0px)] z-30 hidden flex-col border-r border-olive-900/10 bg-porcelain/95 transition-[width] duration-200 lg:flex ${
+          sidebarCollapsed ? "w-20" : "w-[272px]"
+        }`}
         style={{ height: "calc(100dvh - var(--demo-banner-height, 0px))" }}
       >
-        <SidebarBrand />
+        <SidebarBrand collapsed={sidebarCollapsed} />
+        <button
+          type="button"
+          onClick={toggleSidebar}
+          className="absolute -right-4 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-olive-900/10 bg-white text-graphite/55 shadow-md transition hover:border-olive-300 hover:bg-olive-50 hover:text-olive-800"
+          title={sidebarCollapsed ? "Expandir menu" : "Recolher menu"}
+          aria-label={sidebarCollapsed ? "Expandir menu lateral" : "Recolher menu lateral"}
+        >
+          {sidebarCollapsed ? (
+            <PanelLeftOpen className="h-4 w-4" strokeWidth={1.75} />
+          ) : (
+            <PanelLeftClose className="h-4 w-4" strokeWidth={1.75} />
+          )}
+        </button>
         <div className="flex-1 overflow-y-auto px-3 py-5">
-          <NavSections sections={navSections} />
+          <NavSections sections={navSections} collapsed={sidebarCollapsed} />
         </div>
         <div className="border-t border-olive-900/10 p-3">
           <button
             type="button"
             onClick={onLogout}
-            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-graphite/60 transition hover:bg-porcelain hover:text-graphite"
+            title={sidebarCollapsed ? "Sair" : undefined}
+            className={`flex w-full items-center rounded-xl py-2.5 text-sm font-medium text-graphite/60 transition hover:bg-porcelain hover:text-graphite ${
+              sidebarCollapsed ? "justify-center px-2" : "gap-3 px-3"
+            }`}
           >
             <LogOut className="h-[18px] w-[18px]" strokeWidth={1.75} />
-            Sair
+            {!sidebarCollapsed ? "Sair" : null}
           </button>
         </div>
       </aside>
@@ -217,7 +270,11 @@ export default function AppShell({
         </div>
       ) : null}
 
-      <div className="flex min-h-[100dvh] w-full min-w-0 flex-col lg:pl-[272px]">
+      <div
+        className={`flex min-h-[100dvh] w-full min-w-0 flex-col transition-[padding] duration-200 ${
+          sidebarCollapsed ? "lg:pl-20" : "lg:pl-[272px]"
+        }`}
+      >
         <header className="sticky top-[var(--demo-banner-height,0px)] z-20 border-b border-olive-900/10 bg-porcelain/90 backdrop-blur-md">
           <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:gap-4 sm:px-6 lg:px-8">
             <div className="flex min-w-0 flex-1 items-start gap-3">

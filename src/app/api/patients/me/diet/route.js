@@ -7,7 +7,7 @@ export async function GET() {
 
   const { data: plans } = await auth.ctx.supabase
     .from("diet_plans")
-    .select("*, diet_meals(*, diet_items(*))")
+    .select("*, diet_meals(*, diet_items(*)), diet_supplements(*), diet_referrals(*)")
     .eq("patient_id", auth.ctx.patient.id)
     .eq("status", "active")
     .order("created_at", { ascending: false })

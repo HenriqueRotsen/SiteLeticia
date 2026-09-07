@@ -3,6 +3,8 @@ export const FOOD_SOURCES = {
   TACO: "taco",
   USDA: "usda",
   FATSECRET: "fatsecret",
+  FATSECRET_CSV: "fatsecret_csv",
+  FATSECRET_PDF: "fatsecret_pdf",
   OFF: "off",
   CUSTOM: "custom"
 };
@@ -12,6 +14,8 @@ export const FOOD_SOURCE_LABELS = {
   [FOOD_SOURCES.TACO]: "TACO · Unicamp",
   [FOOD_SOURCES.USDA]: "USDA · EUA",
   [FOOD_SOURCES.FATSECRET]: "FatSecret",
+  [FOOD_SOURCES.FATSECRET_CSV]: "FatSecret · CSV",
+  [FOOD_SOURCES.FATSECRET_PDF]: "FatSecret · PDF",
   [FOOD_SOURCES.OFF]: "Open Food Facts",
   [FOOD_SOURCES.CUSTOM]: "Personalizado"
 };
@@ -35,5 +39,9 @@ export function foodSourceLabel(source) {
 }
 
 export function usesFatSecretInResults(items) {
-  return items.some((item) => item.source === FOOD_SOURCES.FATSECRET);
+  return items.some((item) =>
+    [FOOD_SOURCES.FATSECRET, FOOD_SOURCES.FATSECRET_CSV, FOOD_SOURCES.FATSECRET_PDF].includes(
+      item.source
+    )
+  );
 }

@@ -149,7 +149,13 @@ export function computePatientMetabolism(input) {
     }
   }
 
-  const primaryFormula = BMR_FORMULAS.MIFFLIN_ST_JEOR;
+  const requestedFormula = Object.values(BMR_FORMULAS).includes(input.primaryFormula)
+    ? input.primaryFormula
+    : BMR_FORMULAS.MIFFLIN_ST_JEOR;
+  const primaryFormula =
+    formulas[requestedFormula] != null
+      ? requestedFormula
+      : BMR_FORMULAS.MIFFLIN_ST_JEOR;
   const tmbKcal = formulas[primaryFormula] ?? null;
 
   const activityLevel = input.activityLevel || "sedentary";

@@ -3,6 +3,7 @@ import {
   classifyEnergyDensity,
   energyDensityGaugePercent,
   formatVolumeExample,
+  getClinicalDensityInsight,
   getStrategyHint,
   volumeForKcal
 } from "@/lib/foods/energy-density";
@@ -28,5 +29,17 @@ describe("energy density", () => {
   it("returns strategy hints", () => {
     const low = classifyEnergyDensity(1.1);
     expect(getStrategyHint(low, "lower")).toMatch(/emagrecimento/i);
+  });
+
+  it("builds clinical density insight for nutritionist", () => {
+    const insight = getClinicalDensityInsight({
+      density: 1.1,
+      goal: "Hipertrofia",
+      scope: "plano"
+    });
+
+    expect(insight.eyebrow).toBe("Insight clínico");
+    expect(insight.tone).toBe("watch");
+    expect(insight.body).toMatch(/hipertrofia|calóricos/i);
   });
 });

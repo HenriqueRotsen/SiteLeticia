@@ -77,6 +77,45 @@ export async function computePatientInsights(patientId) {
     });
   }
 
+  const { data: activePlan } = await supabase
+    .from("diet_plans")
+    .select("id, title, source, diet_meals(name, diet_items(label, quantity, portion_g, nutrition_snapshot))")
+    .eq("patient_id", patientId)
+    .eq("status", "active")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (activePlan?.diet_meals?.length) {
+    let kcal = 0;
+    let protein = 0;
+    let itemCount = 0;
+
+    for (const meal of activePlan.diet_meals) {
+      for (const item of meal.diet_items || []) {
+        itemCount += 1;
+        const snapshot = item.nutrition_snapshot || {};
+        const grams = Number(item.quantity || 0) * Number(item.portion_g || 0);
+        if (!grams || snapshot.kcal == null) continue;
+        const factor = grams / 100;
+        kcal += Number(snapshot.kcal) * factor;
+        if (snapshot.protein_g != null) protein += Number(snapshot.protein_g) * factor;
+      }
+    }
+
+    if (itemCount > 0) {
+      insights.push({
+        type: "computed",
+        title: "Plano alimentar ativo",
+        body:
+          kcal > 0
+            ? `Seu plano “${activePlan.title}” soma cerca de ${Math.round(kcal)} kcal e ${Math.round(protein)} g de proteína no dia (${itemCount} itens).`
+            : `Você tem o plano “${activePlan.title}” ativo com ${itemCount} item(ns). Veja a aba Dieta.`,
+        visible_to_patient: true
+      });
+    }
+  }
+
   return insights;
 }
 

@@ -6,4 +6,7 @@ alter table public.patients
   add column if not exists body_fat_percent numeric check (body_fat_percent >= 3 and body_fat_percent <= 70),
   add column if not exists activity_level text check (
     activity_level in ('sedentary', 'light', 'moderate', 'heavy', 'very_heavy')
+  ),
+  add column if not exists bmr_formula text default 'mifflin' check (
+    bmr_formula in ('mifflin', 'harris', 'fao_who', 'katch')
   );

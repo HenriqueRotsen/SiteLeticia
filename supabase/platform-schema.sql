@@ -42,6 +42,9 @@ create table if not exists public.patients (
   activity_level text check (
     activity_level in ('sedentary', 'light', 'moderate', 'heavy', 'very_heavy')
   ),
+  bmr_formula text default 'mifflin' check (
+    bmr_formula in ('mifflin', 'harris', 'fao_who', 'katch')
+  ),
   address_street text,
   address_number text,
   address_complement text,
@@ -149,6 +152,10 @@ create table if not exists public.diet_plans (
   ends_at date,
   notes text,
   status text not null default 'active' check (status in ('draft', 'active', 'archived')),
+  source text not null default 'manual' check (source in ('manual', 'fatsecret_csv', 'fatsecret_pdf')),
+  source_pdf_path text,
+  extraction_summary text,
+  extraction_method text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -163,12 +170,33 @@ create table if not exists public.diet_meals (
 create table if not exists public.diet_items (
   id uuid primary key default gen_random_uuid(),
   meal_id uuid not null references public.diet_meals (id) on delete cascade,
-  source text not null check (source in ('taco', 'tbca', 'usda', 'off', 'fatsecret', 'custom')),
+  source text not null check (source in ('taco', 'tbca', 'usda', 'off', 'fatsecret', 'fatsecret_csv', 'fatsecret_pdf', 'custom')),
   external_id text,
   label text not null,
   quantity numeric not null default 1,
   portion_g numeric not null default 100,
   nutrition_snapshot jsonb
+);
+
+create table if not exists public.diet_supplements (
+  id uuid primary key default gen_random_uuid(),
+  diet_plan_id uuid not null references public.diet_plans (id) on delete cascade,
+  sort_order smallint not null default 0,
+  product_name text not null,
+  dosage text not null,
+  posology text not null,
+  notes text
+);
+
+create table if not exists public.diet_referrals (
+  id uuid primary key default gen_random_uuid(),
+  diet_plan_id uuid not null references public.diet_plans (id) on delete cascade,
+  sort_order smallint not null default 0,
+  specialty text not null,
+  professional_name text,
+  reason text not null,
+  urgency text not null default 'routine' check (urgency in ('routine', 'priority')),
+  notes text
 );
 
 -- Evolution
@@ -329,6 +357,8 @@ alter table public.google_calendar_connections enable row level security;
 alter table public.diet_plans enable row level security;
 alter table public.diet_meals enable row level security;
 alter table public.diet_items enable row level security;
+alter table public.diet_supplements enable row level security;
+alter table public.diet_referrals enable row level security;
 alter table public.body_measurements enable row level security;
 alter table public.progress_photos enable row level security;
 alter table public.lab_reports enable row level security;
@@ -461,6 +491,36 @@ using (
 
 create policy "diet_items_nutritionist_write"
 on public.diet_items for all
+using (public.is_nutritionist())
+with check (public.is_nutritionist());
+
+create policy "diet_supplements_via_plan"
+on public.diet_supplements for select
+using (
+  exists (
+    select 1 from public.diet_plans dp
+    where dp.id = diet_plan_id
+      and (dp.patient_id = public.current_patient_id() or public.is_nutritionist())
+  )
+);
+
+create policy "diet_supplements_nutritionist_write"
+on public.diet_supplements for all
+using (public.is_nutritionist())
+with check (public.is_nutritionist());
+
+create policy "diet_referrals_via_plan"
+on public.diet_referrals for select
+using (
+  exists (
+    select 1 from public.diet_plans dp
+    where dp.id = diet_plan_id
+      and (dp.patient_id = public.current_patient_id() or public.is_nutritionist())
+  )
+);
+
+create policy "diet_referrals_nutritionist_write"
+on public.diet_referrals for all
 using (public.is_nutritionist())
 with check (public.is_nutritionist());
 

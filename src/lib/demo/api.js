@@ -30,7 +30,17 @@ export async function handleDemoApi(request) {
   const path = url.pathname;
   const method = request.method;
 
-  if (path === "/api/auth/login" && method === "POST") return json({ ok: true });
+  if (path === "/api/auth/login" && method === "POST") {
+    const body = await request.json().catch(() => ({}));
+    const email = String(body.email || "").toLowerCase();
+    const isNutritionist =
+      email.includes("leticia") || email.includes("nutri") || email.endsWith("@admin.local");
+    return json({
+      ok: true,
+      role: isNutritionist ? "nutritionist" : "patient",
+      redirectTo: isNutritionist ? "/admin" : "/app"
+    });
+  }
   if (path === "/api/auth/logout" && method === "POST") return json({ ok: true });
   if (path === "/api/auth/signup" && method === "POST") return json({ ok: true, patientId });
   if (path === "/api/auth/forgot-password" && method === "POST") {
@@ -142,6 +152,49 @@ export async function handleDemoApi(request) {
     });
   }
   if (path === "/api/patients/me/diet" && method === "GET") return json({ dietPlan: demoDietPlan });
+
+  if (path.match(/^\/api\/patients\/[^/]+\/diet\/extract$/) && method === "POST") {
+    const plan = {
+      title: "Plano alimentar FatSecret · demo",
+      notes: "Importado do CSV Detailed Report (modo demo).",
+      status: "active",
+      source: "fatsecret_csv",
+      sourcePdfPath: null,
+      extractionSummary: "CSV importado: 2 refeição(ões) e 4 item(ns).",
+      extractionMethod: "fatsecret_csv",
+      meals: (demoDietPlan.diet_meals || []).map((meal, index) => ({
+        name: meal.name,
+        sortOrder: index,
+        items: (meal.diet_items || []).map((item) => ({
+          source: "fatsecret_csv",
+          externalId: null,
+          label: item.label,
+          quantity: item.quantity,
+          portionG: item.portion_g,
+          nutritionSnapshot: item.nutrition_snapshot || {
+            kcal: 100,
+            protein_g: 10,
+            carbs_g: 10,
+            fat_g: 3,
+            measureUnit: "gramas",
+            measureAmount: item.portion_g
+          }
+        }))
+      }))
+    };
+
+    return json({
+      ok: true,
+      plan,
+      summary: plan.extractionSummary,
+      method: "fatsecret_csv",
+      warning: null
+    });
+  }
+
+  if (path.match(/^\/api\/patients\/[^/]+\/diet$/) && method === "GET") {
+    return json({ dietPlans: [{ ...demoDietPlan, source: "fatsecret_csv", created_at: new Date().toISOString() }] });
+  }
   if (path === "/api/patients/me/labs" && method === "GET") {
     const reports = state.labReports.filter((report) => report.patient_id === patientId);
     return json({
@@ -235,6 +288,7 @@ export async function handleDemoApi(request) {
     if (body.heightCm !== undefined) demoPatient.height_cm = body.heightCm;
     if (body.bodyFatPercent !== undefined) demoPatient.body_fat_percent = body.bodyFatPercent;
     if (body.activityLevel !== undefined) demoPatient.activity_level = body.activityLevel;
+    if (body.bmrFormula !== undefined) demoPatient.bmr_formula = body.bmrFormula;
     if (body.weightKg != null) {
       demoPatient.latest_weight_kg = body.weightKg;
       demoPatient.latest_weight_at = new Date().toISOString();
@@ -374,7 +428,7 @@ export async function handleDemoApi(request) {
   }
 
   if (path.match(/^\/api\/patients\/[^/]+\/diet$/) && method === "POST") {
-    return json({ ok: true, planId: "diet-demo-new" });
+    return json({ ok: true, planId: "diet-demo-new", uploaded: false });
   }
 
   if (path.match(/^\/api\/patients\/[^/]+\/labs$/) && method === "GET") {

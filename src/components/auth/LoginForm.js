@@ -31,8 +31,22 @@ export default function LoginForm() {
       return;
     }
 
-    const next = searchParams.get("next") || "/app";
-    window.location.href = next;
+    const requestedNext = searchParams.get("next");
+    const roleHome = result.redirectTo || (result.role === "nutritionist" ? "/admin" : "/app");
+
+    // Nutricionista não deve cair na área do paciente por default.
+    if (result.role === "nutritionist") {
+      const safeNext =
+        requestedNext && requestedNext.startsWith("/admin") ? requestedNext : roleHome;
+      window.location.href = safeNext;
+      return;
+    }
+
+    const safeNext =
+      requestedNext && requestedNext.startsWith("/") && !requestedNext.startsWith("//")
+        ? requestedNext
+        : roleHome;
+    window.location.href = safeNext;
   }
 
   return (

@@ -1,18 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { ChevronDown } from "lucide-react";
-import NutrientAnalysisVisual from "@/components/ui/NutrientAnalysisVisual";
-import {
-  getEnergyDensityRecommendation,
-  getStrategyHint,
-  classifyEnergyDensity
-} from "@/lib/foods/energy-density";
-import { computeMenuAnalysis, sumNutrition } from "@/lib/foods/nutrition";
+import { useMemo } from "react";
+import FatSecretNutrientGrid from "@/components/ui/FatSecretNutrientGrid";
+import { computeMenuAnalysis, formatKcalValue, sumNutrition } from "@/lib/foods/nutrition";
 
-export default function MealNutrientAnalysis({ mealName, items, patientGoal }) {
-  const [open, setOpen] = useState(false);
-
+/**
+ * Total de nutrientes da refeição — sempre visível, agrupado sob os alimentos.
+ * Insights clínicos ficam só no total do plano (admin).
+ */
+export default function MealNutrientAnalysis({ mealName, items }) {
   const totals = useMemo(() => sumNutrition(items), [items]);
   const analysis = useMemo(() => {
     const totalFoodGrams = items.reduce(
@@ -23,47 +19,32 @@ export default function MealNutrientAnalysis({ mealName, items, patientGoal }) {
     return computeMenuAnalysis(totals, totalFoodGrams);
   }, [items, totals]);
 
-  const strategyHint = useMemo(() => {
-    const recommendation = getEnergyDensityRecommendation(patientGoal);
-    return getStrategyHint(classifyEnergyDensity(analysis.caloricDensity), recommendation);
-  }, [analysis.caloricDensity, patientGoal]);
-
   if (!items.length) return null;
 
   return (
-    <div className="mt-4 overflow-hidden rounded-xl border border-olive-900/10 bg-linen/20">
-      <button
-        type="button"
-        onClick={() => setOpen((current) => !current)}
-        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-linen/40"
-        aria-expanded={open}
-      >
+    <div className="mt-4 rounded-2xl border border-olive-900/10 bg-gradient-to-br from-linen/80 to-olive-50/40 px-4 py-4">
+      <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
         <div>
-          <p className="text-sm font-semibold text-graphite">Análise de nutrientes</p>
-          <p className="mt-0.5 text-xs text-graphite/55">
-            {analysis.totals.kcal} kcal · densidade{" "}
-            {analysis.caloricDensity != null
-              ? `${analysis.caloricDensity.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kcal/g`
-              : "—"}
+          <p className="text-sm font-semibold text-graphite">Total da refeição</p>
+          <p className="mt-0.5 text-xs text-graphite/55">{mealName}</p>
+        </div>
+        <div className="text-right">
+          <p className="text-lg font-semibold tabular-nums text-olive-900">
+            {formatKcalValue(analysis.totals.kcal)}
           </p>
+          {analysis.caloricDensity != null ? (
+            <p className="text-[11px] text-graphite/50">
+              {analysis.caloricDensity.toLocaleString("pt-BR", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+              })}{" "}
+              kcal/g
+            </p>
+          ) : null}
         </div>
-        <ChevronDown
-          className={`h-4 w-4 shrink-0 text-graphite/45 transition ${open ? "rotate-180" : ""}`}
-        />
-      </button>
+      </div>
 
-      {open ? (
-        <div className="border-t border-olive-900/8 px-4 py-4">
-          <NutrientAnalysisVisual
-            analysis={analysis}
-            macrosTitle="Macronutrientes da refeição"
-            densityTitle="Densidade calórica da refeição"
-            distributionTitle="Distribuição calórica da refeição (% do VET)"
-            strategyHint={strategyHint}
-            compact
-          />
-        </div>
-      ) : null}
+      <FatSecretNutrientGrid totals={analysis.totals} title={null} compact />
     </div>
   );
 }

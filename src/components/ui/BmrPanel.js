@@ -30,7 +30,8 @@ function readPatientForm(patient) {
     weightKg: patient?.latest_weight_kg != null ? String(patient.latest_weight_kg) : "",
     bodyFatPercent:
       patient?.body_fat_percent != null ? String(patient.body_fat_percent) : "",
-    activityLevel: patient?.activity_level || "sedentary"
+    activityLevel: patient?.activity_level || "sedentary",
+    bmrFormula: patient?.bmr_formula || BMR_FORMULAS.MIFFLIN_ST_JEOR
   };
 }
 
@@ -53,7 +54,8 @@ export default function BmrPanel({ patient, planKcal, onSaved }) {
         heightCm: form.heightCm ? Number(form.heightCm) : null,
         weightKg: form.weightKg ? Number(form.weightKg) : null,
         bodyFatPercent: form.bodyFatPercent ? Number(form.bodyFatPercent) : null,
-        activityLevel: form.activityLevel
+        activityLevel: form.activityLevel,
+        primaryFormula: form.bmrFormula
       }),
     [form]
   );
@@ -102,7 +104,8 @@ export default function BmrPanel({ patient, planKcal, onSaved }) {
         heightCm: Number(form.heightCm),
         weightKg: Number(form.weightKg),
         bodyFatPercent: form.bodyFatPercent ? Number(form.bodyFatPercent) : null,
-        activityLevel: form.activityLevel
+        activityLevel: form.activityLevel,
+        bmrFormula: form.bmrFormula
       })
     });
 
@@ -195,6 +198,27 @@ export default function BmrPanel({ patient, planKcal, onSaved }) {
             className={`mt-1 ${inputClassName()}`}
             placeholder="25"
           />
+        </label>
+
+        <label className="block text-xs text-graphite/60">
+          Fórmula da TMB
+          <select
+            value={form.bmrFormula}
+            onChange={(e) => updateField("bmrFormula", e.target.value)}
+            className={`mt-1 ${inputClassName()}`}
+          >
+            {FORMULA_ORDER.map((formula) => (
+              <option
+                key={formula}
+                value={formula}
+                disabled={
+                  formula === BMR_FORMULAS.KATCH_MCARDLE && !form.bodyFatPercent
+                }
+              >
+                {BMR_FORMULA_LABELS[formula]}
+              </option>
+            ))}
+          </select>
         </label>
 
         <label className="block text-xs text-graphite/60">

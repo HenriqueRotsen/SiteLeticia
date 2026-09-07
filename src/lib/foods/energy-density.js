@@ -118,6 +118,48 @@ export function getStrategyHint(classification, recommendation = "balanced") {
   return "Use a densidade junto com o objetivo clínico do paciente para ajustar volume e saciedade.";
 }
 
+/**
+ * Insight estruturado (somente área clínica / nutricionista).
+ */
+export function getClinicalDensityInsight({ density, goal = null, scope = "plano" } = {}) {
+  const classification = classifyEnergyDensity(density);
+  if (!classification) return null;
+
+  const recommendation = getEnergyDensityRecommendation(goal);
+  const body = getStrategyHint(classification, recommendation);
+  if (!body) return null;
+
+  let tone = "neutral";
+  let headline = `Densidade ${classification.label.toLowerCase()}`;
+
+  if (recommendation === "lower") {
+    tone = classification.id === "high" ? "alert" : classification.id === "medium" ? "watch" : "ok";
+    headline =
+      tone === "ok"
+        ? "Alinhado ao emagrecimento"
+        : tone === "watch"
+          ? "Atenção à densidade"
+          : "Densidade acima do ideal";
+  } else if (recommendation === "higher") {
+    tone = classification.id === "very_low" || classification.id === "low" ? "watch" : "ok";
+    headline =
+      tone === "ok" ? "Alinhado à hipertrofia" : "Densidade baixa para o objetivo";
+  }
+
+  return {
+    eyebrow: "Insight clínico",
+    headline,
+    body,
+    scope,
+    goal: goal || null,
+    densityLabel: classification.label,
+    densityRange: classification.rangeLabel,
+    densityValue: formatDensityValue(density),
+    tone,
+    recommendation
+  };
+}
+
 export function formatDensityValue(kcalPerGram) {
   if (kcalPerGram == null || !Number.isFinite(kcalPerGram)) return "—";
   return `${kcalPerGram.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kcal/g`;
