@@ -1,0 +1,62 @@
+import { describe, expect, it } from "vitest";
+import {
+  formatMeasureLabel,
+  restoreMeasureFromStored,
+  toStoredPortion
+} from "@/lib/foods/measures";
+
+describe("food measures", () => {
+  it("converts spoon amounts to stored grams", () => {
+    expect(toStoredPortion("colher_sopa", 2)).toEqual({
+      quantity: 2,
+      portionG: 15,
+      measureUnit: "colher_sopa",
+      measureAmount: 2
+    });
+  });
+
+  it("stores grams directly", () => {
+    expect(toStoredPortion("gramas", 150)).toEqual({
+      quantity: 1,
+      portionG: 150,
+      measureUnit: "gramas",
+      measureAmount: 150
+    });
+  });
+
+  it("formats measure labels in portuguese", () => {
+    expect(formatMeasureLabel("colher_sobremesa", 2)).toBe("2 colheres de sobremesa (15g)");
+    expect(formatMeasureLabel("gramas", 120)).toBe("120g");
+    expect(formatMeasureLabel("ml", 200)).toBe("200 ml");
+    expect(formatMeasureLabel("litros", 0.5)).toBe("0.5 L (500 ml)");
+  });
+
+  it("stores milliliters and liters for nutrition math", () => {
+    expect(toStoredPortion("ml", 250)).toEqual({
+      quantity: 1,
+      portionG: 250,
+      measureUnit: "ml",
+      measureAmount: 250
+    });
+    expect(toStoredPortion("litros", 1)).toEqual({
+      quantity: 1,
+      portionG: 1000,
+      measureUnit: "litros",
+      measureAmount: 1
+    });
+  });
+
+  it("restores measure metadata from snapshot", () => {
+    const restored = restoreMeasureFromStored(1, 100, {
+      kcal: 128,
+      protein_g: 2.5,
+      measureUnit: "colher_cha",
+      measureAmount: 3
+    });
+
+    expect(restored.measureUnit).toBe("colher_cha");
+    expect(restored.measureAmount).toBe(3);
+    expect(restored.portionG).toBe(5);
+    expect(restored.quantity).toBe(3);
+  });
+});

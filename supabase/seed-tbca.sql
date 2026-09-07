@@ -1,0 +1,2 @@
+-- Base completa: npm run import:foods:tbca
+-- (substitui amostras antigas com --clear)

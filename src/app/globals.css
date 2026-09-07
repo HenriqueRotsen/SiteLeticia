@@ -60,8 +60,7 @@ select {
 }
 
 .reveal-scale {
-  filter: blur(4px);
-  transform: scale(0.97);
+  transform: scale(0.985);
 }
 
 .reveal.is-visible {

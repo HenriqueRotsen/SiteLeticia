@@ -6,3 +6,9 @@ dist
 .env
 *.log
 .vercel
+data/*.csv
+data/*.jsonl
+data/*.txt
+data/*.json
+
+.env.local.demo-backup
