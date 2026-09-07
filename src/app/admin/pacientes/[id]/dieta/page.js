@@ -1,19 +1,22 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
   Activity,
   ArrowLeft,
   ArrowRight,
   CheckCircle2,
   FileUp,
+  Power,
   RefreshCw,
   Save,
+  Trash2,
   UserRound
 } from "lucide-react";
 import AdminShell from "@/components/layout/AdminShell";
 import { Card, btnPrimary, btnSecondary, inputClassName } from "@/components/layout/AppShell";
+import Badge from "@/components/ui/Badge";
 import BmrPanel from "@/components/ui/BmrPanel";
 import DietNutrientAnalysis from "@/components/ui/DietNutrientAnalysis";
 import CsvUploadZone from "@/components/ui/CsvUploadZone";
@@ -29,6 +32,7 @@ import {
   restoreMeasureFromStored,
   toStoredPortion
 } from "@/lib/foods/measures";
+import { labelDietStatus } from "@/lib/labels";
 
 function formatPlanDate(date = new Date()) {
   return date.toLocaleDateString("pt-BR");
@@ -41,6 +45,7 @@ function defaultPlanTitle(patientName, date = new Date()) {
 
 function emptyDraft(patientName) {
   return {
+    id: null,
     title: defaultPlanTitle(patientName),
     notes: "",
     status: "active",
@@ -125,6 +130,7 @@ function mapApiPlanToDraft(plan) {
   if (!plan) return null;
 
   return {
+    id: plan.id || null,
     title: plan.title || "Plano Alimentar",
     notes: plan.notes || "",
     status: plan.status || "active",
@@ -185,7 +191,11 @@ function sanitizeListForSave(items, requiredKeys) {
 export default function PacienteDietaPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const patientId = params.id;
+  const planIdParam = searchParams.get("planId");
+  const isNewPlan = searchParams.get("new") === "1" || (!planIdParam && searchParams.has("new"));
+  const readOnly = Boolean(planIdParam) && !isNewPlan;
 
   const [patient, setPatient] = useState(null);
   const [draft, setDraft] = useState(null);
@@ -197,6 +207,7 @@ export default function PacienteDietaPage() {
   const [extractMeta, setExtractMeta] = useState(null);
   const [metabolismOpen, setMetabolismOpen] = useState(false);
   const [publishSuccessOpen, setPublishSuccessOpen] = useState(false);
+  const [confirmAction, setConfirmAction] = useState(null);
   const [wizardStep, setWizardStep] = useState(1);
   const [maxReached, setMaxReached] = useState(1);
 
@@ -209,17 +220,38 @@ export default function PacienteDietaPage() {
         const nextPatient = patientData.patient || null;
         setPatient(nextPatient);
 
-        const active =
-          (dietData.dietPlans || []).find((plan) => plan.status === "active") ||
-          (dietData.dietPlans || [])[0];
+        const plans = dietData.dietPlans || [];
 
-        setDraft(active ? mapApiPlanToDraft(active) : emptyDraft(nextPatient?.full_name));
+        if (isNewPlan) {
+          setDraft(emptyDraft(nextPatient?.full_name));
+          setWizardStep(1);
+          setMaxReached(1);
+          return;
+        }
+
+        if (planIdParam) {
+          const selected = plans.find((plan) => plan.id === planIdParam);
+          if (selected) {
+            setDraft(mapApiPlanToDraft(selected));
+            setMaxReached(3);
+            return;
+          }
+          setFeedbackTone("error");
+          setFeedback("Plano não encontrado.");
+          setDraft(emptyDraft(nextPatient?.full_name));
+          return;
+        }
+
+        // Sem query: abre criação de novo plano (não carrega o ativo para edição).
+        setDraft(emptyDraft(nextPatient?.full_name));
+        setWizardStep(1);
+        setMaxReached(1);
       })
       .catch(() => {
         setFeedbackTone("error");
         setFeedback("Não foi possível carregar o paciente/dieta.");
       });
-  }, [patientId]);
+  }, [patientId, planIdParam, isNewPlan]);
 
   const planTotals = useMemo(() => sumNutrition(draftItemsForAnalysis(draft?.meals)), [draft]);
 
@@ -424,8 +456,96 @@ export default function PacienteDietaPage() {
     setPublishSuccessOpen(true);
   }
 
+  async function deactivatePlan() {
+    if (!draft?.id) return;
+    setSaving(true);
+    setFeedback("");
+    const response = await fetch(`/api/patients/${patientId}/diet/${draft.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "archived" })
+    });
+    const data = await response.json().catch(() => ({}));
+    setSaving(false);
+    setConfirmAction(null);
+
+    if (!response.ok) {
+      setFeedbackTone("error");
+      setFeedback(data.message || "Erro ao desativar plano.");
+      return;
+    }
+
+    setDraft((current) => ({ ...current, status: "archived" }));
+    setFeedbackTone("success");
+    setFeedback("Plano desativado.");
+  }
+
+  async function deletePlan() {
+    if (!draft?.id) return;
+    setSaving(true);
+    setFeedback("");
+    const response = await fetch(`/api/patients/${patientId}/diet/${draft.id}`, {
+      method: "DELETE"
+    });
+    const data = await response.json().catch(() => ({}));
+    setSaving(false);
+    setConfirmAction(null);
+
+    if (!response.ok) {
+      setFeedbackTone("error");
+      setFeedback(data.message || "Erro ao excluir plano.");
+      return;
+    }
+
+    router.push(`/admin/pacientes/${patientId}`);
+  }
+
   function goToPatient() {
     setPublishSuccessOpen(false);
+    router.push(`/admin/pacientes/${patientId}`);
+  }
+
+  async function deactivatePlan() {
+    if (!draft?.id) return;
+    setSaving(true);
+    setFeedback("");
+    const response = await fetch(`/api/patients/${patientId}/diet/${draft.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "archived" })
+    });
+    const data = await response.json().catch(() => ({}));
+    setSaving(false);
+    setConfirmAction(null);
+
+    if (!response.ok) {
+      setFeedbackTone("error");
+      setFeedback(data.message || "Erro ao desativar plano.");
+      return;
+    }
+
+    setDraft((current) => ({ ...current, status: "archived" }));
+    setFeedbackTone("success");
+    setFeedback("Plano desativado.");
+  }
+
+  async function deletePlan() {
+    if (!draft?.id) return;
+    setSaving(true);
+    setFeedback("");
+    const response = await fetch(`/api/patients/${patientId}/diet/${draft.id}`, {
+      method: "DELETE"
+    });
+    const data = await response.json().catch(() => ({}));
+    setSaving(false);
+    setConfirmAction(null);
+
+    if (!response.ok) {
+      setFeedbackTone("error");
+      setFeedback(data.message || "Erro ao excluir plano.");
+      return;
+    }
+
     router.push(`/admin/pacientes/${patientId}`);
   }
 
@@ -440,6 +560,11 @@ export default function PacienteDietaPage() {
 
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
+          {readOnly && draft?.status ? (
+            <Badge variant={draft.status === "active" ? "success" : "neutral"}>
+              {labelDietStatus(draft.status)}
+            </Badge>
+          ) : null}
           {metabolism.ok ? (
             <span className="rounded-full bg-olive-100 px-3 py-1.5 text-xs text-olive-900">
               GET <strong className="font-semibold">{Math.round(metabolism.getKcal)} kcal</strong>
@@ -450,7 +575,7 @@ export default function PacienteDietaPage() {
             Metabolismo
           </button>
         </div>
-        {wizardStep === 1 ? (
+        {!readOnly && wizardStep === 1 ? (
           <button
             type="button"
             className={btnSecondary()}
@@ -468,47 +593,93 @@ export default function PacienteDietaPage() {
             Limpar
           </button>
         ) : null}
+        {readOnly ? (
+          <div className="flex flex-wrap gap-2">
+            {draft?.status === "active" ? (
+              <button
+                type="button"
+                className={btnSecondary()}
+                disabled={saving}
+                onClick={() => setConfirmAction("deactivate")}
+              >
+                <Power className="h-4 w-4" strokeWidth={1.75} />
+                Desativar plano
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:opacity-60"
+              disabled={saving}
+              onClick={() => setConfirmAction("delete")}
+            >
+              <Trash2 className="h-4 w-4" strokeWidth={1.75} />
+              Excluir plano
+            </button>
+          </div>
+        ) : null}
       </div>
 
       {wizardStep === 1 ? (
         <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(360px,0.8fr)]">
           <div className="space-y-5">
-            <Card>
-              <CsvUploadZone
-                label="CSV FatSecret"
-                hint="Detailed Report · até 2 MB"
-                uploading={extracting}
-                onFileSelect={handleCsvUpload}
-              />
+            {readOnly ? (
+              <Card>
+                <div className="grid gap-3">
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-wide text-graphite/40">
+                      Título
+                    </p>
+                    <p className="mt-1 text-base font-semibold text-graphite">{draft?.title}</p>
+                  </div>
+                  {draft?.notes ? (
+                    <div>
+                      <p className="text-xs font-medium uppercase tracking-wide text-graphite/40">
+                        Observações
+                      </p>
+                      <p className="mt-1 text-sm text-graphite/70">{draft.notes}</p>
+                    </div>
+                  ) : null}
+                </div>
+              </Card>
+            ) : (
+              <Card>
+                <CsvUploadZone
+                  label="CSV FatSecret"
+                  hint="Detailed Report · até 2 MB"
+                  uploading={extracting}
+                  onFileSelect={handleCsvUpload}
+                />
 
-              <div className="mt-5 grid gap-3 border-t border-olive-900/10 pt-5">
-                <label className="block text-sm text-graphite/70">
-                  Título
-                  <input
-                    className={`mt-1 ${inputClassName()}`}
-                    value={draft?.title || ""}
-                    onChange={(event) => updateDraftField("title", event.target.value)}
-                  />
-                </label>
-                <label className="block text-sm text-graphite/70">
-                  Observações
-                  <textarea
-                    rows={2}
-                    className={`mt-1 ${inputClassName()}`}
-                    value={draft?.notes || ""}
-                    onChange={(event) => updateDraftField("notes", event.target.value)}
-                    placeholder="Opcional"
-                  />
-                </label>
-              </div>
-            </Card>
+                <div className="mt-5 grid gap-3 border-t border-olive-900/10 pt-5">
+                  <label className="block text-sm text-graphite/70">
+                    Título
+                    <input
+                      className={`mt-1 ${inputClassName()}`}
+                      value={draft?.title || ""}
+                      onChange={(event) => updateDraftField("title", event.target.value)}
+                    />
+                  </label>
+                  <label className="block text-sm text-graphite/70">
+                    Observações
+                    <textarea
+                      rows={2}
+                      className={`mt-1 ${inputClassName()}`}
+                      value={draft?.notes || ""}
+                      onChange={(event) => updateDraftField("notes", event.target.value)}
+                      placeholder="Opcional"
+                    />
+                  </label>
+                </div>
+              </Card>
+            )}
 
             {(draft?.meals || []).map((meal) => (
               <MealDietAccordion
                 key={meal.clientId}
                 meal={meal}
-                onUpdateItem={updateItem}
-                onRemoveItem={removeItem}
+                readOnly={readOnly}
+                onUpdateItem={readOnly ? undefined : updateItem}
+                onRemoveItem={readOnly ? undefined : removeItem}
               />
             ))}
 
@@ -516,7 +687,9 @@ export default function PacienteDietaPage() {
               <Card>
                 <div className="flex flex-col items-center py-10 text-center">
                   <FileUp className="h-8 w-8 text-olive-700" strokeWidth={1.5} />
-                  <p className="mt-3 text-sm text-graphite/55">Envie o CSV para montar o plano.</p>
+                  <p className="mt-3 text-sm text-graphite/55">
+                    {readOnly ? "Este plano não tem refeições." : "Envie o CSV para montar o plano."}
+                  </p>
                 </div>
               </Card>
             ) : null}
@@ -548,7 +721,9 @@ export default function PacienteDietaPage() {
               />
             ) : (
               <Card title="Total do plano">
-                <p className="text-sm text-graphite/50">A análise aparece após importar o CSV.</p>
+                <p className="text-sm text-graphite/50">
+                  {readOnly ? "Sem dados nutricionais." : "A análise aparece após importar o CSV."}
+                </p>
               </Card>
             )}
           </div>
@@ -559,7 +734,12 @@ export default function PacienteDietaPage() {
         <div className="mx-auto max-w-6xl space-y-5">
           <SupplementPrescriptionList
             items={draft?.supplements || []}
-            onChange={(supplements) => updateDraftField("supplements", supplements)}
+            readOnly={readOnly}
+            onChange={
+              readOnly
+                ? undefined
+                : (supplements) => updateDraftField("supplements", supplements)
+            }
           />
         </div>
       ) : null}
@@ -568,18 +748,66 @@ export default function PacienteDietaPage() {
         <div className="mx-auto max-w-6xl space-y-5">
           <ReferralList
             items={draft?.referrals || []}
-            onChange={(referrals) => updateDraftField("referrals", referrals)}
+            readOnly={readOnly}
+            onChange={
+              readOnly ? undefined : (referrals) => updateDraftField("referrals", referrals)
+            }
           />
 
-          {feedback && feedbackTone === "error" ? (
-            <p className="text-sm text-red-700">{feedback}</p>
+          {feedback ? (
+            <p
+              className={`text-sm ${
+                feedbackTone === "error"
+                  ? "text-red-700"
+                  : feedbackTone === "success"
+                    ? "text-olive-800"
+                    : "text-graphite/60"
+              }`}
+            >
+              {feedback}
+            </p>
           ) : null}
         </div>
       ) : null}
 
       <div className="sticky bottom-4 z-20 mt-8">
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-olive-900/10 bg-porcelain/95 px-4 py-3 shadow-lg backdrop-blur">
-          {wizardStep === 1 ? (
+          {readOnly ? (
+            <>
+              <button
+                type="button"
+                className={btnSecondary()}
+                onClick={() => router.push(`/admin/pacientes/${patientId}`)}
+              >
+                <ArrowLeft className="h-4 w-4" strokeWidth={1.75} />
+                Voltar ao paciente
+              </button>
+              <div className="flex flex-wrap gap-2">
+                {wizardStep > 1 ? (
+                  <button
+                    type="button"
+                    className={btnSecondary()}
+                    onClick={() => goToStep(wizardStep - 1)}
+                  >
+                    <ArrowLeft className="h-4 w-4" strokeWidth={1.75} />
+                    Voltar
+                  </button>
+                ) : null}
+                {wizardStep < 3 ? (
+                  <button
+                    type="button"
+                    className={btnPrimary()}
+                    onClick={() => goToStep(wizardStep + 1)}
+                  >
+                    Continuar
+                    <ArrowRight className="h-4 w-4" strokeWidth={1.75} />
+                  </button>
+                ) : null}
+              </div>
+            </>
+          ) : null}
+
+          {!readOnly && wizardStep === 1 ? (
             <>
               <span className="text-sm text-graphite/45">
                 {draft?.meals?.length
@@ -598,7 +826,7 @@ export default function PacienteDietaPage() {
             </>
           ) : null}
 
-          {wizardStep === 2 ? (
+          {!readOnly && wizardStep === 2 ? (
             <>
               <button type="button" className={btnSecondary()} onClick={() => goToStep(1)}>
                 <ArrowLeft className="h-4 w-4" strokeWidth={1.75} />
@@ -611,7 +839,7 @@ export default function PacienteDietaPage() {
             </>
           ) : null}
 
-          {wizardStep === 3 ? (
+          {!readOnly && wizardStep === 3 ? (
             <>
               <button type="button" className={btnSecondary()} onClick={() => goToStep(2)}>
                 <ArrowLeft className="h-4 w-4" strokeWidth={1.75} />
@@ -659,11 +887,50 @@ export default function PacienteDietaPage() {
             <span className="font-medium text-graphite">
               {patient?.full_name || "paciente"}
             </span>{" "}
-            já está disponível.
+            já está disponível. Planos anteriores ativos foram desativados.
           </p>
           <button type="button" className={`${btnPrimary()} mt-6 w-full sm:w-auto`} onClick={goToPatient}>
             <UserRound className="h-4 w-4" strokeWidth={1.75} />
             Ir para o paciente
+          </button>
+        </div>
+      </Modal>
+
+      <Modal
+        open={Boolean(confirmAction)}
+        onClose={() => setConfirmAction(null)}
+        title={confirmAction === "delete" ? "Excluir plano" : "Desativar plano"}
+        size="sm"
+      >
+        <p className="text-sm text-graphite/65">
+          {confirmAction === "delete"
+            ? "Esta ação remove o plano permanentemente. Não dá para desfazer."
+            : "O plano deixa de ficar ativo para o paciente. O histórico continua disponível."}
+        </p>
+        <div className="mt-5 flex flex-wrap justify-end gap-2">
+          <button
+            type="button"
+            className={btnSecondary()}
+            disabled={saving}
+            onClick={() => setConfirmAction(null)}
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            className={
+              confirmAction === "delete"
+                ? "inline-flex items-center justify-center gap-2 rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:opacity-60"
+                : btnPrimary()
+            }
+            disabled={saving}
+            onClick={() => (confirmAction === "delete" ? deletePlan() : deactivatePlan())}
+          >
+            {saving
+              ? "Aguarde..."
+              : confirmAction === "delete"
+                ? "Excluir"
+                : "Desativar"}
           </button>
         </div>
       </Modal>

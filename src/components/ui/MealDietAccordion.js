@@ -126,6 +126,7 @@ function MealSnapshot({ totals }) {
 export default function MealDietAccordion({
   meal,
   defaultOpen = false,
+  readOnly = false,
   onUpdateItem,
   onRemoveItem
 }) {
@@ -186,7 +187,7 @@ export default function MealDietAccordion({
         <div className="border-t border-olive-900/10 bg-white/45">
           <div className="overflow-x-auto">
             <div className="min-w-[960px]">
-              <div className="grid grid-cols-[minmax(300px,1fr)_60px_repeat(9,58px)_40px] items-center gap-1 border-b border-olive-900/10 bg-linen/65 px-4 py-2 text-[10px] font-semibold uppercase tracking-wide text-graphite/45">
+              <div className={`grid grid-cols-[minmax(300px,1fr)_60px_repeat(9,58px)${readOnly ? "" : "_40px"}] items-center gap-1 border-b border-olive-900/10 bg-linen/65 px-4 py-2 text-[10px] font-semibold uppercase tracking-wide text-graphite/45`}>
                 <span>Alimento</span>
                 <span className="text-right">Kcal</span>
                 {DETAIL_COLUMNS.map((nutrient) => (
@@ -194,7 +195,7 @@ export default function MealDietAccordion({
                     {nutrient.label}
                   </span>
                 ))}
-                <span />
+                {readOnly ? null : <span />}
               </div>
 
               {(meal.items || []).map((item, index) => {
@@ -204,7 +205,7 @@ export default function MealDietAccordion({
               return (
                 <div
                   key={item.clientId}
-                  className={`group grid grid-cols-[minmax(300px,1fr)_60px_repeat(9,58px)_40px] items-center gap-1 border-b border-olive-900/6 px-4 py-2.5 transition last:border-0 ${
+                  className={`group grid grid-cols-[minmax(300px,1fr)_60px_repeat(9,58px)${readOnly ? "" : "_40px"}] items-center gap-1 border-b border-olive-900/6 px-4 py-2.5 transition last:border-0 ${
                     index % 2 === 0 ? "bg-white/80" : "bg-sky-50/25"
                   } hover:relative hover:z-[1] hover:bg-olive-50 hover:shadow-[inset_3px_0_0_#5f6f3b]`}
                 >
@@ -213,35 +214,45 @@ export default function MealDietAccordion({
                       {item.label}
                     </p>
                     <div className="mt-1 flex items-center gap-1 text-xs text-graphite/55">
-                      {(() => {
-                      const unit = getMeasureUnit(item.measureUnit);
-                      return (
-                        <input
-                          type="number"
-                          min={unit.min}
-                          step={unit.step}
-                          className={`${inputClassName()} !h-7 !w-14 !rounded-md !px-1.5 !py-0 text-right text-xs tabular-nums`}
-                          value={item.measureAmount ?? item.portionG ?? ""}
-                          onChange={(event) =>
-                            onUpdateItem?.(meal.clientId, item.clientId, {
-                              measureAmount: Number(event.target.value) || unit.min,
-                              measureUnit: item.measureUnit || "gramas"
-                            })
-                          }
-                          aria-label={`Quantidade de ${item.label}`}
-                        />
-                      );
-                      })()}
-                      <span
-                        className="truncate"
-                        title={`Unidade importada do CSV: ${shortMeasureLabel(
-                          item.measureUnit,
-                          item.measureAmount
-                        )}`}
-                      >
-                        {shortMeasureLabel(item.measureUnit, item.measureAmount)}
-                        {equivalentWeightLabel(item)}
-                      </span>
+                      {readOnly ? (
+                        <span className="tabular-nums">
+                          {item.measureAmount ?? item.portionG ?? "—"}{" "}
+                          {shortMeasureLabel(item.measureUnit, item.measureAmount)}
+                          {equivalentWeightLabel(item)}
+                        </span>
+                      ) : (
+                        <>
+                          {(() => {
+                          const unit = getMeasureUnit(item.measureUnit);
+                          return (
+                            <input
+                              type="number"
+                              min={unit.min}
+                              step={unit.step}
+                              className={`${inputClassName()} !h-7 !w-14 !rounded-md !px-1.5 !py-0 text-right text-xs tabular-nums`}
+                              value={item.measureAmount ?? item.portionG ?? ""}
+                              onChange={(event) =>
+                                onUpdateItem?.(meal.clientId, item.clientId, {
+                                  measureAmount: Number(event.target.value) || unit.min,
+                                  measureUnit: item.measureUnit || "gramas"
+                                })
+                              }
+                              aria-label={`Quantidade de ${item.label}`}
+                            />
+                          );
+                          })()}
+                          <span
+                            className="truncate"
+                            title={`Unidade importada do CSV: ${shortMeasureLabel(
+                              item.measureUnit,
+                              item.measureAmount
+                            )}`}
+                          >
+                            {shortMeasureLabel(item.measureUnit, item.measureAmount)}
+                            {equivalentWeightLabel(item)}
+                          </span>
+                        </>
+                      )}
                     </div>
                   </div>
                   <span className="text-right text-xs font-semibold tabular-nums text-olive-900">
@@ -258,14 +269,16 @@ export default function MealDietAccordion({
                       {formatValue(itemTotals[nutrient.key], nutrient.decimals)}
                     </span>
                   ))}
-                  <button
-                    type="button"
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-red-500 opacity-40 transition hover:bg-red-50 hover:text-red-700 hover:opacity-100 group-hover:opacity-100"
-                    onClick={() => onRemoveItem?.(meal.clientId, item.clientId)}
-                    aria-label={`Remover ${item.label}`}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} />
-                  </button>
+                  {readOnly ? null : (
+                    <button
+                      type="button"
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-red-500 opacity-40 transition hover:bg-red-50 hover:text-red-700 hover:opacity-100 group-hover:opacity-100"
+                      onClick={() => onRemoveItem?.(meal.clientId, item.clientId)}
+                      aria-label={`Remover ${item.label}`}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} />
+                    </button>
+                  )}
                 </div>
               );
             })}

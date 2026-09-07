@@ -13,10 +13,58 @@ function emptySupplement() {
   };
 }
 
+function SupplementPreview({ items, readOnly }) {
+  return (
+    <Card className={`overflow-hidden p-0 ${readOnly ? "" : "sm:sticky sm:top-5"} sm:p-0`}>
+      <div className="border-b border-olive-900/10 bg-gradient-to-br from-violet-50 to-porcelain px-5 py-4">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-violet-700/70">
+          {readOnly ? "Prescrição" : "Prévia para o paciente"}
+        </p>
+        <h3 className="mt-1 text-lg font-semibold text-graphite">Suplementação</h3>
+      </div>
+      <div className="space-y-3 p-4">
+        {items.length ? (
+          items.map((item, index) => (
+            <div
+              key={item.clientId}
+              className="rounded-xl border border-violet-100 bg-white px-3.5 py-3"
+            >
+              <div className="flex items-start gap-3">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-violet-700">
+                  <Pill className="h-4 w-4" strokeWidth={1.75} />
+                </span>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-graphite">
+                    {item.productName || `Suplemento ${index + 1}`}
+                  </p>
+                  <p className="mt-0.5 text-xs font-medium text-violet-700">
+                    {item.dosage || "—"}
+                  </p>
+                  <p className="mt-1 text-xs text-graphite/55">{item.posology || "—"}</p>
+                  {item.notes ? (
+                    <p className="mt-1.5 border-t border-olive-900/6 pt-1.5 text-[11px] text-graphite/45">
+                      {item.notes}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="py-10 text-center">
+            <Pill className="mx-auto h-6 w-6 text-graphite/20" strokeWidth={1.5} />
+            <p className="mt-2 text-xs text-graphite/40">Nenhum suplemento</p>
+          </div>
+        )}
+      </div>
+    </Card>
+  );
+}
+
 /**
  * Lista de suplementos no formato de receituário (produto, dosagem, posologia).
  */
-export default function SupplementPrescriptionList({ items = [], onChange }) {
+export default function SupplementPrescriptionList({ items = [], onChange, readOnly = false }) {
   function updateItem(clientId, patch) {
     onChange?.(items.map((item) => (item.clientId === clientId ? { ...item, ...patch } : item)));
   }
@@ -27,6 +75,14 @@ export default function SupplementPrescriptionList({ items = [], onChange }) {
 
   function addItem() {
     onChange?.([...items, emptySupplement()]);
+  }
+
+  if (readOnly) {
+    return (
+      <div className="mx-auto max-w-2xl">
+        <SupplementPreview items={items} readOnly />
+      </div>
+    );
   }
 
   return (
@@ -150,51 +206,7 @@ export default function SupplementPrescriptionList({ items = [], onChange }) {
         ))}
       </div>
 
-      <Card className="overflow-hidden p-0 sm:sticky sm:top-5 sm:p-0">
-        <div className="border-b border-olive-900/10 bg-gradient-to-br from-violet-50 to-porcelain px-5 py-4">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-violet-700/70">
-            Prévia para o paciente
-          </p>
-          <h3 className="mt-1 text-lg font-semibold text-graphite">Suplementação</h3>
-        </div>
-        <div className="space-y-3 p-4">
-          {items.length ? (
-            items.map((item, index) => (
-              <div
-                key={item.clientId}
-                className="rounded-xl border border-violet-100 bg-white px-3.5 py-3"
-              >
-                <div className="flex items-start gap-3">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-violet-700">
-                    <Pill className="h-4 w-4" strokeWidth={1.75} />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-graphite">
-                      {item.productName || `Suplemento ${index + 1}`}
-                    </p>
-                    <p className="mt-0.5 text-xs font-medium text-violet-700">
-                      {item.dosage || "Dosagem"}
-                    </p>
-                    <p className="mt-1 text-xs text-graphite/55">
-                      {item.posology || "Posologia"}
-                    </p>
-                    {item.notes ? (
-                      <p className="mt-1.5 border-t border-olive-900/6 pt-1.5 text-[11px] text-graphite/45">
-                        {item.notes}
-                      </p>
-                    ) : null}
-                  </div>
-                </div>
-              </div>
-            ))
-          ) : (
-            <div className="py-10 text-center">
-              <Pill className="mx-auto h-6 w-6 text-graphite/20" strokeWidth={1.5} />
-              <p className="mt-2 text-xs text-graphite/40">Nenhum suplemento</p>
-            </div>
-          )}
-        </div>
-      </Card>
+      <SupplementPreview items={items} />
     </div>
   );
 }

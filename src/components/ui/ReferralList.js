@@ -22,10 +22,68 @@ function emptyReferral() {
   };
 }
 
+function ReferralPreview({ items, readOnly }) {
+  return (
+    <Card className={`overflow-hidden p-0 ${readOnly ? "" : "sm:sticky sm:top-5"} sm:p-0`}>
+      <div className="border-b border-olive-900/10 bg-gradient-to-br from-sky-50 to-porcelain px-5 py-4">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-sky-700/70">
+          {readOnly ? "Prescrição" : "Prévia para o paciente"}
+        </p>
+        <h3 className="mt-1 text-lg font-semibold text-graphite">Encaminhamentos</h3>
+      </div>
+      <div className="space-y-3 p-4">
+        {items.length ? (
+          items.map((item, index) => (
+            <div
+              key={item.clientId}
+              className="rounded-xl border border-sky-100 bg-white px-3.5 py-3"
+            >
+              <div className="flex items-start gap-3">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sky-100 text-sky-700">
+                  <Stethoscope className="h-4 w-4" strokeWidth={1.75} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="truncate text-sm font-semibold text-graphite">
+                      {item.specialty || `Encaminhamento ${index + 1}`}
+                    </p>
+                    {item.urgency === "priority" ? (
+                      <AlertTriangle
+                        className="h-4 w-4 shrink-0 text-amber-500"
+                        strokeWidth={1.75}
+                      />
+                    ) : null}
+                  </div>
+                  <p className="mt-1 text-xs text-graphite/55">{item.reason || "—"}</p>
+                  {item.professionalName ? (
+                    <p className="mt-1.5 text-[11px] font-medium text-sky-700">
+                      {item.professionalName}
+                    </p>
+                  ) : null}
+                  {item.notes ? (
+                    <p className="mt-1.5 border-t border-olive-900/6 pt-1.5 text-[11px] text-graphite/45">
+                      {item.notes}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="py-10 text-center">
+            <Stethoscope className="mx-auto h-6 w-6 text-graphite/20" strokeWidth={1.5} />
+            <p className="mt-2 text-xs text-graphite/40">Nenhum encaminhamento</p>
+          </div>
+        )}
+      </div>
+    </Card>
+  );
+}
+
 /**
  * Lista de encaminhamentos para outros profissionais de saúde.
  */
-export default function ReferralList({ items = [], onChange }) {
+export default function ReferralList({ items = [], onChange, readOnly = false }) {
   function updateItem(clientId, patch) {
     onChange?.(items.map((item) => (item.clientId === clientId ? { ...item, ...patch } : item)));
   }
@@ -36,6 +94,14 @@ export default function ReferralList({ items = [], onChange }) {
 
   function addItem() {
     onChange?.([...items, emptyReferral()]);
+  }
+
+  if (readOnly) {
+    return (
+      <div className="mx-auto max-w-2xl">
+        <ReferralPreview items={items} readOnly />
+      </div>
+    );
   }
 
   return (
@@ -191,64 +257,7 @@ export default function ReferralList({ items = [], onChange }) {
         ))}
       </div>
 
-      <Card className="overflow-hidden p-0 sm:sticky sm:top-5 sm:p-0">
-        <div className="border-b border-olive-900/10 bg-gradient-to-br from-sky-50 to-porcelain px-5 py-4">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-sky-700/70">
-            Prévia para o paciente
-          </p>
-          <h3 className="mt-1 text-lg font-semibold text-graphite">Encaminhamentos</h3>
-        </div>
-        <div className="space-y-3 p-4">
-          {items.length ? (
-            items.map((item, index) => (
-              <div
-                key={item.clientId}
-                className="rounded-xl border border-sky-100 bg-white px-3.5 py-3"
-              >
-                <div className="flex items-start gap-3">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sky-100 text-sky-700">
-                    <Stethoscope className="h-4 w-4" strokeWidth={1.75} />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="truncate text-sm font-semibold text-graphite">
-                        {item.specialty || `Encaminhamento ${index + 1}`}
-                      </p>
-                      {item.urgency === "priority" ? (
-                        <AlertTriangle
-                          className="h-4 w-4 shrink-0 text-amber-500"
-                          strokeWidth={1.75}
-                        />
-                      ) : null}
-                    </div>
-                    <p className="mt-1 text-xs text-graphite/55">
-                      {item.reason || "Motivo do encaminhamento"}
-                    </p>
-                    {item.professionalName ? (
-                      <p className="mt-1.5 text-[11px] font-medium text-sky-700">
-                        {item.professionalName}
-                      </p>
-                    ) : null}
-                    {item.notes ? (
-                      <p className="mt-1.5 border-t border-olive-900/6 pt-1.5 text-[11px] text-graphite/45">
-                        {item.notes}
-                      </p>
-                    ) : null}
-                  </div>
-                </div>
-              </div>
-            ))
-          ) : (
-            <div className="py-10 text-center">
-              <Stethoscope
-                className="mx-auto h-6 w-6 text-graphite/20"
-                strokeWidth={1.5}
-              />
-              <p className="mt-2 text-xs text-graphite/40">Nenhum encaminhamento</p>
-            </div>
-          )}
-        </div>
-      </Card>
+      <ReferralPreview items={items} />
     </div>
   );
 }

@@ -18,6 +18,7 @@ export const LAB_REPORT_STATUS_LABELS = {
 };
 
 export const DIET_STATUS_LABELS = {
+  draft: "Rascunho",
   active: "Ativo",
   archived: "Arquivado"
 };

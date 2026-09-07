@@ -193,7 +193,10 @@ export async function handleDemoApi(request) {
   }
 
   if (path.match(/^\/api\/patients\/[^/]+\/diet$/) && method === "GET") {
-    return json({ dietPlans: [{ ...demoDietPlan, source: "fatsecret_csv", created_at: new Date().toISOString() }] });
+    const plans = state.dietPlans || [
+      { ...demoDietPlan, source: "fatsecret_csv", created_at: new Date().toISOString() }
+    ];
+    return json({ dietPlans: plans });
   }
   if (path === "/api/patients/me/labs" && method === "GET") {
     const reports = state.labReports.filter((report) => report.patient_id === patientId);
@@ -297,7 +300,11 @@ export async function handleDemoApi(request) {
   }
 
   if (path === "/api/admin/appointments" && method === "GET") {
-    return json({ appointments: state.appointments });
+    const filterPatientId = url.searchParams.get("patientId");
+    const appointments = filterPatientId
+      ? state.appointments.filter((item) => item.patient_id === filterPatientId)
+      : state.appointments;
+    return json({ appointments });
   }
 
   if (path.match(/^\/api\/admin\/appointments\/[^/]+\/payment$/) && method === "PATCH") {
@@ -428,7 +435,91 @@ export async function handleDemoApi(request) {
   }
 
   if (path.match(/^\/api\/patients\/[^/]+\/diet$/) && method === "POST") {
-    return json({ ok: true, planId: "diet-demo-new", uploaded: false });
+    const contentType = request.headers.get("content-type") || "";
+    let body = {};
+    if (contentType.includes("multipart/form-data")) {
+      const formData = await request.formData();
+      try {
+        body = JSON.parse(String(formData.get("plan") || "{}"));
+      } catch {
+        body = {};
+      }
+    } else {
+      body = await request.json().catch(() => ({}));
+    }
+
+    if (body.status === "active" && state.dietPlans) {
+      state.dietPlans = state.dietPlans.map((plan) =>
+        plan.status === "active" ? { ...plan, status: "archived" } : plan
+      );
+    }
+
+    const plan = {
+      id: `diet-${Date.now()}`,
+      title: body.title || "Plano demo",
+      notes: body.notes || null,
+      status: body.status || "active",
+      source: body.source || "fatsecret_csv",
+      created_at: new Date().toISOString(),
+      diet_meals: (body.meals || []).map((meal, index) => ({
+        id: `meal-${Date.now()}-${index}`,
+        name: meal.name,
+        sort_order: meal.sortOrder ?? index,
+        diet_items: (meal.items || []).map((item, itemIndex) => ({
+          id: `item-${Date.now()}-${itemIndex}`,
+          ...item,
+          portion_g: item.portionG,
+          nutrition_snapshot: item.nutritionSnapshot
+        }))
+      })),
+      diet_supplements: (body.supplements || []).map((item, index) => ({
+        id: `sup-${Date.now()}-${index}`,
+        sort_order: item.sortOrder ?? index,
+        product_name: item.productName,
+        dosage: item.dosage,
+        posology: item.posology,
+        notes: item.notes || null
+      })),
+      diet_referrals: (body.referrals || []).map((item, index) => ({
+        id: `ref-${Date.now()}-${index}`,
+        sort_order: item.sortOrder ?? index,
+        specialty: item.specialty,
+        professional_name: item.professionalName || null,
+        reason: item.reason,
+        urgency: item.urgency || "routine",
+        notes: item.notes || null
+      }))
+    };
+
+    if (!state.dietPlans) state.dietPlans = [{ ...demoDietPlan, created_at: new Date().toISOString() }];
+    state.dietPlans.unshift(plan);
+    return json({ ok: true, planId: plan.id, plan, uploaded: false });
+  }
+
+  if (path.match(/^\/api\/patients\/[^/]+\/diet\/[^/]+$/) && method === "PATCH") {
+    const planId = path.split("/").pop();
+    const body = await request.json().catch(() => ({}));
+    if (!state.dietPlans) state.dietPlans = [{ ...demoDietPlan, created_at: new Date().toISOString() }];
+    if (body.status === "active") {
+      state.dietPlans = state.dietPlans.map((plan) =>
+        plan.status === "active" && plan.id !== planId
+          ? { ...plan, status: "archived" }
+          : plan
+      );
+    }
+    state.dietPlans = state.dietPlans.map((plan) =>
+      plan.id === planId ? { ...plan, status: body.status || plan.status } : plan
+    );
+    const plan = state.dietPlans.find((item) => item.id === planId);
+    if (!plan) return json({ message: "Plano não encontrado." }, 404);
+    return json({ ok: true, plan });
+  }
+
+  if (path.match(/^\/api\/patients\/[^/]+\/diet\/[^/]+$/) && method === "DELETE") {
+    const planId = path.split("/").pop();
+    if (!state.dietPlans) state.dietPlans = [];
+    state.dietPlans = state.dietPlans.filter((plan) => plan.id !== planId);
+    return json({ ok: true });
   }
 
   if (path.match(/^\/api\/patients\/[^/]+\/labs$/) && method === "GET") {
