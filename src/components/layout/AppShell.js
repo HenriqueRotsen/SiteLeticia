@@ -65,18 +65,16 @@ function UserAvatar({ name, size = "md" }) {
 function UserProfileChip({ name, href, label = "Meu perfil", active = false }) {
   const content = (
     <>
-      <UserAvatar name={name} />
-      <div className="min-w-0">
-        <p className="max-w-[7.5rem] truncate text-sm font-semibold text-graphite sm:max-w-[11rem]">
-          {name}
-        </p>
-        <p className="flex items-center gap-1 text-[11px] text-graphite/50 sm:text-xs">
+      <UserAvatar name={name} size="sm" />
+      <div className="hidden min-w-0 sm:block">
+        <p className="max-w-[11rem] truncate text-sm font-semibold text-graphite">{name}</p>
+        <p className="flex items-center gap-1 text-xs text-graphite/50">
           <User className="h-3 w-3 shrink-0" strokeWidth={2} />
           <span>{label}</span>
         </p>
       </div>
       <ChevronRight
-        className={`hidden h-4 w-4 shrink-0 text-graphite/30 transition sm:block ${
+        className={`hidden h-4 w-4 shrink-0 text-graphite/30 transition md:block ${
           active ? "text-olive-700/70" : "group-hover:translate-x-0.5 group-hover:text-olive-700/60"
         }`}
         strokeWidth={2}
@@ -84,7 +82,7 @@ function UserProfileChip({ name, href, label = "Meu perfil", active = false }) {
     </>
   );
 
-  const className = `group flex min-w-0 items-center gap-2.5 rounded-2xl border px-2 py-1.5 transition sm:gap-3 sm:px-3 sm:py-2 ${
+  const className = `group flex shrink-0 items-center gap-2.5 rounded-2xl border p-1.5 transition sm:gap-3 sm:px-3 sm:py-2 ${
     active
       ? "border-olive-300/40 bg-olive-50/80 shadow-sm"
       : "border-olive-900/10 bg-white/80 hover:border-olive-300/35 hover:bg-white hover:shadow-sm"
@@ -276,48 +274,53 @@ export default function AppShell({
         }`}
       >
         <header className="sticky top-[var(--demo-banner-height,0px)] z-20 border-b border-olive-900/10 bg-porcelain/90 backdrop-blur-md">
-          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:gap-4 sm:px-6 lg:px-8">
-            <div className="flex min-w-0 flex-1 items-start gap-3">
-              <button
-                type="button"
-                onClick={() => setMenuOpen(true)}
-                className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-olive-900/10 bg-white text-graphite/70 lg:hidden"
-                aria-label="Abrir menu"
-              >
-                <Menu className="h-4 w-4" />
-              </button>
-              <div className="min-w-0">
-                {breadcrumbs.length ? (
-                  <nav className="mb-1 flex flex-wrap items-center gap-1 text-xs text-graphite/45">
-                    {breadcrumbs.map((crumb, index) => {
-                      const label = typeof crumb === "string" ? crumb : crumb?.label;
-                      const href = typeof crumb === "string" ? null : crumb?.href || null;
-                      const isLast = index === breadcrumbs.length - 1;
+          <div className="flex items-center gap-2 px-3 py-2.5 sm:gap-4 sm:px-6 sm:py-3 lg:px-8">
+            <button
+              type="button"
+              onClick={() => setMenuOpen(true)}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-olive-900/10 bg-white text-graphite/70 lg:hidden"
+              aria-label="Abrir menu"
+            >
+              <Menu className="h-4 w-4" />
+            </button>
 
-                      return (
-                        <span key={`${label}-${index}`} className="flex items-center gap-1">
-                          {index > 0 ? <ChevronRight className="h-3 w-3 shrink-0" /> : null}
-                          {href && !isLast ? (
-                            <Link
-                              href={href}
-                              className="transition hover:text-olive-800 hover:underline hover:underline-offset-2"
-                            >
-                              {label}
-                            </Link>
-                          ) : (
-                            <span className={isLast ? "text-graphite/70" : ""}>{label}</span>
-                          )}
-                        </span>
-                      );
-                    })}
-                  </nav>
-                ) : null}
-                <h1 className="truncate text-lg font-semibold tracking-tight text-graphite sm:text-2xl">{title}</h1>
-                {subtitle ? <p className="mt-0.5 line-clamp-2 text-sm text-graphite/55">{subtitle}</p> : null}
-              </div>
+            <div className="min-w-0 flex-1">
+              {breadcrumbs.length ? (
+                <nav className="mb-0.5 hidden items-center gap-1 text-xs text-graphite/45 sm:flex">
+                  {breadcrumbs.map((crumb, index) => {
+                    const label = typeof crumb === "string" ? crumb : crumb?.label;
+                    const href = typeof crumb === "string" ? null : crumb?.href || null;
+                    const isLast = index === breadcrumbs.length - 1;
+
+                    return (
+                      <span key={`${label}-${index}`} className="flex min-w-0 items-center gap-1">
+                        {index > 0 ? <ChevronRight className="h-3 w-3 shrink-0" /> : null}
+                        {href && !isLast ? (
+                          <Link
+                            href={href}
+                            className="truncate transition hover:text-olive-800 hover:underline hover:underline-offset-2"
+                          >
+                            {label}
+                          </Link>
+                        ) : (
+                          <span className={`truncate ${isLast ? "text-graphite/70" : ""}`}>{label}</span>
+                        )}
+                      </span>
+                    );
+                  })}
+                </nav>
+              ) : null}
+              <h1 className="truncate text-base font-semibold tracking-tight text-graphite sm:text-2xl">
+                {title}
+              </h1>
+              {subtitle ? (
+                <p className="mt-0.5 hidden text-sm text-graphite/55 sm:line-clamp-2 sm:block">
+                  {subtitle}
+                </p>
+              ) : null}
             </div>
 
-            <div className="flex w-full items-center justify-end gap-2 sm:w-auto sm:gap-3">
+            <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
               <NotificationBell />
               <UserProfileChip
                 name={userName}

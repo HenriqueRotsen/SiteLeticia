@@ -1,13 +1,28 @@
 import { NextResponse } from "next/server";
 import { requireNutritionist } from "@/lib/auth";
+import { createSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { maskCpf } from "@/lib/cpf";
 import { writeAuditLog, getClientIp } from "@/lib/audit";
+import { syncAllWaitlistToPatients } from "@/lib/waitlist/position";
 
 export async function GET(request) {
   const auth = await requireNutritionist();
   if (auth.error) return auth.error;
 
-  const q = new URL(request.url).searchParams.get("q")?.trim();
+  const url = new URL(request.url);
+  const q = url.searchParams.get("q")?.trim();
+  const shouldSync = url.searchParams.get("sync") === "1";
+
+  let sync = null;
+  if (shouldSync) {
+    try {
+      const admin = createSupabaseAdmin();
+      sync = await syncAllWaitlistToPatients(admin);
+    } catch (error) {
+      console.error("Auto waitlist sync failed:", error);
+      sync = { failed: 1, message: error.message || "Falha na sincronização" };
+    }
+  }
 
   let query = auth.ctx.supabase
     .from("patients")
@@ -21,6 +36,24 @@ export async function GET(request) {
   const { data, error } = await query;
   if (error) return NextResponse.json({ message: "Erro ao listar." }, { status: 500 });
 
+  let waitlistStats = null;
+  try {
+    const admin = createSupabaseAdmin();
+    const [{ count: waitlistTotal }, { count: waitlistUnlinked }] = await Promise.all([
+      admin.from("waitlist").select("id", { count: "exact", head: true }),
+      admin
+        .from("waitlist")
+        .select("id", { count: "exact", head: true })
+        .is("converted_patient_id", null)
+    ]);
+    waitlistStats = {
+      total: waitlistTotal || 0,
+      unlinked: waitlistUnlinked || 0
+    };
+  } catch (statsError) {
+    console.error("Waitlist stats failed:", statsError);
+  }
+
   await writeAuditLog({
     actorId: auth.ctx.user.id,
     action: "patients_list",
@@ -29,14 +62,23 @@ export async function GET(request) {
     ip: getClientIp(request)
   });
 
+  const patients = (data || []).map((p) => ({
+    ...p,
+    cpf_masked: maskCpf(p.cpf),
+    cpf: undefined,
+    has_account: Boolean(p.user_id),
+    from_waitlist: p.source === "waitlist" || Boolean(p.waitlist_id)
+  }));
+
+  if (waitlistStats) {
+    waitlistStats.withoutAccount = patients.filter((p) => p.from_waitlist && !p.has_account).length;
+    waitlistStats.withAccount = patients.filter((p) => p.from_waitlist && p.has_account).length;
+  }
+
   return NextResponse.json({
-    patients: (data || []).map((p) => ({
-      ...p,
-      cpf_masked: maskCpf(p.cpf),
-      cpf: undefined,
-      has_account: Boolean(p.user_id),
-      from_waitlist: p.source === "waitlist" || Boolean(p.waitlist_id)
-    }))
+    patients,
+    waitlistStats,
+    sync
   });
 }
 

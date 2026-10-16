@@ -149,8 +149,15 @@ export function wrapEmailDocument({
 
 /**
  * Documento de impressão / PDF com a mesma identidade do sistema.
+ * autoPrint: só use no fallback de popup; no iframe o host dispara print uma vez.
  */
-export function wrapPrintDocument({ title, subtitle, patientName, bodyHtml } = {}) {
+export function wrapPrintDocument({
+  title,
+  subtitle,
+  patientName,
+  bodyHtml,
+  autoPrint = false
+} = {}) {
   const { colors } = brand;
   const date = new Date().toLocaleDateString("pt-BR", {
     day: "2-digit",
@@ -413,13 +420,22 @@ export function wrapPrintDocument({ title, subtitle, patientName, bodyHtml } = {
       </div>
     </div>
   </div>
-  <script>
-    window.addEventListener("load", function () {
-      setTimeout(function () {
+  ${
+    autoPrint
+      ? `<script>
+    (function () {
+      var printed = false;
+      function run() {
+        if (printed) return;
+        printed = true;
         try { window.focus(); window.print(); } catch (e) {}
-      }, 350);
-    });
-  </script>
+      }
+      if (document.readyState === "complete") setTimeout(run, 300);
+      else window.addEventListener("load", function () { setTimeout(run, 300); }, { once: true });
+    })();
+  </script>`
+      : ""
+  }
 </body>
 </html>`;
 }

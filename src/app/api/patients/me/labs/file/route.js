@@ -10,7 +10,11 @@ export async function GET(request) {
   const auth = await requirePatient();
   if (auth.error) return auth.error;
 
-  const reportId = new URL(request.url).searchParams.get("id");
+  const url = request.nextUrl || new URL(request.url);
+  const reportId =
+    url.searchParams.get("reportId") ||
+    url.searchParams.get("id") ||
+    url.searchParams.get("report_id");
   if (!reportId) {
     return NextResponse.json({ message: "Laudo obrigatório." }, { status: 400 });
   }
