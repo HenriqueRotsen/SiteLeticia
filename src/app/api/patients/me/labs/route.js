@@ -80,8 +80,10 @@ export async function GET() {
   const auth = await requirePatient();
   if (auth.error) return auth.error;
 
+  // Usa admin: RLS do paciente só liberava status=published e escondia os próprios envios em draft.
+  const supabase = createSupabaseAdmin();
   const bucket = labsBucket();
-  const { data } = await auth.ctx.supabase
+  const { data } = await supabase
     .from("lab_reports")
     .select("*, lab_results(*)")
     .eq("patient_id", auth.ctx.patient.id)
