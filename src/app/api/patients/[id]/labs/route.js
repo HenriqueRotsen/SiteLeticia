@@ -4,7 +4,6 @@ import { requireNutritionist } from "@/lib/auth";
 import { createSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { extractLabReportFromPdfBuffer } from "@/lib/labs/extract";
 import { ALLOWED_PDF_TYPES, MAX_PDF_BYTES } from "@/lib/constants";
-import { compressPdfBuffer } from "@/lib/media/compress-pdf";
 import { writeAuditLog, getClientIp } from "@/lib/audit";
 import { hashCpf, isValidCpf } from "@/lib/cpf";
 import { labReportPatchSchema, patientStubSchema } from "@/lib/validation/schemas";
@@ -80,16 +79,10 @@ export async function POST(request, { params }) {
     extraction = { extractedText: "", results: [], interpretationSummary: "Não foi possível extrair automaticamente." };
   }
 
-  let storedBuffer = originalBuffer;
-  try {
-    const compressed = await compressPdfBuffer(originalBuffer);
-    storedBuffer = compressed.buffer;
-  } catch {
-    storedBuffer = originalBuffer;
-  }
-
-  const { error: uploadError } = await supabase.storage.from(bucket).upload(path, storedBuffer, {
-    contentType: "application/pdf"
+  // Mantém o PDF original — compressão estava corrompendo laudos escaneados.
+  const { error: uploadError } = await supabase.storage.from(bucket).upload(path, originalBuffer, {
+    contentType: "application/pdf",
+    upsert: false
   });
 
   if (uploadError) {

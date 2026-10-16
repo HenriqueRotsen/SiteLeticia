@@ -154,12 +154,15 @@ async function extractLabWithGemini(buffer, text) {
 
   const prompt = hasText
     ? `Extraia marcadores e um parecer inicial deste laudo.\n\nTexto do PDF:\n${text.slice(0, 30000)}`
-    : "Extraia marcadores e um parecer inicial deste laudo em PDF. Se não conseguir ler, retorne results:[ ] e explique em interpretationSummary.";
+    : "Extraia marcadores e um parecer inicial deste laudo em PDF (pode ser escaneado). Se não conseguir ler, retorne results:[ ] e explique em interpretationSummary.";
+
+  // Sem texto: envia o PDF. Com texto curto/pobre, também anexa o PDF se couber.
+  const shouldAttachPdf = !hasText || (canPdf && text.trim().length < 400);
 
   const response = await generateGeminiContent({
     system,
     prompt,
-    pdfBuffer: hasText ? null : buffer,
+    pdfBuffer: shouldAttachPdf ? buffer : null,
     json: true,
     temperature: 0.1
   });
@@ -192,6 +195,7 @@ export async function extractLabReportFromPdfBuffer(buffer) {
 
   const provider = resolveAiProvider();
 
+  let geminiError = null;
   if (provider === "gemini") {
     try {
       const gemini = await extractLabWithGemini(buffer, text);
@@ -204,6 +208,7 @@ export async function extractLabReportFromPdfBuffer(buffer) {
         };
       }
     } catch (error) {
+      geminiError = error?.message || "Falha na chamada Gemini.";
       console.error("Lab Gemini extraction failed:", error);
     }
   }
@@ -212,9 +217,11 @@ export async function extractLabReportFromPdfBuffer(buffer) {
     return {
       extractedText: "",
       results: [],
-      interpretationSummary: hasGeminiConfigured()
-        ? "Não foi possível analisar o PDF automaticamente. Confira a chave Gemini / tamanho do arquivo ou revise o laudo manualmente."
-        : "Não foi possível ler o texto do PDF (pode ser escaneado/imagem, sem camada de texto). Configure GEMINI_API_KEY para análise por IA ou revise o laudo manualmente.",
+      interpretationSummary: geminiError
+        ? `Não foi possível analisar o PDF automaticamente (${geminiError}). Revise o laudo manualmente.`
+        : hasGeminiConfigured()
+          ? "Não foi possível analisar o PDF automaticamente. Confira o modelo Gemini / tamanho do arquivo ou revise o laudo manualmente."
+          : "Não foi possível ler o texto do PDF (pode ser escaneado/imagem, sem camada de texto). Configure GEMINI_API_KEY para análise por IA ou revise o laudo manualmente.",
       method: "none"
     };
   }
