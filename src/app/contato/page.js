@@ -3,6 +3,7 @@ import Reveal from "@/components/Reveal";
 import ContactForm from "@/components/marketing/ContactForm";
 import MarketingShell, { PageHero, SectionEyebrow } from "@/components/marketing/MarketingShell";
 import {
+  buildWhatsappIntroMessage,
   contactReasons,
   formatWhatsappDisplay,
   instagramLink,
@@ -46,7 +47,7 @@ export default function ContatoPage() {
                   <dt className="text-[10px] font-semibold uppercase tracking-[0.18em] text-graphite/45">WhatsApp</dt>
                   <dd className="mt-2 space-y-1">
                     <a
-                      href={whatsappLink(site.whatsapp, "Olá, Letícia! Gostaria de mais informações.")}
+                      href={whatsappLink(site.whatsapp, buildWhatsappIntroMessage())}
                       className="block font-semibold text-graphite hover:text-olive-800"
                       target="_blank"
                       rel="noopener noreferrer"
@@ -54,7 +55,7 @@ export default function ContatoPage() {
                       {formatWhatsappDisplay(site.whatsapp)}
                     </a>
                     <a
-                      href={whatsappLink(site.whatsapp, "Olá, Letícia! Gostaria de mais informações.")}
+                      href={whatsappLink(site.whatsapp, buildWhatsappIntroMessage())}
                       className="inline-flex text-sm font-semibold text-olive-800 underline decoration-olive-900/20 underline-offset-4"
                       target="_blank"
                       rel="noopener noreferrer"

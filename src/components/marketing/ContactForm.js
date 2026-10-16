@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { site, whatsappLink } from "@/lib/marketing/content";
+import { buildWhatsappContactMessage, site, whatsappLink } from "@/lib/marketing/content";
 
 export default function ContactForm() {
   const [form, setForm] = useState({
@@ -15,15 +15,7 @@ export default function ContactForm() {
 
   function handleSubmit(event) {
     event.preventDefault();
-    const body = [
-      `Nome: ${form.name}`,
-      `E-mail: ${form.email}`,
-      `Telefone: ${form.phone}`,
-      `Assunto: ${form.subject}`,
-      "",
-      form.message
-    ].join("\n");
-
+    const body = buildWhatsappContactMessage(form);
     window.open(whatsappLink(site.whatsapp, body), "_blank", "noopener,noreferrer");
     setSent(true);
   }
@@ -100,7 +92,10 @@ export default function ContactForm() {
       {sent ? (
         <p className="text-sm text-olive-800">
           Se o WhatsApp não abriu automaticamente,{" "}
-          <a href={whatsappLink(site.whatsapp)} className="font-semibold underline">
+          <a
+            href={whatsappLink(site.whatsapp, buildWhatsappContactMessage(form))}
+            className="font-semibold underline"
+          >
             clique aqui
           </a>
           .
