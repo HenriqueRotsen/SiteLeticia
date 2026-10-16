@@ -519,7 +519,6 @@ export async function handleDemoApi(request) {
       storage_path: `demo/labs/${Date.now()}.pdf`
     };
     state.labReports.unshift(report);
-    const fulfillment = fulfillDemoExamOrders(report.lab_results);
     return json({
       report: {
         id: report.id,
@@ -527,7 +526,32 @@ export async function handleDemoApi(request) {
         created_at: report.created_at,
         uploaded_by: report.uploaded_by,
         published_by: null,
-        file_url: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
+        analyzing: true,
+        file_url: `/api/patients/me/labs/file?id=${encodeURIComponent(report.id)}`
+      },
+      examOrders: demoExamOrders(),
+      needsAnalysis: true
+    });
+  }
+
+  if (path === "/api/patients/me/labs/analyze" && method === "POST") {
+    const body = await request.json().catch(() => ({}));
+    const report = state.labReports.find(
+      (item) => item.id === body.reportId && item.patient_id === patientId
+    );
+    if (!report) return json({ message: "Laudo não encontrado." }, { status: 404 });
+    report.lab_results = demoLabReport.lab_results;
+    report.ai_interpretation = demoLabReport.ai_interpretation;
+    report.interpretation_summary = demoLabReport.ai_interpretation;
+    const fulfillment = fulfillDemoExamOrders(report.lab_results);
+    return json({
+      report: {
+        id: report.id,
+        status: report.status,
+        created_at: report.created_at,
+        uploaded_by: report.uploaded_by,
+        analyzing: false,
+        file_url: `/api/patients/me/labs/file?id=${encodeURIComponent(report.id)}`
       },
       examOrders: fulfillment.examOrders,
       fulfillment: { doneCount: fulfillment.doneCount, method: "demo" }
@@ -545,8 +569,8 @@ export async function handleDemoApi(request) {
       return json({ message: "Só é possível alterar envios ainda aguardando revisão." }, { status: 400 });
     }
     report.created_at = new Date().toISOString();
-    report.lab_results = demoLabReport.lab_results;
-    const fulfillment = fulfillDemoExamOrders(report.lab_results);
+    report.ai_interpretation = null;
+    report.interpretation_summary = "Analisando automaticamente…";
     return json({
       report: {
         id: report.id,
@@ -554,10 +578,11 @@ export async function handleDemoApi(request) {
         created_at: report.created_at,
         uploaded_by: report.uploaded_by,
         published_by: null,
-        file_url: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
+        analyzing: true,
+        file_url: `/api/patients/me/labs/file?id=${encodeURIComponent(report.id)}`
       },
-      examOrders: fulfillment.examOrders,
-      fulfillment: { doneCount: fulfillment.doneCount, method: "demo" }
+      examOrders: demoExamOrders(),
+      needsAnalysis: true
     });
   }
 

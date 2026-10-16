@@ -4,12 +4,7 @@
  */
 
 const DEFAULT_MODEL = "gemini-3.5-flash";
-const FALLBACK_MODELS = [
-  "gemini-3.5-flash",
-  "gemini-flash-latest",
-  "gemini-3.8-flash",
-  "gemini-3.5-flash-lite"
-];
+const FALLBACK_MODELS = ["gemini-3.5-flash", "gemini-flash-latest"];
 const MAX_INLINE_PDF_BYTES = 8 * 1024 * 1024;
 
 export function getGeminiApiKey() {
@@ -88,7 +83,7 @@ async function callGeminiModel(model, body, apiKey) {
         "x-goog-api-key": apiKey
       },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(90000)
+      signal: AbortSignal.timeout(35000)
     }
   );
 
