@@ -7,6 +7,7 @@ import {
   mfaCookieOptions,
   signMfaOk
 } from "@/lib/auth/mfa-cookies";
+import { SESSION_MAX_AGE_SECONDS } from "@/lib/auth/session-cookies";
 
 async function resolvePostAuthPath(supabase, requestedNext) {
   // Fluxo de recuperação de senha não deve ser redirecionado para /app ou /admin.
@@ -70,7 +71,11 @@ export async function GET(request) {
 
   // Link de e-mail (recovery) já prova posse da caixa — libera 2FA desta sessão.
   if (user?.id && (nextPath.startsWith("/redefinir-senha") || nextPath === "/redefinir-senha")) {
-    response.cookies.set(MFA_OK_COOKIE, await signMfaOk(user.id), mfaCookieOptions(12 * 60 * 60));
+    response.cookies.set(
+      MFA_OK_COOKIE,
+      await signMfaOk(user.id),
+      mfaCookieOptions(SESSION_MAX_AGE_SECONDS)
+    );
     response.cookies.set(MFA_PENDING_COOKIE, "", { ...mfaCookieOptions(0), maxAge: 0 });
   }
 

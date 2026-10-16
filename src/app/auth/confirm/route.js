@@ -7,6 +7,7 @@ import {
   mfaCookieOptions,
   signMfaOk
 } from "@/lib/auth/mfa-cookies";
+import { SESSION_MAX_AGE_SECONDS } from "@/lib/auth/session-cookies";
 
 const ALLOWED_TYPES = new Set(["recovery", "signup", "invite", "magiclink", "email"]);
 
@@ -46,7 +47,11 @@ export async function GET(request) {
   const response = NextResponse.redirect(new URL(safeNext, siteUrl));
 
   if (user?.id && (type === "recovery" || safeNext.startsWith("/redefinir-senha"))) {
-    response.cookies.set(MFA_OK_COOKIE, await signMfaOk(user.id), mfaCookieOptions(12 * 60 * 60));
+    response.cookies.set(
+      MFA_OK_COOKIE,
+      await signMfaOk(user.id),
+      mfaCookieOptions(SESSION_MAX_AGE_SECONDS)
+    );
     response.cookies.set(MFA_PENDING_COOKIE, "", { ...mfaCookieOptions(0), maxAge: 0 });
   }
 

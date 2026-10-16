@@ -1,6 +1,13 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
-import { MFA_OK_COOKIE, MFA_PENDING_COOKIE, verifyMfaOk } from "@/lib/auth/mfa-cookies";
+import {
+  MFA_OK_COOKIE,
+  MFA_PENDING_COOKIE,
+  mfaCookieOptions,
+  signMfaOk,
+  verifyMfaOk
+} from "@/lib/auth/mfa-cookies";
+import { getSupabaseCookieOptions, SESSION_MAX_AGE_SECONDS } from "@/lib/auth/session-cookies";
 
 export async function updateSession(request) {
   let supabaseResponse = NextResponse.next({ request });
@@ -9,6 +16,7 @@ export async function updateSession(request) {
     process.env.NEXT_PUBLIC_SUPABASE_URL,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     {
+      cookieOptions: getSupabaseCookieOptions(),
       cookies: {
         getAll() {
           return request.cookies.getAll();
@@ -17,7 +25,11 @@ export async function updateSession(request) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
           supabaseResponse = NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
+            supabaseResponse.cookies.set(name, value, {
+              ...getSupabaseCookieOptions(),
+              ...options,
+              maxAge: options?.maxAge ?? SESSION_MAX_AGE_SECONDS
+            })
           );
         }
       }
@@ -30,8 +42,18 @@ export async function updateSession(request) {
 
   const pathname = request.nextUrl.pathname;
   const requireMfa = process.env.AUTH_EMAIL_MFA !== "false";
-  const mfaOk = await verifyMfaOk(request.cookies.get(MFA_OK_COOKIE)?.value, user?.id);
+  const mfaToken = request.cookies.get(MFA_OK_COOKIE)?.value;
+  const mfaOk = await verifyMfaOk(mfaToken, user?.id);
   const mfaPending = request.cookies.get(MFA_PENDING_COOKIE)?.value;
+
+  // Renova o cookie de 2FA a cada visita autenticada (sessão deslizante).
+  if (requireMfa && user && mfaOk) {
+    supabaseResponse.cookies.set(
+      MFA_OK_COOKIE,
+      await signMfaOk(user.id),
+      mfaCookieOptions(SESSION_MAX_AGE_SECONDS)
+    );
+  }
 
   if (
     requireMfa &&

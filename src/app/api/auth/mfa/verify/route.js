@@ -10,6 +10,7 @@ import {
   mfaCookieOptions,
   signMfaOk
 } from "@/lib/auth/mfa-cookies";
+import { SESSION_MAX_AGE_SECONDS } from "@/lib/auth/session-cookies";
 
 const schema = z.object({
   code: z.string().regex(/^\d{6}$/, "Informe o código de 6 dígitos.")
@@ -64,7 +65,11 @@ export async function POST(request) {
     role,
     redirectTo: resolveHomePath(role)
   });
-  response.cookies.set(MFA_OK_COOKIE, await signMfaOk(user.id), mfaCookieOptions(12 * 60 * 60));
+  response.cookies.set(
+    MFA_OK_COOKIE,
+    await signMfaOk(user.id),
+    mfaCookieOptions(SESSION_MAX_AGE_SECONDS)
+  );
   response.cookies.set(MFA_PENDING_COOKIE, "", { ...mfaCookieOptions(0), maxAge: 0 });
   return response;
 }

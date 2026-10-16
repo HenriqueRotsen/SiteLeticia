@@ -1,3 +1,5 @@
+import { SESSION_MAX_AGE_SECONDS, SESSION_TTL_MS, authCookieOptions } from "@/lib/auth/session-cookies";
+
 export const MFA_OK_COOKIE = "lc_mfa_ok";
 export const MFA_PENDING_COOKIE = "lc_mfa_pending";
 
@@ -25,7 +27,7 @@ async function hmacHex(message) {
     .join("");
 }
 
-export async function signMfaOk(userId, ttlMs = 12 * 60 * 60 * 1000) {
+export async function signMfaOk(userId, ttlMs = SESSION_TTL_MS) {
   const exp = Date.now() + ttlMs;
   const payload = `${userId}.${exp}`;
   const sig = await hmacHex(payload);
@@ -48,12 +50,9 @@ export async function verifyMfaOk(token, userId) {
   return mismatch === 0;
 }
 
-export function mfaCookieOptions(maxAgeSeconds) {
+export function mfaCookieOptions(maxAgeSeconds = SESSION_MAX_AGE_SECONDS) {
   return {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
+    ...authCookieOptions,
     maxAge: maxAgeSeconds
   };
 }
