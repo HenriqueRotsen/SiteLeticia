@@ -199,6 +199,13 @@ export function extractDietPlanFromTextHeuristic(text, options = {}) {
   );
 }
 
+const DIET_SYSTEM_PROMPT =
+  "Você extrai planos alimentares de PDFs do FatSecret (ou similares) para JSON. " +
+  "Responda somente JSON válido no formato: " +
+  '{"title":"string","notes":"string|null","meals":[{"name":"string","sortOrder":0,"items":[{"label":"string","portionG":number,"amountLabel":"string","kcal":number,"protein_g":number,"carbs_g":number,"fat_g":number,"fiber_g":number|null,"sodium_mg":number|null}]}]}. ' +
+  "portionG deve ser a porção em gramas (ou ml ≈ g). Os nutrientes são da PORÇÃO, não por 100g. " +
+  "Ignore anúncios, rodapé e textos de marketing. Se não houver dados, retorne meals:[].";
+
 async function extractDietPlanWithOpenAI(text, options = {}) {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey || !text) return null;
@@ -217,15 +224,7 @@ async function extractDietPlanWithOpenAI(text, options = {}) {
       temperature: 0.1,
       response_format: { type: "json_object" },
       messages: [
-        {
-          role: "system",
-          content:
-            "Você extrai planos alimentares de PDFs do FatSecret (ou similares) para JSON. " +
-            "Responda somente JSON válido no formato: " +
-            '{"title":"string","notes":"string|null","meals":[{"name":"string","sortOrder":0,"items":[{"label":"string","portionG":number,"amountLabel":"string","kcal":number,"protein_g":number,"carbs_g":number,"fat_g":number,"fiber_g":number|null,"sodium_mg":number|null}]}]}. ' +
-            "portionG deve ser a porção em gramas (ou ml ≈ g). Os nutrientes são da PORÇÃO, não por 100g. " +
-            "Ignore anúncios, rodapé e textos de marketing. Se não houver dados, retorne meals:[]."
-        },
+        { role: "system", content: DIET_SYSTEM_PROMPT },
         {
           role: "user",
           content: `Texto do PDF da dieta:\n\n${truncated}`
@@ -247,6 +246,22 @@ async function extractDietPlanWithOpenAI(text, options = {}) {
   return normalizeExtractedDietPlan(parsed, options.title);
 }
 
+async function extractDietPlanWithGemini(text, options = {}) {
+  if (!text) return null;
+  const { generateGeminiContent, hasGeminiConfigured } = await import("@/lib/ai/gemini");
+  if (!hasGeminiConfigured()) return null;
+
+  const response = await generateGeminiContent({
+    system: DIET_SYSTEM_PROMPT,
+    prompt: `Texto do PDF da dieta:\n\n${text.slice(0, 24000)}`,
+    json: true,
+    temperature: 0.1
+  });
+
+  if (!response?.data) return null;
+  return normalizeExtractedDietPlan(response.data, options.title);
+}
+
 export function buildDietExtractionSummary(plan) {
   const mealCount = plan?.meals?.length || 0;
   const itemCount = (plan?.meals || []).reduce((sum, meal) => sum + (meal.items?.length || 0), 0);
@@ -263,12 +278,27 @@ export async function extractDietPlanFromPdfBuffer(buffer, options = {}) {
   let warning = null;
 
   if (extractedText) {
-    try {
-      plan = await extractDietPlanWithOpenAI(extractedText, options);
-      if (plan?.meals?.length) method = "openai";
-    } catch (error) {
-      warning = error.message || "Falha na extração com IA.";
-      console.error("Diet OpenAI extraction failed:", error);
+    const { resolveAiProvider } = await import("@/lib/ai/provider");
+    const provider = resolveAiProvider();
+
+    if (provider === "gemini") {
+      try {
+        plan = await extractDietPlanWithGemini(extractedText, options);
+        if (plan?.meals?.length) method = "gemini";
+      } catch (error) {
+        warning = error.message || "Falha na extração com Gemini.";
+        console.error("Diet Gemini extraction failed:", error);
+      }
+    }
+
+    if (!plan?.meals?.length && (provider === "openai" || provider === "gemini")) {
+      try {
+        plan = await extractDietPlanWithOpenAI(extractedText, options);
+        if (plan?.meals?.length) method = "openai";
+      } catch (error) {
+        warning = error.message || "Falha na extração com IA.";
+        console.error("Diet OpenAI extraction failed:", error);
+      }
     }
 
     if (!plan?.meals?.length) {

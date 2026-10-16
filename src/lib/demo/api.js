@@ -431,14 +431,30 @@ export async function handleDemoApi(request) {
     return json({ dietPlans: plans });
   }
   if (path === "/api/patients/me/labs" && method === "GET") {
-    const reports = state.labReports.filter((report) => report.patient_id === patientId);
-    return json({
-      reports: reports.filter((report) => report.status === "published" || report.uploaded_by === "patient")
-    });
+    const reports = state.labReports
+      .filter((report) => report.patient_id === patientId)
+      .filter((report) => report.status === "published" || report.uploaded_by === "patient")
+      .map((report) => {
+        const base = {
+          id: report.id,
+          status: report.status,
+          created_at: report.created_at,
+          uploaded_by: report.uploaded_by,
+          published_by: report.published_by,
+          reviewed_at: report.reviewed_at,
+          file_url: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
+        };
+        if (report.status !== "published") return base;
+        return {
+          ...base,
+          interpretation_summary: report.interpretation_summary,
+          lab_results: report.lab_results || []
+        };
+      });
+    return json({ reports });
   }
 
   if (path === "/api/patients/me/labs" && method === "POST") {
-    const aiText = demoLabReport.ai_interpretation;
     const report = {
       id: `lab-${Date.now()}`,
       patient_id: patientId,
@@ -446,27 +462,59 @@ export async function handleDemoApi(request) {
       uploaded_by: "patient",
       published_by: null,
       created_at: new Date().toISOString(),
-      ai_interpretation: aiText,
-      interpretation_summary: aiText,
-      lab_results: demoLabReport.lab_results
+      ai_interpretation: demoLabReport.ai_interpretation,
+      interpretation_summary: demoLabReport.ai_interpretation,
+      lab_results: demoLabReport.lab_results,
+      storage_path: `demo/labs/${Date.now()}.pdf`
     };
     state.labReports.unshift(report);
-    return json({ report, results: report.lab_results });
+    return json({
+      report: {
+        id: report.id,
+        status: report.status,
+        created_at: report.created_at,
+        uploaded_by: report.uploaded_by,
+        published_by: null,
+        file_url: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
+      }
+    });
   }
 
-  if (path === "/api/patients/me/labs" && method === "PATCH") {
-    const body = await request.json();
-    const report = state.labReports.find((item) => item.id === body.reportId && item.patient_id === patientId);
+  if (path === "/api/patients/me/labs" && method === "PUT") {
+    const form = await request.formData();
+    const reportId = form.get("reportId")?.toString();
+    const report = state.labReports.find(
+      (item) => item.id === reportId && item.patient_id === patientId
+    );
     if (!report) return json({ message: "Laudo não encontrado." }, { status: 404 });
-
-    if (body.interpretationSummary != null) report.interpretation_summary = body.interpretationSummary;
-    if (body.status === "published") {
-      report.status = "published";
-      report.published_by = "patient";
-      report.reviewed_at = new Date().toISOString();
+    if (report.uploaded_by !== "patient" || report.status !== "draft") {
+      return json({ message: "Só é possível alterar envios ainda aguardando revisão." }, { status: 400 });
     }
+    report.created_at = new Date().toISOString();
+    return json({
+      report: {
+        id: report.id,
+        status: report.status,
+        created_at: report.created_at,
+        uploaded_by: report.uploaded_by,
+        published_by: null,
+        file_url: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
+      }
+    });
+  }
 
-    return json({ report });
+  if (path === "/api/patients/me/labs" && method === "DELETE") {
+    const reportId = url.searchParams.get("id");
+    const index = state.labReports.findIndex(
+      (item) => item.id === reportId && item.patient_id === patientId
+    );
+    if (index < 0) return json({ message: "Laudo não encontrado." }, { status: 404 });
+    const report = state.labReports[index];
+    if (report.uploaded_by !== "patient" || report.status !== "draft") {
+      return json({ message: "Só é possível excluir envios ainda aguardando revisão." }, { status: 400 });
+    }
+    state.labReports.splice(index, 1);
+    return json({ ok: true });
   }
 
   if (path === "/api/patients/me/photos" && method === "GET") {

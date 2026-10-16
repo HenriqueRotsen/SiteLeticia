@@ -37,7 +37,7 @@ export default function LabReportReview({
           <div>
             <p className="text-sm font-semibold text-graphite">Análise automática</p>
             <p className="mt-1 text-xs text-graphite/45">
-              Pré-preenchida pela inteligência do sistema. Revise antes de publicar.
+              Parecer inicial gerado automaticamente (Gemini/regex). Revise antes de publicar para o paciente.
             </p>
           </div>
         </div>

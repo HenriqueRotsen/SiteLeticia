@@ -112,7 +112,7 @@ export default function AdminLabsPage() {
       <Card className="mb-6">
         <PdfUploadZone
           label="Enviar PDF de exames"
-          description="Letícia ou o paciente podem enviar laudos. A inteligência extrai marcadores e gera um parecer inicial."
+          description="Você ou o paciente enviam o PDF. O sistema tenta extrair marcadores pelo texto do laudo para você revisar e publicar."
           uploading={uploading}
           onFileSelect={uploadPdf}
         />
