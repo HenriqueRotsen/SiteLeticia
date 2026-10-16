@@ -5,6 +5,7 @@ import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { getClientIp } from "@/lib/audit";
 import { issueLoginOtp } from "@/lib/auth/otp";
 import { MFA_OK_COOKIE, MFA_PENDING_COOKIE, mfaCookieOptions } from "@/lib/auth/mfa-cookies";
+import { getSiteUrl } from "@/lib/site-url";
 import { loginOtpEmail, sendEmail } from "@/lib/email/resend";
 
 function resolveHomePath(role) {
@@ -64,7 +65,7 @@ export async function POST(request) {
 
   try {
     const { code } = await issueLoginOtp(userId);
-    const emailContent = loginOtpEmail({ code });
+    const emailContent = loginOtpEmail({ code, siteUrl: getSiteUrl(request) });
     await sendEmail({
       to: user.email,
       subject: emailContent.subject,

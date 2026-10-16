@@ -558,13 +558,15 @@ export async function handleDemoApi(request) {
         : report.meta?.declared_timing || "after";
 
     if (timing === "before") {
+      const declaredMismatch = body.declaredTiming === "after";
       report.lab_results = [];
       report.meta = {
         ...(report.meta || {}),
-        declared_timing: "before",
+        declared_timing: timing,
         timing: "before",
         usable_for_orders: false,
-        validation_code: "before_consultation"
+        validation_code: "before_consultation",
+        declared_mismatch: declaredMismatch
       };
       report.ai_interpretation =
         "Laudo anterior à consulta: arquivado sem preencher os exames solicitados.";
@@ -585,7 +587,11 @@ export async function handleDemoApi(request) {
           ok: true,
           code: "before_consultation",
           usableForOrders: false,
-          timing: "before"
+          timing: "before",
+          declaredMismatch,
+          message: declaredMismatch
+            ? "Você marcou o exame como posterior, mas a data do laudo é anterior à consulta. O PDF ficou arquivado e não preencheu os exames solicitados."
+            : "Laudo aceito, mas é anterior à consulta. Ele fica arquivado e não preenche os exames solicitados."
         }
       });
     }

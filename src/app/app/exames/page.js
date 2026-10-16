@@ -1,12 +1,22 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CalendarClock, CalendarMinus2, CheckCircle2, ExternalLink, Pencil, Trash2 } from "lucide-react";
+import {
+  AlertTriangle,
+  CalendarClock,
+  CalendarMinus2,
+  CheckCircle2,
+  ExternalLink,
+  Pencil,
+  Trash2,
+  UserX
+} from "lucide-react";
 import PatientShell from "@/components/layout/PatientShell";
-import { Card, btnSecondary } from "@/components/layout/AppShell";
+import { Card, btnPrimary, btnSecondary } from "@/components/layout/AppShell";
 import Badge, { labReportBadge } from "@/components/ui/Badge";
 import ExamOrderStatusList from "@/components/ui/ExamOrderStatusList";
 import HelpTooltip from "@/components/ui/HelpTooltip";
+import Modal from "@/components/ui/Modal";
 import PdfUploadZone from "@/components/ui/PdfUploadZone";
 import { countExamProgress } from "@/lib/labs/exam-status";
 
@@ -22,11 +32,54 @@ function statusLabel(report) {
   return "Aguardando revisão da Letícia";
 }
 
+function warningFromAnalysis(analyzed, verb = "enviado") {
+  const validation = analyzed?.validation;
+  if (!validation) return null;
+
+  if (validation.code === "wrong_patient") {
+    return {
+      tone: "danger",
+      title: "Este exame não é seu",
+      message:
+        validation.message ||
+        "O nome no laudo não confere com o seu cadastro. O envio foi barrado.",
+      detail: validation.detectedPatientName
+        ? `Nome encontrado no PDF: ${validation.detectedPatientName}`
+        : null
+    };
+  }
+
+  if (validation.declaredMismatch && validation.code === "before_consultation") {
+    return {
+      tone: "warning",
+      title: "Marcação incorreta",
+      message:
+        validation.message ||
+        `Você marcou o exame como posterior, mas a data do laudo é anterior à consulta. O PDF foi ${verb} e arquivado, sem preencher os exames solicitados.`,
+      detail: validation.reportDate ? `Data do laudo: ${validation.reportDate}` : null
+    };
+  }
+
+  if (validation.declaredMismatch && validation.code === "timing_corrected") {
+    return {
+      tone: "warning",
+      title: "Marcação incorreta",
+      message:
+        validation.message ||
+        "Você marcou o exame como anterior, mas a data do laudo é posterior à consulta. Seguimos com a análise normalmente.",
+      detail: validation.reportDate ? `Data do laudo: ${validation.reportDate}` : null
+    };
+  }
+
+  return null;
+}
+
 export default function ExamesPage() {
   const [reports, setReports] = useState([]);
   const [examOrders, setExamOrders] = useState([]);
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
+  const [warningModal, setWarningModal] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState("");
   const [declaredTiming, setDeclaredTiming] = useState("");
@@ -54,20 +107,44 @@ export default function ExamesPage() {
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      throw new Error(data.message || "Falha na análise automática.");
+      const err = new Error(data.message || "Falha na análise automática.");
+      err.code = data.code || null;
+      err.validation = data.validation || null;
+      throw err;
     }
     return data;
   }
 
-  function feedbackFromAnalysis(analyzed) {
-    if (analyzed?.validation?.code === "before_consultation") {
-      return "PDF enviado. Como o laudo é anterior à consulta, ele ficou arquivado e não preencheu os exames solicitados.";
+  function applyAnalysisOutcome(analyzed, verb = "enviado") {
+    const warning = warningFromAnalysis(analyzed, verb);
+    if (warning) {
+      setWarningModal(warning);
+      if (warning.tone === "danger") {
+        setError(warning.message);
+        setFeedback("");
+        return;
+      }
     }
+
+    if (analyzed?.validation?.code === "before_consultation") {
+      setFeedback(
+        `PDF ${verb}. Como o laudo é anterior à consulta, ele ficou arquivado e não preencheu os exames solicitados.`
+      );
+      return;
+    }
+
     const done = analyzed?.fulfillment?.doneCount || 0;
     if (done > 0) {
-      return `PDF enviado. ${done} exame(s) do pedido foram identificados e marcados como feitos. A Letícia ainda revisa o parecer.`;
+      setFeedback(
+        `PDF ${verb}. ${done} exame(s) do pedido foram identificados e marcados como feitos. A Letícia ainda revisa o parecer.`
+      );
+      return;
     }
-    return "PDF enviado. A Letícia vai revisar e publicar o parecer.";
+    setFeedback(
+      verb === "atualizado"
+        ? "PDF atualizado. Continua aguardando a revisão da Letícia."
+        : "PDF enviado. A Letícia vai revisar e publicar o parecer."
+    );
   }
 
   async function uploadPdf(file) {
@@ -80,6 +157,7 @@ export default function ExamesPage() {
     setUploadStatus("Enviando PDF...");
     setFeedback("");
     setError("");
+    setWarningModal(null);
 
     try {
       const formData = new FormData();
@@ -102,10 +180,14 @@ export default function ExamesPage() {
         if (analyzed.examOrders) setExamOrders(analyzed.examOrders);
       }
 
-      setFeedback(feedbackFromAnalysis(analyzed));
+      applyAnalysisOutcome(analyzed, "enviado");
       await loadReports();
     } catch (err) {
-      setError(err.message || "Erro no envio.");
+      if (err.code === "wrong_patient" || err.validation?.code === "wrong_patient") {
+        applyAnalysisOutcome({ validation: err.validation || { code: "wrong_patient", message: err.message } });
+      } else {
+        setError(err.message || "Erro no envio.");
+      }
       await loadReports();
     } finally {
       setUploading(false);
@@ -133,6 +215,7 @@ export default function ExamesPage() {
     setUploadStatus("Enviando PDF...");
     setError("");
     setFeedback("");
+    setWarningModal(null);
 
     try {
       const formData = new FormData();
@@ -157,10 +240,14 @@ export default function ExamesPage() {
         if (analyzed.examOrders) setExamOrders(analyzed.examOrders);
       }
 
-      setFeedback(feedbackFromAnalysis(analyzed).replace("enviado", "atualizado"));
+      applyAnalysisOutcome(analyzed, "atualizado");
       await loadReports();
     } catch (err) {
-      setError(err.message || "Não foi possível substituir o PDF.");
+      if (err.code === "wrong_patient" || err.validation?.code === "wrong_patient") {
+        applyAnalysisOutcome({ validation: err.validation || { code: "wrong_patient", message: err.message } });
+      } else {
+        setError(err.message || "Não foi possível substituir o PDF.");
+      }
       await loadReports();
     } finally {
       setBusyId("");
@@ -480,6 +567,42 @@ export default function ExamesPage() {
           ))}
         </div>
       ) : null}
+
+      <Modal open={Boolean(warningModal)} onClose={() => setWarningModal(null)} size="sm">
+        <div className="flex flex-col items-center px-2 pb-2 pt-1 text-center">
+          <span
+            className={`flex h-16 w-16 items-center justify-center rounded-full ${
+              warningModal?.tone === "danger"
+                ? "bg-rose-100 text-rose-700"
+                : "bg-amber-100 text-amber-800"
+            }`}
+          >
+            {warningModal?.tone === "danger" ? (
+              <UserX className="h-9 w-9" strokeWidth={1.75} />
+            ) : (
+              <AlertTriangle className="h-9 w-9" strokeWidth={1.75} />
+            )}
+          </span>
+          <h3 className="mt-4 text-xl font-semibold text-graphite">
+            {warningModal?.title || "Atenção"}
+          </h3>
+          <p className="mt-2 max-w-sm text-sm leading-6 text-graphite/65">
+            {warningModal?.message}
+          </p>
+          {warningModal?.detail ? (
+            <p className="mt-3 rounded-xl border border-olive-900/10 bg-linen/70 px-3 py-2 text-xs text-graphite/55">
+              {warningModal.detail}
+            </p>
+          ) : null}
+          <button
+            type="button"
+            className={`${btnPrimary()} mt-6 w-full sm:w-auto`}
+            onClick={() => setWarningModal(null)}
+          >
+            Entendi
+          </button>
+        </div>
+      </Modal>
     </PatientShell>
   );
 }

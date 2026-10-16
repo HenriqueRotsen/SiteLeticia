@@ -162,6 +162,7 @@ export async function analyzeStoredLabReport({
     validation_code: validation.code,
     matches_patient: validation.matchesPatient,
     timing: validation.timing,
+    declared_mismatch: Boolean(validation.declaredMismatch),
     report_date: validation.reportDate,
     detected_patient_name: validation.detectedPatientName,
     usable_for_orders: validation.usableForOrders,
