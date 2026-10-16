@@ -5,7 +5,6 @@ import Link from "next/link";
 import PatientShell from "@/components/layout/PatientShell";
 import { Card } from "@/components/layout/AppShell";
 import Badge from "@/components/ui/Badge";
-import FatSecretNutrientGrid from "@/components/ui/FatSecretNutrientGrid";
 import HelpTooltip from "@/components/ui/HelpTooltip";
 import PrescriptionPrintButton, {
   buildDietPrintHtml,
@@ -14,7 +13,8 @@ import PrescriptionPrintButton, {
   buildSupplementsPrintHtml
 } from "@/components/ui/PrescriptionPrintButton";
 import {
-  formatScaledNutrition,
+  FATSECRET_REPORT_NUTRIENTS,
+  formatNutrientValue,
   scaleNutrition,
   sumNutrition,
   totalPortionGrams
@@ -22,6 +22,50 @@ import {
 import { formatMeasureLabel, restoreMeasureFromStored } from "@/lib/foods/measures";
 import { groupSupplementRows } from "@/lib/diets/supplements";
 import { labelDietStatus } from "@/lib/labels";
+
+function NutritionTooltipContent({ title, totals }) {
+  const rows = FATSECRET_REPORT_NUTRIENTS.filter(
+    (nutrient) => totals?.[nutrient.key] != null && totals[nutrient.key] !== ""
+  );
+
+  if (!rows.length) {
+    return <p className="text-white/70">Sem detalhes nutricionais neste item.</p>;
+  }
+
+  return (
+    <div className="min-w-[13rem]">
+      {title ? <p className="mb-2 border-b border-white/15 pb-1.5 text-[11px] font-semibold">{title}</p> : null}
+      <dl className="space-y-1">
+        {rows.map((nutrient) => (
+          <div key={nutrient.key} className="flex items-baseline justify-between gap-4">
+            <dt className="text-white/65">{nutrient.fullLabel}</dt>
+            <dd className="tabular-nums font-semibold text-white">
+              {formatNutrientValue(nutrient.key, totals[nutrient.key])}
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
+}
+
+function MacroSummary({ totals, label }) {
+  const parts = [
+    totals?.kcal != null ? `${formatNutrientValue("kcal", totals.kcal)}` : null,
+    totals?.protein_g != null ? `${formatNutrientValue("protein_g", totals.protein_g)} prot.` : null,
+    totals?.carbs_g != null ? `${formatNutrientValue("carbs_g", totals.carbs_g)} carb.` : null,
+    totals?.fat_g != null ? `${formatNutrientValue("fat_g", totals.fat_g)} gord.` : null
+  ].filter(Boolean);
+
+  if (!parts.length) return null;
+
+  return (
+    <p className="text-sm text-graphite/55">
+      {label ? <span className="font-semibold text-graphite/70">{label} · </span> : null}
+      <span className="tabular-nums">{parts.join(" · ")}</span>
+    </p>
+  );
+}
 
 function mapMealItems(meal) {
   return (meal.diet_items || []).map((item) => {
@@ -258,69 +302,79 @@ export default function DietaPage() {
 
             return (
               <Card key={meal.id} title={meal.name}>
-                <ul className="space-y-3">
-                  {mealItems.map((item) => {
-                    const itemTotals =
-                      scaleNutrition(item.per100g, totalPortionGrams(item.quantity, item.portionG)) ||
-                      {};
-                    const scaled = formatScaledNutrition(item.per100g, item.quantity, item.portionG);
-
-                    return (
-                      <li
-                        key={item.id}
-                        className="overflow-hidden rounded-2xl border border-olive-900/8 bg-white/70"
-                      >
-                        <div className="border-b border-olive-900/6 px-3 py-3">
-                          <p className="font-medium text-graphite">{item.label}</p>
-                          <p className="mt-0.5 text-xs text-graphite/50">
-                            {formatMeasureLabel(
-                              item.measureUnit,
-                              item.measureAmount,
-                              item.gramsPerUnit
-                            )}
-                            {scaled ? ` · ${scaled.split(" · ")[0]}` : ""}
-                          </p>
-                        </div>
-                        <div className="bg-linen/25 px-3 py-2.5">
-                          <FatSecretNutrientGrid
-                            totals={itemTotals}
-                            title="Nutrientes do alimento"
-                            size="micro"
-                          />
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-
                 {mealItems.length ? (
-                  <div className="mt-4 rounded-2xl border border-olive-900/10 bg-gradient-to-br from-linen/80 to-olive-50/40 px-4 py-4">
-                    <div className="mb-3 flex items-center gap-2">
-                      <p className="text-sm font-semibold text-graphite">Total da refeição</p>
-                      <HelpTooltip content="Siga as porções indicadas. Em dúvida, fale com a Letícia.">
-                        <button
-                          type="button"
-                          className="rounded-full bg-olive-100 px-2 py-0.5 text-xs text-olive-800"
-                        >
-                          ?
+                  <>
+                    <ul className="divide-y divide-olive-900/8">
+                      {mealItems.map((item) => {
+                        const itemTotals =
+                          scaleNutrition(
+                            item.per100g,
+                            totalPortionGrams(item.quantity, item.portionG)
+                          ) || {};
+                        const quantityLabel = formatMeasureLabel(
+                          item.measureUnit,
+                          item.measureAmount,
+                          item.gramsPerUnit
+                        );
+
+                        return (
+                          <li key={item.id}>
+                            <HelpTooltip
+                              side="top"
+                              contentClassName="z-50 max-w-sm rounded-xl bg-graphite px-3.5 py-3 text-xs leading-5 text-white shadow-soft"
+                              content={
+                                <NutritionTooltipContent title={item.label} totals={itemTotals} />
+                              }
+                            >
+                              <button
+                                type="button"
+                                className="flex w-full items-baseline justify-between gap-4 py-3 text-left transition hover:bg-linen/50 focus:bg-linen/50 focus:outline-none"
+                              >
+                                <span className="min-w-0 font-medium text-graphite">{item.label}</span>
+                                <span className="shrink-0 text-sm tabular-nums text-graphite/55">
+                                  {quantityLabel}
+                                </span>
+                              </button>
+                            </HelpTooltip>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                    <div className="mt-3 border-t border-olive-900/8 pt-3">
+                      <HelpTooltip
+                        side="top"
+                        contentClassName="z-50 max-w-sm rounded-xl bg-graphite px-3.5 py-3 text-xs leading-5 text-white shadow-soft"
+                        content={
+                          <NutritionTooltipContent title={`Total · ${meal.name}`} totals={mealTotals} />
+                        }
+                      >
+                        <button type="button" className="text-left transition hover:opacity-80">
+                          <MacroSummary totals={mealTotals} label="Total da refeição" />
                         </button>
                       </HelpTooltip>
                     </div>
-                    <FatSecretNutrientGrid totals={mealTotals} title={null} compact />
-                  </div>
-                ) : null}
+                  </>
+                ) : (
+                  <p className="text-sm text-graphite/45">Nenhum alimento nesta refeição.</p>
+                )}
               </Card>
             );
           })}
 
           {hasMeals ? (
             <Card>
-              <div className="mb-1 flex items-end justify-between gap-3">
-                <div>
+              <HelpTooltip
+                side="top"
+                contentClassName="z-50 max-w-sm rounded-xl bg-graphite px-3.5 py-3 text-xs leading-5 text-white shadow-soft"
+                content={<NutritionTooltipContent title="Total do plano" totals={planTotals} />}
+              >
+                <button type="button" className="w-full text-left transition hover:opacity-80">
                   <h3 className="text-lg font-semibold text-graphite">Total do plano</h3>
-                </div>
-              </div>
-              <FatSecretNutrientGrid totals={planTotals} title={null} />
+                  <div className="mt-1">
+                    <MacroSummary totals={planTotals} />
+                  </div>
+                </button>
+              </HelpTooltip>
             </Card>
           ) : null}
 

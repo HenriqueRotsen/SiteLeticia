@@ -38,7 +38,7 @@ describe("energy density", () => {
       scope: "plano"
     });
 
-    expect(insight.eyebrow).toBe("Insight clínico");
+    expect(insight.eyebrow).toBe("Análise clínica");
     expect(insight.tone).toBe("watch");
     expect(insight.body).toMatch(/hipertrofia|calóricos/i);
   });

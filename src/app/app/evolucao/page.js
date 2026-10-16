@@ -36,7 +36,7 @@ export default function EvolucaoPage() {
   return (
     <PatientShell
       title="Evolução"
-      subtitle="Acompanhe peso e insights ao longo do tempo"
+      subtitle="Acompanhe peso e destaques ao longo do tempo"
       breadcrumbs={["Paciente", "Evolução"]}
     >
       <div className="grid gap-4 lg:grid-cols-3">
@@ -75,7 +75,7 @@ export default function EvolucaoPage() {
             )}
           </div>
         </Card>
-        <Card title="Insights">
+        <Card title="Destaques">
           <div className="space-y-3">
             {insights.slice(0, 5).map((item) => (
               <div key={item.id} className="rounded-xl border border-olive-900/10 bg-linen p-4">
@@ -84,7 +84,7 @@ export default function EvolucaoPage() {
               </div>
             ))}
             {!insights.length ? (
-              <p className="text-sm text-graphite/45">Insights aparecerão conforme seus dados forem registrados.</p>
+              <p className="text-sm text-graphite/45">Os destaques aparecem conforme seus dados forem registrados.</p>
             ) : null}
           </div>
         </Card>

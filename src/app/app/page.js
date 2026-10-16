@@ -93,23 +93,23 @@ export default function PatientHomePage() {
           tone="olive"
         />
         <StatCard
-          label="Insights"
+          label="Destaques"
           value={data.insights.length || 0}
-          hint="Recomendações personalizadas"
+          hint="Resumos personalizados"
           icon={Sparkles}
           tone="linen"
         />
       </div>
 
       <div className="mt-6 grid gap-4 lg:grid-cols-2">
-        <Card title="Insight da semana">
+        <Card title="Destaque da semana">
           {data.insights[0] ? (
             <div className="rounded-xl bg-linen p-4">
               <p className="font-semibold text-graphite">{data.insights[0].title}</p>
               <p className="mt-2 text-sm leading-6 text-graphite/65">{data.insights[0].body}</p>
             </div>
           ) : (
-            <p className="text-sm text-graphite/45">Sem insights ainda. Continue registrando sua evolução.</p>
+            <p className="text-sm text-graphite/45">Sem destaques ainda. Continue registrando sua evolução.</p>
           )}
         </Card>
 

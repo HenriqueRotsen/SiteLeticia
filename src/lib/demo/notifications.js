@@ -49,8 +49,8 @@ export function getDemoNotifications(role) {
     },
     {
       id: "n-patient-3",
-      title: "Novo insight disponível",
-      body: "Confira a recomendação da semana na sua evolução.",
+      title: "Novo destaque disponível",
+      body: "Confira o resumo da semana na sua evolução.",
       href: "/app/evolucao",
       createdAt: new Date(now - 1000 * 60 * 60 * 30).toISOString(),
       unread: false
