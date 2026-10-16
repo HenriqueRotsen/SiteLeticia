@@ -113,6 +113,12 @@ export async function handleDemoApi(request) {
       message: "Senha redefinida com sucesso. Faça login com a nova senha."
     });
   }
+  if (path === "/api/auth/mfa/verify" && method === "POST") {
+    return json({ ok: true, role: "patient", redirectTo: "/app" });
+  }
+  if (path === "/api/auth/mfa/resend" && method === "POST") {
+    return json({ ok: true, message: "Modo demo: código simulado." });
+  }
 
   if (path === "/api/appointments" && method === "GET") {
     return json({ appointments: state.appointments });
