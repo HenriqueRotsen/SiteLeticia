@@ -13,6 +13,13 @@ function formatExtractedAmount(cents) {
   return formatCurrency(cents);
 }
 
+function canCancelAppointment(appt) {
+  const status = String(appt?.status || "")
+    .trim()
+    .toLowerCase();
+  return status === "scheduled" || status === "agendada";
+}
+
 export default function ConsultasPage() {
   const [appointments, setAppointments] = useState([]);
   const [payment, setPayment] = useState({ settings: {}, methods: [] });
@@ -115,6 +122,7 @@ export default function ConsultasPage() {
           const documents = docData.documents || [];
           const isPaid = appt.payment_status === "paid" || appt.payment_status === "waived";
           const amountCents = resolveAppointmentAmountCents(appt, payment.settings);
+          const showCancel = canCancelAppointment(appt);
 
           return (
             <Card key={appt.id} className="mb-4">
@@ -132,28 +140,29 @@ export default function ConsultasPage() {
                     Valor: {formatCurrency(amountCents)}
                   </p>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  {appt.meet_link && appt.status === "scheduled" ? (
-                    <a
-                      href={appt.meet_link}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="rounded-xl bg-olive-700 px-4 py-2 text-sm font-semibold text-white"
-                    >
-                      Entrar no Meet
-                    </a>
-                  ) : null}
-                  {appt.status === "scheduled" ? (
-                    <button
-                      type="button"
-                      onClick={() => cancelAppointment(appt.id)}
-                      className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-800 hover:bg-rose-100"
-                    >
-                      Cancelar
-                    </button>
-                  ) : null}
-                </div>
+                {appt.meet_link && showCancel ? (
+                  <a
+                    href={appt.meet_link}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-xl bg-olive-700 px-4 py-2 text-sm font-semibold text-white"
+                  >
+                    Entrar no Meet
+                  </a>
+                ) : null}
               </div>
+
+              {showCancel ? (
+                <div className="mt-4 flex flex-wrap gap-2 border-t border-olive-900/5 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => cancelAppointment(appt.id)}
+                    className="rounded-xl border border-rose-300 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-800 hover:bg-rose-100"
+                  >
+                    Cancelar consulta
+                  </button>
+                </div>
+              ) : null}
 
               {documents.length ? (
                 <div className="mt-4 space-y-2 border-t border-olive-900/5 pt-4">
