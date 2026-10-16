@@ -124,7 +124,23 @@ export const dietReferralSchema = z.object({
 export const dietExamItemSchema = z.object({
   name: z.string().min(1),
   category: z.enum(["principal", "complementary"]).default("principal"),
-  whenToRequest: z.string().optional().nullable()
+  whenToRequest: z.string().optional().nullable(),
+  status: z.enum(["pending", "done"]).optional(),
+  result: z
+    .object({
+      value: z.number().nullable().optional(),
+      value_text: z.string().nullable().optional(),
+      unit: z.string().nullable().optional(),
+      ref_min: z.number().nullable().optional(),
+      ref_max: z.number().nullable().optional(),
+      flag: z.enum(["low", "high", "normal", "unknown"]).optional(),
+      matched_name: z.string().nullable().optional(),
+      report_id: z.string().optional().nullable(),
+      matched_at: z.string().optional().nullable(),
+      source: z.string().optional().nullable()
+    })
+    .optional()
+    .nullable()
 });
 
 export const dietExamOrderSchema = z.object({

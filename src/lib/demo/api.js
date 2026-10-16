@@ -27,6 +27,57 @@ export function resetDemoState() {
   state = createInitialDemoState();
 }
 
+function normalizeDemoName(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function demoExamOrders() {
+  if (!state.dietPlans?.length) state.dietPlans = [{ ...demoDietPlan }];
+  const plan =
+    state.dietPlans.find((item) => item.status === "active") || state.dietPlans[0] || null;
+  return plan?.diet_exam_orders || [];
+}
+
+function fulfillDemoExamOrders(labResults = []) {
+  let doneCount = 0;
+  for (const plan of state.dietPlans || []) {
+    plan.diet_exam_orders = (plan.diet_exam_orders || []).map((order) => ({
+      ...order,
+      exams: (order.exams || []).map((exam) => {
+        if (exam.status === "done" && exam.result) return exam;
+        const hit = (labResults || []).find((result) => {
+          const left = normalizeDemoName(exam.name);
+          const right = normalizeDemoName(result.marker_name);
+          return left && right && (left === right || left.includes(right) || right.includes(left));
+        });
+        if (!hit) return { ...exam, status: exam.status || "pending" };
+        doneCount += 1;
+        return {
+          ...exam,
+          status: "done",
+          result: {
+            value: hit.value,
+            value_text: hit.value_text || String(hit.value ?? ""),
+            unit: hit.unit || null,
+            ref_min: hit.ref_min ?? null,
+            ref_max: hit.ref_max ?? null,
+            flag: hit.flag || "unknown",
+            matched_name: hit.marker_name,
+            matched_at: new Date().toISOString(),
+            source: "demo"
+          }
+        };
+      })
+    }));
+  }
+  return { doneCount, examOrders: demoExamOrders() };
+}
+
 function docsForAppointment(appointmentId) {
   return (state.appointmentDocuments || [])
     .filter((doc) => doc.appointment_id === appointmentId)
@@ -451,7 +502,7 @@ export async function handleDemoApi(request) {
           lab_results: report.lab_results || []
         };
       });
-    return json({ reports });
+    return json({ reports, examOrders: demoExamOrders() });
   }
 
   if (path === "/api/patients/me/labs" && method === "POST") {
@@ -468,6 +519,7 @@ export async function handleDemoApi(request) {
       storage_path: `demo/labs/${Date.now()}.pdf`
     };
     state.labReports.unshift(report);
+    const fulfillment = fulfillDemoExamOrders(report.lab_results);
     return json({
       report: {
         id: report.id,
@@ -476,7 +528,9 @@ export async function handleDemoApi(request) {
         uploaded_by: report.uploaded_by,
         published_by: null,
         file_url: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
-      }
+      },
+      examOrders: fulfillment.examOrders,
+      fulfillment: { doneCount: fulfillment.doneCount, method: "demo" }
     });
   }
 
@@ -491,6 +545,8 @@ export async function handleDemoApi(request) {
       return json({ message: "Só é possível alterar envios ainda aguardando revisão." }, { status: 400 });
     }
     report.created_at = new Date().toISOString();
+    report.lab_results = demoLabReport.lab_results;
+    const fulfillment = fulfillDemoExamOrders(report.lab_results);
     return json({
       report: {
         id: report.id,
@@ -499,7 +555,9 @@ export async function handleDemoApi(request) {
         uploaded_by: report.uploaded_by,
         published_by: null,
         file_url: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
-      }
+      },
+      examOrders: fulfillment.examOrders,
+      fulfillment: { doneCount: fulfillment.doneCount, method: "demo" }
     });
   }
 

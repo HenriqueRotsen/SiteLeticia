@@ -5,6 +5,7 @@ import Link from "next/link";
 import PatientShell from "@/components/layout/PatientShell";
 import { Card } from "@/components/layout/AppShell";
 import Badge from "@/components/ui/Badge";
+import ExamOrderStatusList from "@/components/ui/ExamOrderStatusList";
 import HelpTooltip from "@/components/ui/HelpTooltip";
 import PrescriptionPrintButton, {
   buildDietPrintHtml,
@@ -477,39 +478,11 @@ export default function DietaPage() {
 
           {hasExams ? (
             <Card title="Pedidos de exame">
-              <div className="space-y-4">
-                {[...(plan.diet_exam_orders || [])]
-                  .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
-                  .map((order) => (
-                    <div key={order.id} className="rounded-2xl border border-olive-900/8 bg-white/70 px-4 py-3">
-                      <p className="font-semibold text-graphite">{order.title}</p>
-                      <ul className="mt-2 space-y-1 text-sm text-graphite/65">
-                        {(order.exams || []).map((exam, index) => (
-                          <li key={`${order.id}-${index}`}>
-                            • {exam.name}
-                            {exam.category === "complementary" && exam.whenToRequest ? (
-                              <span className="block pl-3 text-xs text-graphite/45">
-                                {exam.whenToRequest}
-                              </span>
-                            ) : null}
-                          </li>
-                        ))}
-                      </ul>
-                      {(order.collection_notes || []).length ? (
-                        <div className="mt-3 border-t border-olive-900/5 pt-2">
-                          <p className="text-xs font-semibold uppercase tracking-wide text-graphite/40">
-                            Coleta
-                          </p>
-                          <ul className="mt-1 space-y-1 text-xs text-graphite/55">
-                            {order.collection_notes.map((note, index) => (
-                              <li key={`${order.id}-c-${index}`}>• {note}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      ) : null}
-                    </div>
-                  ))}
-              </div>
+              <ExamOrderStatusList
+                orders={[...(plan.diet_exam_orders || [])].sort(
+                  (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)
+                )}
+              />
             </Card>
           ) : null}
         </div>

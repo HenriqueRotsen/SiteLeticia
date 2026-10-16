@@ -8,6 +8,7 @@ import { compressPdfBuffer } from "@/lib/media/compress-pdf";
 import { writeAuditLog, getClientIp } from "@/lib/audit";
 import { hashCpf, isValidCpf } from "@/lib/cpf";
 import { labReportPatchSchema, patientStubSchema } from "@/lib/validation/schemas";
+import { fulfillExamOrdersFromLabReport } from "@/lib/labs/fulfill-orders";
 
 async function ensurePatient(supabase, patientId, stub) {
   if (patientId) {
@@ -129,6 +130,27 @@ export async function POST(request, { params }) {
     );
   }
 
+  const fulfillment = await fulfillExamOrdersFromLabReport({
+    patientId,
+    reportId: report.id,
+    labResults: extraction.results || [],
+    extractedText: extraction.extractedText || "",
+    pdfBuffer: originalBuffer,
+    currentInterpretation: aiText
+  });
+
+  if (fulfillment.interpretationSummary) {
+    await supabase
+      .from("lab_reports")
+      .update({
+        ai_interpretation: fulfillment.interpretationSummary,
+        interpretation_summary: fulfillment.interpretationSummary
+      })
+      .eq("id", report.id);
+    report.ai_interpretation = fulfillment.interpretationSummary;
+    report.interpretation_summary = fulfillment.interpretationSummary;
+  }
+
   await writeAuditLog({
     actorId: auth.ctx.user.id,
     action: "lab_upload",
@@ -137,7 +159,11 @@ export async function POST(request, { params }) {
     ip: getClientIp(request)
   });
 
-  return NextResponse.json({ report, results: extraction.results || [] });
+  return NextResponse.json({
+    report,
+    results: extraction.results || [],
+    fulfillment: { doneCount: fulfillment.doneCount, method: fulfillment.method }
+  });
 }
 
 export async function GET(_request, { params }) {
