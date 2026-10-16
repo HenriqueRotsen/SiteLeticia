@@ -132,15 +132,46 @@ export async function GET() {
   const auth = await requirePatient();
   if (auth.error) return auth.error;
 
-  const { data, error } = await auth.ctx.supabase
-    .from("appointments")
-    .select("*")
-    .eq("patient_id", auth.ctx.patient.id)
-    .order("starts_at", { ascending: true });
+  const supabase = createSupabaseAdmin();
+  const [{ data, error }, { data: settings }] = await Promise.all([
+    auth.ctx.supabase
+      .from("appointments")
+      .select("*")
+      .eq("patient_id", auth.ctx.patient.id)
+      .order("starts_at", { ascending: true }),
+    supabase.from("payment_settings").select("*").limit(1).maybeSingle()
+  ]);
 
   if (error) {
     return NextResponse.json({ message: "Erro ao carregar consultas." }, { status: 500 });
   }
 
-  return NextResponse.json({ appointments: data || [] });
+  const appointments = data || [];
+
+  // Consultas antigas com valor 0 herdam o preço atual configurado.
+  await Promise.all(
+    appointments
+      .filter(
+        (appt) =>
+          appt.status === "scheduled" &&
+          appt.payment_status === "pending" &&
+          !(Number(appt.amount_cents) > 0)
+      )
+      .map(async (appt) => {
+        const priceCents =
+          appt.type === "return" && settings?.return_price_cents != null
+            ? settings.return_price_cents
+            : settings?.consultation_price_cents || 0;
+        if (!(Number(priceCents) > 0)) return;
+        const { data: updated } = await supabase
+          .from("appointments")
+          .update({ amount_cents: priceCents, updated_at: new Date().toISOString() })
+          .eq("id", appt.id)
+          .select("*")
+          .single();
+        if (updated) Object.assign(appt, updated);
+      })
+  );
+
+  return NextResponse.json({ appointments });
 }

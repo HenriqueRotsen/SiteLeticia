@@ -6,6 +6,7 @@ import { Card, formatCurrency } from "@/components/layout/AppShell";
 import Badge, { appointmentBadge, paymentBadge } from "@/components/ui/Badge";
 import PaymentDocUploadZone from "@/components/ui/PaymentDocUploadZone";
 import { labelPaymentDocType } from "@/lib/labels";
+import { formatAppointmentDateTime, resolveAppointmentAmountCents } from "@/lib/datetime";
 
 function formatExtractedAmount(cents) {
   if (cents == null) return "—";
@@ -113,12 +114,13 @@ export default function ConsultasPage() {
           const summary = docData.summary || {};
           const documents = docData.documents || [];
           const isPaid = appt.payment_status === "paid" || appt.payment_status === "waived";
+          const amountCents = resolveAppointmentAmountCents(appt, payment.settings);
 
           return (
             <Card key={appt.id} className="mb-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <p className="font-semibold">{new Date(appt.starts_at).toLocaleString("pt-BR")}</p>
+                  <p className="font-semibold">{formatAppointmentDateTime(appt.starts_at)}</p>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
                     <Badge variant={statusBadge.variant}>{statusBadge.label}</Badge>
                     <Badge variant={payBadge.variant}>{payBadge.label}</Badge>
@@ -126,7 +128,9 @@ export default function ConsultasPage() {
                       <Badge variant="info">Comprovante enviado</Badge>
                     ) : null}
                   </div>
-                  <p className="mt-2 text-sm">{formatCurrency(appt.amount_cents)}</p>
+                  <p className="mt-2 text-sm font-medium text-graphite">
+                    Valor: {formatCurrency(amountCents)}
+                  </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   {appt.meet_link && appt.status === "scheduled" ? (
