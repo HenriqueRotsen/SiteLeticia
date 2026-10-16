@@ -42,7 +42,7 @@ export async function POST(request) {
     // Link próprio: evita o verify do Supabase perder o redirect para /redefinir-senha
     const resetUrl = `${siteUrl}/auth/confirm?token_hash=${encodeURIComponent(tokenHash)}&type=recovery&next=${encodeURIComponent("/redefinir-senha")}`;
 
-    const emailContent = passwordResetEmail({ resetUrl });
+    const emailContent = passwordResetEmail({ resetUrl, siteUrl });
     await sendEmail({
       to: body.email,
       subject: emailContent.subject,

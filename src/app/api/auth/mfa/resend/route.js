@@ -4,6 +4,7 @@ import { getClientIp } from "@/lib/audit";
 import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { issueLoginOtp } from "@/lib/auth/otp";
 import { MFA_PENDING_COOKIE, mfaCookieOptions } from "@/lib/auth/mfa-cookies";
+import { getSiteUrl } from "@/lib/site-url";
 import { loginOtpEmail, sendEmail } from "@/lib/email/resend";
 
 export async function POST(request) {
@@ -26,7 +27,7 @@ export async function POST(request) {
 
   try {
     const { code } = await issueLoginOtp(user.id);
-    const emailContent = loginOtpEmail({ code });
+    const emailContent = loginOtpEmail({ code, siteUrl: getSiteUrl(request) });
     await sendEmail({
       to: user.email,
       subject: emailContent.subject,

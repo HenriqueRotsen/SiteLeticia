@@ -203,8 +203,14 @@ export async function validateLabReportIdentityAndTiming({
   }
 
   // Paciente disse "depois", mas a data no laudo é anterior → tratar como anterior.
-  if (declaredTiming === "after" && timing === "before") {
+  const markedAfterButBefore = declaredTiming === "after" && timing === "before";
+  if (markedAfterButBefore) {
     timing = "before";
+  }
+  // Paciente disse "antes", mas a data no laudo é posterior → corrigir para posterior.
+  const markedBeforeButAfter = declaredTiming === "before" && timing === "after";
+  if (markedBeforeButAfter) {
+    timing = "after";
   }
   // Paciente disse "antes" e não há data → respeitar declaração.
   if (declaredTiming === "before" && timing === "unknown") {
@@ -222,6 +228,7 @@ export async function validateLabReportIdentityAndTiming({
         "Este laudo não parece ser deste paciente (nome no PDF não confere). O envio foi barrado.",
       matchesPatient: false,
       timing,
+      declaredMismatch: false,
       reportDate: reportDate ? reportDate.toISOString().slice(0, 10) : null,
       detectedPatientName: detected.patientNameOnReport,
       usableForOrders: false,
@@ -233,10 +240,12 @@ export async function validateLabReportIdentityAndTiming({
     return {
       ok: true,
       code: "before_consultation",
-      message:
-        "Laudo aceito, mas é anterior à consulta. Ele fica arquivado e não preenche os exames solicitados.",
+      message: markedAfterButBefore
+        ? "Você marcou o exame como posterior, mas a data do laudo é anterior à consulta. O PDF ficou arquivado e não preencheu os exames solicitados."
+        : "Laudo aceito, mas é anterior à consulta. Ele fica arquivado e não preenche os exames solicitados.",
       matchesPatient: matchesPatient !== false,
       timing: "before",
+      declaredMismatch: markedAfterButBefore,
       reportDate: reportDate ? reportDate.toISOString().slice(0, 10) : null,
       detectedPatientName: detected.patientNameOnReport,
       usableForOrders: false,
@@ -246,10 +255,13 @@ export async function validateLabReportIdentityAndTiming({
 
   return {
     ok: true,
-    code: "ok",
-    message: "Laudo validado para o paciente.",
+    code: markedBeforeButAfter ? "timing_corrected" : "ok",
+    message: markedBeforeButAfter
+      ? "Você marcou o exame como anterior, mas a data do laudo é posterior à consulta. Seguimos com a análise normalmente."
+      : "Laudo validado para o paciente.",
     matchesPatient: matchesPatient !== false,
     timing: timing === "after" ? "after" : "unknown",
+    declaredMismatch: markedBeforeButAfter,
     reportDate: reportDate ? reportDate.toISOString().slice(0, 10) : null,
     detectedPatientName: detected.patientNameOnReport,
     usableForOrders: true,
