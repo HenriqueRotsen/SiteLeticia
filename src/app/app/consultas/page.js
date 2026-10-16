@@ -1,99 +1,73 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import PatientShell from "@/components/layout/PatientShell";
 import { Card, formatCurrency } from "@/components/layout/AppShell";
 import Badge, { appointmentBadge, paymentBadge } from "@/components/ui/Badge";
-import PaymentDocUploadZone from "@/components/ui/PaymentDocUploadZone";
-import { labelPaymentDocType } from "@/lib/labels";
+import AppointmentsToolbar from "@/components/ui/AppointmentsToolbar";
+import SortableTh from "@/components/ui/SortableTh";
+import TablePagination from "@/components/ui/TablePagination";
 import { formatAppointmentDateTime, resolveAppointmentAmountCents } from "@/lib/datetime";
+import {
+  APPOINTMENT_PAGE_SIZE,
+  filterAppointments,
+  paginateRows,
+  sortAppointments
+} from "@/lib/appointments/table-utils";
 
-function formatExtractedAmount(cents) {
-  if (cents == null) return "—";
-  return formatCurrency(cents);
-}
-
-function canCancelAppointment(appt) {
-  const status = String(appt?.status || "")
-    .trim()
-    .toLowerCase();
-  return status === "scheduled" || status === "agendada";
-}
+const DEFAULT_FILTERS = {
+  query: "",
+  period: "all",
+  status: "all",
+  paymentStatus: "all"
+};
 
 export default function ConsultasPage() {
   const [appointments, setAppointments] = useState([]);
   const [payment, setPayment] = useState({ settings: {}, methods: [] });
-  const [docsByAppt, setDocsByAppt] = useState({});
-  const [uploadingId, setUploadingId] = useState("");
-  const [feedback, setFeedback] = useState("");
+  const [filters, setFilters] = useState(DEFAULT_FILTERS);
+  const [sortKey, setSortKey] = useState("starts_at");
+  const [sortDir, setSortDir] = useState("desc");
+  const [page, setPage] = useState(1);
   const [error, setError] = useState("");
-
-  const loadDocuments = useCallback(async (list) => {
-    const entries = await Promise.all(
-      (list || []).map(async (appt) => {
-        const res = await fetch(`/api/appointments/${appt.id}/documents`);
-        const data = await res.json().catch(() => ({}));
-        return [appt.id, data];
-      })
-    );
-    setDocsByAppt(Object.fromEntries(entries));
-  }, []);
 
   const load = useCallback(async () => {
     const [a, p] = await Promise.all([
       fetch("/api/appointments").then((r) => r.json()),
       fetch("/api/payment-info").then((r) => r.json())
     ]);
-    const list = a.appointments || [];
-    setAppointments(list);
+    setAppointments(a.appointments || []);
     setPayment(p);
-    await loadDocuments(list);
-  }, [loadDocuments]);
+  }, []);
 
   useEffect(() => {
-    load();
+    load().catch(() => setError("Não foi possível carregar as consultas."));
   }, [load]);
 
-  async function uploadProof(appointmentId, file) {
-    setUploadingId(appointmentId);
-    setFeedback("");
-    setError("");
+  useEffect(() => {
+    setPage(1);
+  }, [filters, sortKey, sortDir]);
 
-    const formData = new FormData();
-    formData.append("file", file);
+  const filtered = useMemo(() => filterAppointments(appointments, filters), [appointments, filters]);
 
-    const res = await fetch(`/api/appointments/${appointmentId}/documents`, {
-      method: "POST",
-      body: formData
-    });
-    const data = await res.json().catch(() => ({}));
-    setUploadingId("");
+  const sorted = useMemo(
+    () => sortAppointments(filtered, sortKey, sortDir),
+    [filtered, sortKey, sortDir]
+  );
 
-    if (!res.ok) {
-      setError(data.message || "Erro ao enviar comprovante.");
+  const pagination = useMemo(
+    () => paginateRows(sorted, page, APPOINTMENT_PAGE_SIZE),
+    [sorted, page]
+  );
+
+  function handleSort(key) {
+    if (sortKey === key) {
+      setSortDir((current) => (current === "asc" ? "desc" : "asc"));
       return;
     }
-
-    setFeedback("Comprovante enviado. Aguarde a validação da nutricionista para liberar a prescrição.");
-    await load();
-  }
-
-  async function cancelAppointment(appointmentId) {
-    if (!window.confirm("Deseja cancelar esta consulta?")) return;
-    setError("");
-    setFeedback("");
-    const res = await fetch(`/api/appointments/${appointmentId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: "cancelled" })
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      setError(data.message || "Não foi possível cancelar a consulta.");
-      return;
-    }
-    setFeedback("Consulta cancelada.");
-    await load();
+    setSortKey(key);
+    setSortDir("desc");
   }
 
   return (
@@ -103,114 +77,107 @@ export default function ConsultasPage() {
           {error}
         </p>
       ) : null}
-      {feedback ? (
-        <p className="mb-4 rounded-xl border border-olive-200 bg-olive-50 px-4 py-3 text-sm text-olive-900">
-          {feedback}
-        </p>
-      ) : null}
 
-      {!appointments.length ? (
-        <Card>
-          <p className="text-graphite/70">Você ainda não tem consultas.</p>
-        </Card>
-      ) : (
-        appointments.map((appt) => {
-          const statusBadge = appointmentBadge(appt.status);
-          const payBadge = paymentBadge(appt.payment_status);
-          const docData = docsByAppt[appt.id] || {};
-          const summary = docData.summary || {};
-          const documents = docData.documents || [];
-          const isPaid = appt.payment_status === "paid" || appt.payment_status === "waived";
-          const amountCents = resolveAppointmentAmountCents(appt, payment.settings);
-          const showCancel = canCancelAppointment(appt);
+      <Card className="mb-4">
+        <AppointmentsToolbar
+          filters={filters}
+          onChange={setFilters}
+          total={appointments.length}
+          filteredTotal={filtered.length}
+        />
+      </Card>
 
-          return (
-            <Card key={appt.id} className="mb-4">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <p className="font-semibold">{formatAppointmentDateTime(appt.starts_at)}</p>
-                  <div className="mt-2 flex flex-wrap items-center gap-2">
-                    <Badge variant={statusBadge.variant}>{statusBadge.label}</Badge>
-                    <Badge variant={payBadge.variant}>{payBadge.label}</Badge>
-                    {summary.hasProof && !isPaid ? (
-                      <Badge variant="info">Comprovante enviado</Badge>
-                    ) : null}
-                  </div>
-                  <p className="mt-2 text-sm font-medium text-graphite">
-                    Valor: {formatCurrency(amountCents)}
-                  </p>
-                </div>
-                {appt.meet_link && showCancel ? (
-                  <a
-                    href={appt.meet_link}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="rounded-xl bg-olive-700 px-4 py-2 text-sm font-semibold text-white"
-                  >
-                    Entrar no Meet
-                  </a>
-                ) : null}
-              </div>
+      <Card>
+        {!appointments.length ? (
+          <p className="py-8 text-center text-sm text-graphite/55">Você ainda não tem consultas.</p>
+        ) : !pagination.rows.length ? (
+          <p className="py-8 text-center text-sm text-graphite/55">
+            Nenhuma consulta encontrada com esses filtros.
+          </p>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="border-b border-olive-900/10">
+                    <SortableTh
+                      label="Data"
+                      sortKey="starts_at"
+                      activeKey={sortKey}
+                      direction={sortDir}
+                      onSort={handleSort}
+                    />
+                    <SortableTh
+                      label="Status"
+                      sortKey="status"
+                      activeKey={sortKey}
+                      direction={sortDir}
+                      onSort={handleSort}
+                    />
+                    <SortableTh
+                      label="Pagamento"
+                      sortKey="payment"
+                      activeKey={sortKey}
+                      direction={sortDir}
+                      onSort={handleSort}
+                    />
+                    <SortableTh
+                      label="Valor"
+                      sortKey="amount"
+                      activeKey={sortKey}
+                      direction={sortDir}
+                      onSort={handleSort}
+                    />
+                    <th className="py-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-graphite/50">
+                      Ações
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pagination.rows.map((appt) => {
+                    const status = appointmentBadge(appt.status);
+                    const paymentBadgeInfo = paymentBadge(appt.payment_status);
+                    const amountCents = resolveAppointmentAmountCents(appt, payment.settings);
 
-              {showCancel ? (
-                <div className="mt-4 flex flex-wrap gap-2 border-t border-olive-900/5 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => cancelAppointment(appt.id)}
-                    className="rounded-xl border border-rose-300 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-800 hover:bg-rose-100"
-                  >
-                    Cancelar consulta
-                  </button>
-                </div>
-              ) : null}
+                    return (
+                      <tr key={appt.id} className="border-t border-olive-900/5 hover:bg-linen/50">
+                        <td className="py-3 pr-3 whitespace-nowrap font-medium text-graphite">
+                          {formatAppointmentDateTime(appt.starts_at)}
+                        </td>
+                        <td className="py-3 pr-3">
+                          <Badge variant={status.variant}>{status.label}</Badge>
+                        </td>
+                        <td className="py-3 pr-3">
+                          <Badge variant={paymentBadgeInfo.variant}>{paymentBadgeInfo.label}</Badge>
+                        </td>
+                        <td className="py-3 pr-3 whitespace-nowrap text-graphite/70">
+                          {formatCurrency(amountCents)}
+                        </td>
+                        <td className="py-3 pr-3">
+                          <Link
+                            href={`/app/consultas/${appt.id}`}
+                            className="font-semibold text-olive-800 hover:underline"
+                          >
+                            Abrir
+                          </Link>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
 
-              {documents.length ? (
-                <div className="mt-4 space-y-2 border-t border-olive-900/5 pt-4">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-graphite/45">
-                    Documentos
-                  </p>
-                  {documents.map((doc) => (
-                    <div
-                      key={doc.id}
-                      className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-linen/50 px-3 py-2 text-sm"
-                    >
-                      <div>
-                        <p className="font-medium">{labelPaymentDocType(doc.doc_type)}</p>
-                        <p className="text-xs text-graphite/55">
-                          Valor lido: {formatExtractedAmount(doc.extracted_amount_cents)}
-                          {doc.amount_matches === false ? " · divergente" : ""}
-                          {doc.amount_matches === true ? " · confere" : ""}
-                        </p>
-                      </div>
-                      {doc.url ? (
-                        <a
-                          href={doc.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-sm font-medium text-olive-800 hover:underline"
-                        >
-                          Ver arquivo
-                        </a>
-                      ) : null}
-                    </div>
-                  ))}
-                </div>
-              ) : null}
-
-              {!isPaid ? (
-                <div className="mt-4 border-t border-olive-900/5 pt-4">
-                  <PaymentDocUploadZone
-                    label={summary.hasProof ? "Enviar novo comprovante" : "Enviar comprovante"}
-                    description="Após a consulta (ou antes), anexe o PDF ou a foto do pagamento. A prescrição só libera depois da validação."
-                    uploading={uploadingId === appt.id}
-                    onFileSelect={(file) => uploadProof(appt.id, file)}
-                  />
-                </div>
-              ) : null}
-            </Card>
-          );
-        })
-      )}
+            <TablePagination
+              page={pagination.page}
+              totalPages={pagination.totalPages}
+              total={pagination.total}
+              pageSize={APPOINTMENT_PAGE_SIZE}
+              onPageChange={setPage}
+            />
+          </>
+        )}
+      </Card>
 
       <Card className="mt-4">
         <h3 className="font-semibold">Instruções de pagamento</h3>

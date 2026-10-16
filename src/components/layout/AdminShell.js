@@ -49,6 +49,7 @@ const ADMIN_CRUMB_HREFS = {
   Dashboard: "/admin",
   Pacientes: "/admin/pacientes",
   Consultas: "/admin/consultas",
+  Detalhe: null,
   Financeiro: "/admin/financeiro",
   "Exames pendentes": "/admin/exames",
   Exames: "/admin/exames",

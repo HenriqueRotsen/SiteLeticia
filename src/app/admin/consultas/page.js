@@ -1,98 +1,69 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import AdminShell from "@/components/layout/AdminShell";
-import { Card, btnPrimary, btnSecondary, formatCurrency } from "@/components/layout/AppShell";
-import Badge, { paymentBadge } from "@/components/ui/Badge";
-import PaymentDocUploadZone from "@/components/ui/PaymentDocUploadZone";
-import { labelPaymentDocType } from "@/lib/labels";
+import { Card, formatCurrency } from "@/components/layout/AppShell";
+import Badge, { appointmentBadge, paymentBadge } from "@/components/ui/Badge";
+import AppointmentsToolbar from "@/components/ui/AppointmentsToolbar";
+import SortableTh from "@/components/ui/SortableTh";
+import TablePagination from "@/components/ui/TablePagination";
+import { formatAppointmentDateTime } from "@/lib/datetime";
+import {
+  APPOINTMENT_PAGE_SIZE,
+  filterAppointments,
+  paginateRows,
+  sortAppointments
+} from "@/lib/appointments/table-utils";
+
+const DEFAULT_FILTERS = {
+  query: "",
+  period: "all",
+  status: "all",
+  paymentStatus: "all"
+};
 
 export default function AdminConsultasPage() {
   const [appointments, setAppointments] = useState([]);
-  const [expandedId, setExpandedId] = useState("");
-  const [docsByAppt, setDocsByAppt] = useState({});
-  const [uploadingId, setUploadingId] = useState("");
-  const [savingId, setSavingId] = useState("");
+  const [filters, setFilters] = useState(DEFAULT_FILTERS);
+  const [sortKey, setSortKey] = useState("starts_at");
+  const [sortDir, setSortDir] = useState("desc");
+  const [page, setPage] = useState(1);
   const [error, setError] = useState("");
-  const [feedback, setFeedback] = useState("");
-
-  const loadDocs = useCallback(async (id) => {
-    const res = await fetch(`/api/admin/appointments/${id}/documents`);
-    const data = await res.json().catch(() => ({}));
-    setDocsByAppt((prev) => ({ ...prev, [id]: data }));
-  }, []);
-
-  async function load() {
-    const res = await fetch("/api/admin/appointments");
-    const data = await res.json();
-    setAppointments(data.appointments || []);
-  }
 
   useEffect(() => {
-    load();
+    fetch("/api/admin/appointments")
+      .then((r) => r.json())
+      .then((data) => setAppointments(data.appointments || []))
+      .catch(() => setError("Não foi possível carregar as consultas."));
   }, []);
 
-  async function toggleExpand(id) {
-    if (expandedId === id) {
-      setExpandedId("");
+  useEffect(() => {
+    setPage(1);
+  }, [filters, sortKey, sortDir]);
+
+  const filtered = useMemo(
+    () => filterAppointments(appointments, filters, { includePatient: true }),
+    [appointments, filters]
+  );
+
+  const sorted = useMemo(
+    () => sortAppointments(filtered, sortKey, sortDir),
+    [filtered, sortKey, sortDir]
+  );
+
+  const pagination = useMemo(
+    () => paginateRows(sorted, page, APPOINTMENT_PAGE_SIZE),
+    [sorted, page]
+  );
+
+  function handleSort(key) {
+    if (sortKey === key) {
+      setSortDir((current) => (current === "asc" ? "desc" : "asc"));
       return;
     }
-    setExpandedId(id);
-    await loadDocs(id);
-  }
-
-  async function updatePayment(id, paymentStatus) {
-    setSavingId(id);
-    setError("");
-    setFeedback("");
-    const res = await fetch(`/api/admin/appointments/${id}/payment`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ paymentStatus })
-    });
-    const data = await res.json().catch(() => ({}));
-    setSavingId("");
-
-    if (!res.ok) {
-      setError(data.message || "Erro ao atualizar pagamento.");
-      return;
-    }
-
-    setFeedback(
-      paymentStatus === "paid"
-        ? "Pagamento validado. A prescrição fica liberada para o paciente."
-        : "Status de pagamento atualizado."
-    );
-    await load();
-    if (expandedId === id) await loadDocs(id);
-  }
-
-  async function uploadInvoice(appointmentId, file) {
-    setUploadingId(appointmentId);
-    setError("");
-    setFeedback("");
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("docType", "invoice");
-
-    const res = await fetch(`/api/admin/appointments/${appointmentId}/documents`, {
-      method: "POST",
-      body: formData
-    });
-    const data = await res.json().catch(() => ({}));
-    setUploadingId("");
-
-    if (!res.ok) {
-      setError(data.message || "Erro ao enviar nota fiscal.");
-      return;
-    }
-
-    if (data.document?.amount_matches === false) {
-      setFeedback("Nota fiscal anexada. Atenção: o valor extraído não confere com a consulta.");
-    } else {
-      setFeedback("Nota fiscal anexada.");
-    }
-    await loadDocs(appointmentId);
+    setSortKey(key);
+    setSortDir(key === "patient" ? "asc" : "desc");
   }
 
   return (
@@ -102,156 +73,114 @@ export default function AdminConsultasPage() {
           {error}
         </p>
       ) : null}
-      {feedback ? (
-        <p className="mb-4 rounded-xl border border-olive-200 bg-olive-50 px-4 py-3 text-sm text-olive-900">
-          {feedback}
-        </p>
-      ) : null}
+
+      <Card className="mb-4">
+        <AppointmentsToolbar
+          filters={filters}
+          onChange={setFilters}
+          total={appointments.length}
+          filteredTotal={filtered.length}
+          showPatientHint
+        />
+      </Card>
 
       <Card>
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <thead>
-              <tr className="text-left text-xs uppercase tracking-wide text-graphite/50">
-                <th className="py-2">Paciente</th>
-                <th className="py-2">Data</th>
-                <th className="py-2">Valor</th>
-                <th className="py-2">Pagamento</th>
-                <th className="py-2">Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {appointments.map((appt) => {
-                const badge = paymentBadge(appt.payment_status);
-                const open = expandedId === appt.id;
-                const docData = docsByAppt[appt.id] || {};
-                const summary = docData.summary || {};
-                const documents = docData.documents || [];
+        {!pagination.rows.length ? (
+          <p className="py-8 text-center text-sm text-graphite/50">
+            Nenhuma consulta encontrada com esses filtros.
+          </p>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="border-b border-olive-900/10">
+                    <SortableTh
+                      label="Paciente"
+                      sortKey="patient"
+                      activeKey={sortKey}
+                      direction={sortDir}
+                      onSort={handleSort}
+                    />
+                    <SortableTh
+                      label="Data"
+                      sortKey="starts_at"
+                      activeKey={sortKey}
+                      direction={sortDir}
+                      onSort={handleSort}
+                    />
+                    <SortableTh
+                      label="Status"
+                      sortKey="status"
+                      activeKey={sortKey}
+                      direction={sortDir}
+                      onSort={handleSort}
+                    />
+                    <SortableTh
+                      label="Pagamento"
+                      sortKey="payment"
+                      activeKey={sortKey}
+                      direction={sortDir}
+                      onSort={handleSort}
+                    />
+                    <SortableTh
+                      label="Valor"
+                      sortKey="amount"
+                      activeKey={sortKey}
+                      direction={sortDir}
+                      onSort={handleSort}
+                    />
+                    <th className="py-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-graphite/50">
+                      Ações
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pagination.rows.map((appt) => {
+                    const status = appointmentBadge(appt.status);
+                    const payment = paymentBadge(appt.payment_status);
 
-                return (
-                  <Fragment key={appt.id}>
-                    <tr className="border-t border-olive-900/5">
-                      <td className="py-3">{appt.patients?.full_name}</td>
-                      <td className="py-3">{new Date(appt.starts_at).toLocaleString("pt-BR")}</td>
-                      <td className="py-3">{formatCurrency(appt.amount_cents)}</td>
-                      <td className="py-3">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Badge variant={badge.variant}>{badge.label}</Badge>
-                          {summary.hasProof && appt.payment_status === "pending" ? (
-                            <Badge variant="info">Com comprovante</Badge>
-                          ) : null}
-                          {summary.hasMismatch ? (
-                            <Badge variant="danger">Valor divergente</Badge>
-                          ) : null}
-                        </div>
-                      </td>
-                      <td className="py-3">
-                        <button
-                          type="button"
-                          onClick={() => toggleExpand(appt.id)}
-                          className="text-olive-800 hover:underline"
-                        >
-                          {open ? "Fechar" : "Documentos"}
-                        </button>
-                      </td>
-                    </tr>
-                    {open ? (
-                      <tr className="border-t border-olive-900/5 bg-linen/30">
-                        <td colSpan={5} className="px-2 py-4">
-                          <div className="grid gap-4 lg:grid-cols-2">
-                            <div className="space-y-3">
-                              <p className="text-xs font-semibold uppercase tracking-wide text-graphite/45">
-                                Comprovante e NF
-                              </p>
-                              {!documents.length ? (
-                                <p className="text-sm text-graphite/55">Nenhum documento ainda.</p>
-                              ) : (
-                                documents.map((doc) => (
-                                  <div
-                                    key={doc.id}
-                                    className="rounded-xl border border-olive-900/10 bg-white px-3 py-3"
-                                  >
-                                    <div className="flex flex-wrap items-start justify-between gap-2">
-                                      <div>
-                                        <p className="font-medium">
-                                          {labelPaymentDocType(doc.doc_type)}
-                                        </p>
-                                        <p className="mt-1 text-xs text-graphite/55">
-                                          Extraído:{" "}
-                                          {doc.extracted_amount_cents != null
-                                            ? formatCurrency(doc.extracted_amount_cents)
-                                            : "—"}
-                                          {doc.extracted_payer_name
-                                            ? ` · ${doc.extracted_payer_name}`
-                                            : ""}
-                                        </p>
-                                        <p className="text-xs text-graphite/45">
-                                          Esperado: {formatCurrency(appt.amount_cents)}
-                                          {doc.amount_matches === true ? " · confere" : ""}
-                                          {doc.amount_matches === false ? " · não confere" : ""}
-                                        </p>
-                                      </div>
-                                      {doc.url ? (
-                                        <a
-                                          href={doc.url}
-                                          target="_blank"
-                                          rel="noreferrer"
-                                          className="text-sm font-medium text-olive-800 hover:underline"
-                                        >
-                                          Abrir
-                                        </a>
-                                      ) : null}
-                                    </div>
-                                  </div>
-                                ))
-                              )}
-                            </div>
-
-                            <div className="space-y-4">
-                              <div className="flex flex-wrap gap-2">
-                                <button
-                                  type="button"
-                                  disabled={savingId === appt.id}
-                                  onClick={() => updatePayment(appt.id, "paid")}
-                                  className={btnPrimary()}
-                                >
-                                  Validar pagamento
-                                </button>
-                                <button
-                                  type="button"
-                                  disabled={savingId === appt.id}
-                                  onClick={() => updatePayment(appt.id, "waived")}
-                                  className={btnSecondary()}
-                                >
-                                  Isentar
-                                </button>
-                                <button
-                                  type="button"
-                                  disabled={savingId === appt.id}
-                                  onClick={() => updatePayment(appt.id, "pending")}
-                                  className={btnSecondary()}
-                                >
-                                  Marcar pendente
-                                </button>
-                              </div>
-
-                              <PaymentDocUploadZone
-                                label="Anexar nota fiscal"
-                                description="O sistema confere se o valor da NF bate com a consulta (e com o comprovante, se houver)."
-                                uploading={uploadingId === appt.id}
-                                onFileSelect={(file) => uploadInvoice(appt.id, file)}
-                              />
-                            </div>
-                          </div>
+                    return (
+                      <tr key={appt.id} className="border-t border-olive-900/5 hover:bg-linen/50">
+                        <td className="py-3 pr-3 font-medium text-graphite">
+                          {appt.patients?.full_name || "—"}
+                        </td>
+                        <td className="py-3 pr-3 whitespace-nowrap text-graphite/70">
+                          {formatAppointmentDateTime(appt.starts_at)}
+                        </td>
+                        <td className="py-3 pr-3">
+                          <Badge variant={status.variant}>{status.label}</Badge>
+                        </td>
+                        <td className="py-3 pr-3">
+                          <Badge variant={payment.variant}>{payment.label}</Badge>
+                        </td>
+                        <td className="py-3 pr-3 whitespace-nowrap text-graphite/70">
+                          {formatCurrency(appt.amount_cents)}
+                        </td>
+                        <td className="py-3 pr-3">
+                          <Link
+                            href={`/admin/consultas/${appt.id}`}
+                            className="font-semibold text-olive-800 hover:underline"
+                          >
+                            Detalhes
+                          </Link>
                         </td>
                       </tr>
-                    ) : null}
-                  </Fragment>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <TablePagination
+              page={pagination.page}
+              totalPages={pagination.totalPages}
+              total={pagination.total}
+              pageSize={APPOINTMENT_PAGE_SIZE}
+              onPageChange={setPage}
+            />
+          </>
+        )}
       </Card>
     </AdminShell>
   );
