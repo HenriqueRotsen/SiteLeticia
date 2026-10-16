@@ -3,7 +3,7 @@ export const site = {
   role: "Nutricionista clínica",
   domain: "Saúde & Nutrição",
   email: process.env.NEXT_PUBLIC_CONTACT_EMAIL || "leticiavrcunha@gmail.com",
-  whatsapp: process.env.NEXT_PUBLIC_CONTACT_WHATSAPP || "5531995244214",
+  whatsapp: process.env.NEXT_PUBLIC_CONTACT_WHATSAPP || "5531987450173",
   instagram: process.env.NEXT_PUBLIC_CONTACT_INSTAGRAM || "leticiavrcunha",
   city: "Belo Horizonte, MG"
 };
@@ -219,6 +219,46 @@ export function whatsappLink(phone, message = "") {
   const digits = String(phone || "").replace(/\D/g, "");
   const text = message ? `?text=${encodeURIComponent(message)}` : "";
   return `https://wa.me/${digits}${text}`;
+}
+
+/** Mensagem padrão ao abrir o WhatsApp pelos canais diretos. */
+export function buildWhatsappIntroMessage() {
+  return [
+    `Olá, ${site.name}! 👋`,
+    "",
+    `Encontrei seu site e gostaria de conversar sobre acompanhamento nutricional.`,
+    "",
+    "Pode me orientar sobre disponibilidade, valores e o próximo passo para começar?"
+  ].join("\n");
+}
+
+/**
+ * Mensagem elaborada a partir do formulário de contato.
+ * @param {{ name: string, email: string, phone: string, subject: string, message: string }} form
+ */
+export function buildWhatsappContactMessage(form) {
+  const name = String(form?.name || "").trim() || "Não informado";
+  const email = String(form?.email || "").trim() || "Não informado";
+  const phone = String(form?.phone || "").trim() || "Não informado";
+  const subject = String(form?.subject || "").trim() || "Contato pelo site";
+  const message = String(form?.message || "").trim() || "—";
+
+  return [
+    `Olá, ${site.name}! 👋`,
+    "",
+    "Estou entrando em contato pelo site e gostaria de falar com você.",
+    "",
+    "📋 *Dados do contato*",
+    `• Nome: ${name}`,
+    `• E-mail: ${email}`,
+    `• WhatsApp: ${phone}`,
+    `• Assunto: ${subject}`,
+    "",
+    "💬 *Mensagem*",
+    message,
+    "",
+    "Fico no aguardo do seu retorno. Obrigada!"
+  ].join("\n");
 }
 
 export function formatWhatsappDisplay(phone) {
