@@ -30,6 +30,8 @@ export default function DisponibilidadePage() {
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [bookingEnabled, setBookingEnabled] = useState(true);
+  const [bookingSaving, setBookingSaving] = useState(false);
 
   const rulesByWeekday = useMemo(() => {
     const map = new Map();
@@ -42,14 +44,47 @@ export default function DisponibilidadePage() {
   }, [rules]);
 
   async function load() {
-    const res = await fetch("/api/admin/availability");
-    const data = await res.json();
-    setRules(data.rules || []);
+    const [availRes, bookingRes] = await Promise.all([
+      fetch("/api/admin/availability"),
+      fetch("/api/admin/booking-settings")
+    ]);
+    const availData = await availRes.json();
+    const bookingData = await bookingRes.json().catch(() => ({}));
+    setRules(availData.rules || []);
+    setBookingEnabled(bookingData.bookingEnabled !== false);
+    if (bookingData.needsMigration) {
+      setError(bookingData.message || "Rode a migration de booking no Supabase.");
+    }
   }
 
   useEffect(() => {
     load();
   }, []);
+
+  async function toggleBooking(nextValue) {
+    setBookingSaving(true);
+    setFeedback("");
+    setError("");
+    const res = await fetch("/api/admin/booking-settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ bookingEnabled: nextValue })
+    });
+    const data = await res.json().catch(() => ({}));
+    setBookingSaving(false);
+
+    if (!res.ok) {
+      setError(data.message || "Não foi possível atualizar a marcação de consultas.");
+      return;
+    }
+
+    setBookingEnabled(data.bookingEnabled !== false);
+    setFeedback(
+      data.bookingEnabled !== false
+        ? "Marcação de consultas ativada. Pacientes já podem agendar."
+        : "Marcação de consultas desativada. Pacientes não conseguem agendar novos horários."
+    );
+  }
 
   async function addRule() {
     setSaving(true);
@@ -111,6 +146,49 @@ export default function DisponibilidadePage() {
           </div>
         </div>
       </div>
+
+      <Card className="mb-6">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h2 className="font-semibold text-graphite">Marcação de consultas</h2>
+            <p className="mt-1 text-sm text-graphite/60">
+              {bookingEnabled
+                ? "Pacientes podem escolher horários e agendar pela plataforma."
+                : "Pacientes não conseguem marcar novos horários até você reativar."}
+            </p>
+          </div>
+          <button
+            type="button"
+            disabled={bookingSaving}
+            onClick={() => toggleBooking(!bookingEnabled)}
+            className={`relative inline-flex h-8 w-14 shrink-0 items-center rounded-full transition ${
+              bookingEnabled ? "bg-olive-700" : "bg-graphite/25"
+            } disabled:opacity-60`}
+            aria-pressed={bookingEnabled}
+            aria-label={bookingEnabled ? "Desativar marcação" : "Ativar marcação"}
+          >
+            <span
+              className={`inline-block h-6 w-6 transform rounded-full bg-white shadow transition ${
+                bookingEnabled ? "translate-x-7" : "translate-x-1"
+              }`}
+            />
+          </button>
+        </div>
+        <p className="mt-3 text-xs font-medium uppercase tracking-wide text-graphite/45">
+          Status: {bookingEnabled ? "Ativada" : "Desativada"}
+        </p>
+      </Card>
+
+      {error ? (
+        <p className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+          {error}
+        </p>
+      ) : null}
+      {feedback ? (
+        <p className="mb-4 rounded-xl border border-olive-200 bg-olive-50 px-4 py-3 text-sm text-olive-900">
+          {feedback}
+        </p>
+      ) : null}
 
       <Card className="mb-6" title="Visão do mês">
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
@@ -203,16 +281,6 @@ export default function DisponibilidadePage() {
           </div>
         </div>
 
-        {error ? (
-          <p className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
-            {error}
-          </p>
-        ) : null}
-        {feedback ? (
-          <p className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-            {feedback}
-          </p>
-        ) : null}
       </Card>
 
       <Card title="Horários configurados">

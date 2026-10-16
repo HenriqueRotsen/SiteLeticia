@@ -49,6 +49,8 @@ export default function AgendaPage() {
   const [selected, setSelected] = useState("");
   const [feedback, setFeedback] = useState("");
   const [loading, setLoading] = useState(false);
+  const [bookingEnabled, setBookingEnabled] = useState(true);
+  const [bookingMessage, setBookingMessage] = useState("");
 
   const slotGroups = useMemo(() => groupSlotsByDay(slots.slice(0, 24)), [slots]);
   const selectedDate = selected ? new Date(selected) : null;
@@ -62,7 +64,15 @@ export default function AgendaPage() {
       fetch(`/api/appointments/slots?from=${from.toISOString()}&to=${to.toISOString()}`).then((r) => r.json()),
       fetch("/api/payment-info").then((r) => r.json())
     ]).then(([slotsRes, paymentRes]) => {
-      setSlots(slotsRes.slots || []);
+      const enabled = slotsRes.bookingEnabled !== false && paymentRes.bookingEnabled !== false;
+      setBookingEnabled(enabled);
+      setBookingMessage(
+        slotsRes.message ||
+          (!enabled
+            ? "A marcação de consultas está temporariamente desativada. Fale com a Letícia pelo WhatsApp."
+            : "")
+      );
+      setSlots(enabled ? slotsRes.slots || [] : []);
       setPayment(paymentRes);
     });
   }, []);
@@ -92,6 +102,16 @@ export default function AgendaPage() {
       subtitle="Escolha o melhor horário disponível"
       breadcrumbs={["Paciente", "Agenda"]}
     >
+      {!bookingEnabled ? (
+        <Card className="mb-4 border-amber-200 bg-amber-50/80">
+          <h2 className="font-semibold text-amber-950">Agendamentos pausados</h2>
+          <p className="mt-2 text-sm leading-6 text-amber-900/80">
+            {bookingMessage ||
+              "A Letícia desativou temporariamente a marcação de novas consultas. Entre em contato para combinar um horário."}
+          </p>
+        </Card>
+      ) : null}
+
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <div className="flex flex-wrap items-start justify-between gap-3">
@@ -99,7 +119,7 @@ export default function AgendaPage() {
               <h2 className="font-semibold text-graphite">Horários disponíveis</h2>
               <p className="mt-1 text-sm text-graphite/60">Sessões de 60 minutos</p>
             </div>
-            {selectedDate ? (
+            {selectedDate && bookingEnabled ? (
               <div className="inline-flex items-center gap-2 rounded-xl bg-olive-100 px-3 py-2 text-sm font-medium text-olive-800">
                 <Check className="h-4 w-4" />
                 {formatDayHeading(selected)} · {formatSlotTime(selected)}
@@ -107,7 +127,14 @@ export default function AgendaPage() {
             ) : null}
           </div>
 
-          {slotGroups.length ? (
+          {!bookingEnabled ? (
+            <div className="mt-6 rounded-2xl border border-dashed border-amber-300/80 bg-amber-50/40 px-4 py-10 text-center">
+              <p className="font-medium text-graphite">Marcação indisponível no momento</p>
+              <p className="mt-2 text-sm text-graphite/55">
+                Assim que a agenda for reaberta, os horários voltam a aparecer aqui.
+              </p>
+            </div>
+          ) : slotGroups.length ? (
             <div className="mt-6 space-y-5">
               {slotGroups.map((group) => (
                 <section key={group.key} className="overflow-hidden rounded-2xl border border-olive-900/10 bg-linen/50">
@@ -163,14 +190,15 @@ export default function AgendaPage() {
           <BookingPaymentPanel
             payment={payment}
             selectedSummary={
-              selectedDate
+              selectedDate && bookingEnabled
                 ? { day: formatDayHeading(selected), time: formatSlotTime(selected) }
                 : null
             }
             loading={loading}
-            disabled={!selected}
+            disabled={!bookingEnabled || !selected}
             feedback={feedback}
             onConfirm={book}
+            confirmLabel={bookingEnabled ? "Confirmar agendamento" : "Agendamentos pausados"}
           />
         </Card>
       </div>

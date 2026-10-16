@@ -6,6 +6,7 @@ import {
   CONSULTATION_DURATION_MIN
 } from "@/lib/constants";
 import { getGoogleAccessToken, fetchGoogleFreeBusy } from "@/lib/google/calendar";
+import { isBookingEnabled } from "@/lib/scheduling/booking-status";
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
@@ -14,6 +15,17 @@ export async function GET(request) {
 
   if (!from || !to) {
     return NextResponse.json({ message: "Parâmetros from e to obrigatórios." }, { status: 400 });
+  }
+
+  const bookingEnabled = await isBookingEnabled();
+  if (!bookingEnabled) {
+    return NextResponse.json({
+      slots: [],
+      bookingEnabled: false,
+      durationMin: CONSULTATION_DURATION_MIN,
+      bufferMin: CONSULTATION_BUFFER_MIN,
+      message: "A marcação de consultas está temporariamente desativada."
+    });
   }
 
   const supabase = createSupabaseAdmin();
@@ -62,5 +74,10 @@ export async function GET(request) {
     googleBusy
   });
 
-  return NextResponse.json({ slots, durationMin: CONSULTATION_DURATION_MIN, bufferMin: CONSULTATION_BUFFER_MIN });
+  return NextResponse.json({
+    slots,
+    bookingEnabled: true,
+    durationMin: CONSULTATION_DURATION_MIN,
+    bufferMin: CONSULTATION_BUFFER_MIN
+  });
 }

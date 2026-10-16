@@ -60,6 +60,7 @@ export const demoPaymentSettings = {
   consultation_price_cents: 25000,
   return_price_cents: 18000,
   currency: "BRL",
+  booking_enabled: true,
   instructions:
     "Após agendar, envie o comprovante (PDF ou foto) em Minhas consultas. A prescrição só libera após a validação.",
   cancellation_policy: "Cancelamentos com pelo menos 24h de antecedência."
