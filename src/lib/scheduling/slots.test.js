@@ -49,11 +49,15 @@ describe("timezone-aware slots", () => {
       expect(time <= "16:00").toBe(true);
     }
 
-    const first = new Date(slots[0].startsAt).toLocaleTimeString("pt-BR", {
-      timeZone: TIMEZONE,
-      hour: "2-digit",
-      minute: "2-digit"
-    });
-    expect(first).toBe("09:00");
+    const times = slots.map((slot) =>
+      new Date(slot.startsAt).toLocaleTimeString("pt-BR", {
+        timeZone: TIMEZONE,
+        hour: "2-digit",
+        minute: "2-digit"
+      })
+    );
+    expect(times[0]).toBe("09:00");
+    expect(times).toContain("16:00");
+    expect(times.at(-1)).toBe("16:00");
   });
 });
