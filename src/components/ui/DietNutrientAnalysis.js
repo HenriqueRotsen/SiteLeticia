@@ -21,16 +21,17 @@ export default function DietNutrientAnalysis({
   patientGoal = null,
   showClinicalInsights = true
 }) {
-  const analysis = useMemo(() => {
-    const hasUnknownWeight = items.some((item) => item.portionEstimated);
-    const totalFoodGrams = hasUnknownWeight
-      ? 0
-      : items.reduce(
-          (sum, item) => sum + Number(item.quantity || 0) * Number(item.portionG || 0),
-          0
-        );
+  const { analysis, hasEstimatedWeight } = useMemo(() => {
+    const totalFoodGrams = items.reduce(
+      (sum, item) => sum + Number(item.quantity || 0) * Number(item.portionG || 0),
+      0
+    );
+    const estimated = items.some((item) => item.portionEstimated);
 
-    return computeMenuAnalysis(totals, totalFoodGrams);
+    return {
+      analysis: computeMenuAnalysis(totals, totalFoodGrams),
+      hasEstimatedWeight: estimated && totalFoodGrams > 0
+    };
   }, [totals, items]);
 
   const kcalDiff =
@@ -99,6 +100,11 @@ export default function DietNutrientAnalysis({
           macrosTitle="Distribuição"
           densityTitle="Densidade"
           distributionTitle="Calorias por macro"
+          densityNote={
+            hasEstimatedWeight
+              ? "Algumas porções vieram sem gramas no CSV; o peso usado é estimado."
+              : null
+          }
           compact
         />
       </div>

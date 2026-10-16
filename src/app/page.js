@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import Reveal from "@/components/Reveal";
 import MarketingShell, { SectionEyebrow } from "@/components/marketing/MarketingShell";
-import { credentials, pillars, site, specialties } from "@/lib/marketing/content";
+import { credentials, heroHighlights, pillars, site, specialties } from "@/lib/marketing/content";
 
 export default function Home() {
   return (
@@ -10,13 +10,13 @@ export default function Home() {
       <section className="relative overflow-hidden">
         <div className="relative mx-auto grid min-h-[calc(100vh-73px)] max-w-7xl items-end gap-10 px-5 pb-10 pt-12 sm:px-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:gap-16 lg:pb-16 lg:pt-8">
           <Reveal variant="left">
-            <SectionEyebrow>Estúdio clínico de nutrição</SectionEyebrow>
+            <SectionEyebrow>Consultório clínico de nutrição</SectionEyebrow>
             <h1 className="mt-6 max-w-3xl font-display text-[2.75rem] leading-[1.08] text-graphite sm:text-6xl lg:text-7xl">
-              Nutrição com método, história e cuidado real.
+              Nutrição com método, história e cuidado.
             </h1>
             <p className="mt-7 max-w-xl text-lg leading-8 text-graphite/68">
               {site.name} une enfermagem, nutrição e pesquisa clínica para construir estratégias alimentares
-              individualizadas, com foco em bariátrica, saúde intestinal e nutrição de precisão.
+              individualizadas.
             </p>
 
             <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
@@ -24,7 +24,7 @@ export default function Home() {
                 href="/fila-de-espera"
                 className="interactive-lift inline-flex items-center justify-center rounded-full bg-graphite px-7 py-4 text-xs font-bold uppercase tracking-[0.18em] text-porcelain transition hover:bg-olive-800"
               >
-                Entrar na lista
+                Entrar na lista de espera
               </Link>
               <Link
                 href="/contato"
@@ -40,11 +40,20 @@ export default function Home() {
               </Link>
             </div>
 
-            <div className="mt-10 max-w-sm rounded-2xl border border-olive-900/10 bg-white/60 px-5 py-4">
-              <p className="text-3xl font-display leading-snug text-olive-800">−50 kg</p>
-              <p className="mt-1 text-xs uppercase tracking-[0.16em] text-graphite/55">
-                Perdeu após bariátrica em 2022
-              </p>
+            <div className="mt-10 grid max-w-xl grid-cols-2 gap-3 sm:max-w-2xl">
+              {heroHighlights.map((item) => (
+                <div
+                  key={item.label}
+                  className="rounded-2xl border border-olive-900/10 bg-white/60 px-4 py-3.5 sm:px-5 sm:py-4"
+                >
+                  <p className="font-display text-xl leading-snug text-olive-800 sm:text-2xl">
+                    {item.value}
+                  </p>
+                  <p className="mt-1 text-[10px] uppercase tracking-[0.14em] text-graphite/55 sm:text-xs sm:tracking-[0.16em]">
+                    {item.label}
+                  </p>
+                </div>
+              ))}
             </div>
           </Reveal>
 
@@ -73,11 +82,13 @@ export default function Home() {
       </section>
 
       <section className="mx-auto max-w-7xl px-5 py-16 sm:px-8 lg:py-24">
-        <div className="grid gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:items-end">
+        <Reveal variant="up">
+          <SectionEyebrow>01 · Abordagem</SectionEyebrow>
+        </Reveal>
+        <div className="mt-4 grid gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
           <Reveal variant="left">
-            <SectionEyebrow>01 · Abordagem</SectionEyebrow>
-            <h2 className="mt-4 font-display text-4xl leading-[1.12] text-graphite sm:text-5xl">
-              Menos fórmula pronta. Mais escuta, ciência e plano possível.
+            <h2 className="font-display text-4xl leading-[1.12] text-graphite sm:text-5xl">
+              Menos fórmula pronta. Mais escuta, ciência e plano individualizado.
             </h2>
           </Reveal>
           <Reveal variant="right">
@@ -195,20 +206,20 @@ export default function Home() {
             </h2>
             <p className="mt-6 text-lg leading-8 text-porcelain/72">
               Pacientes acompanham plano alimentar, enviam fotos e exames, agendam consultas e visualizam a
-              evolução. A agenda de novos atendimentos está em preparação. Entre na lista de prioridade.
+              evolução. A agenda de novos atendimentos está em preparação. Entre na lista de espera.
             </p>
             <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row">
               <Link
                 href="/fila-de-espera"
                 className="interactive-lift rounded-full bg-olive-500 px-7 py-4 text-xs font-bold uppercase tracking-[0.18em] text-white transition hover:bg-olive-400"
               >
-                Criar conta / lista de espera
+                Entrar na lista de espera
               </Link>
               <Link
-                href="/demo"
+                href="/criar-conta"
                 className="interactive-lift rounded-full border border-white/15 px-7 py-4 text-xs font-bold uppercase tracking-[0.18em] text-porcelain transition hover:bg-white/10"
               >
-                Explorar demo
+                Criar conta
               </Link>
             </div>
           </Reveal>

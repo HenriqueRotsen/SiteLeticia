@@ -44,6 +44,7 @@ export function EnergyDensityGauge({
   density,
   kcal = null,
   title = "Densidade calórica",
+  note = null,
   compact = false
 }) {
   const classification = classifyEnergyDensity(density);
@@ -65,6 +66,7 @@ export function EnergyDensityGauge({
         <div>
           <p className="text-sm font-semibold text-graphite">{title}</p>
           <p className="mt-0.5 text-xs text-graphite/45">Calorias por grama de alimento</p>
+          {note ? <p className="mt-1 text-[11px] leading-snug text-amber-800/80">{note}</p> : null}
         </div>
         <HelpTooltip content={ENERGY_DENSITY_EXPLANATION}>
           <button
@@ -124,6 +126,7 @@ export function EnergyDensityGauge({
 export default function NutrientAnalysisVisual({
   analysis,
   densityTitle = "Densidade calórica",
+  densityNote = null,
   macrosTitle = "Macronutrientes",
   distributionTitle = "Distribuição calórica (% do VET)",
   compact = false
@@ -132,18 +135,19 @@ export default function NutrientAnalysisVisual({
 
   if (compact) {
     return (
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="@container grid grid-cols-1 gap-4 @[36rem]:grid-cols-2">
         <EnergyDensityGauge
           density={analysis.caloricDensity}
           kcal={analysis.totals.kcal}
           title={densityTitle}
+          note={densityNote}
           compact
         />
 
-        <div className="relative overflow-hidden rounded-2xl border border-olive-900/8 bg-gradient-to-br from-white via-linen/40 to-olive-50/50 p-4">
+        <div className="@container relative min-w-0 overflow-hidden rounded-2xl border border-olive-900/8 bg-gradient-to-br from-white via-linen/40 to-olive-50/50 p-4">
           <p className="mb-4 text-sm font-semibold text-graphite">{distributionTitle}</p>
-          <div className="grid grid-cols-[112px,1fr] items-center gap-4">
-            <div className="relative mx-auto h-28 w-28">
+          <div className="grid grid-cols-1 items-center gap-4 @[16rem]:grid-cols-[112px,minmax(0,1fr)]">
+            <div className="relative mx-auto h-28 w-28 shrink-0">
               {analysis.chartData.length ? (
                 <>
                   <ResponsiveContainer width="100%" height="100%">
@@ -178,18 +182,18 @@ export default function NutrientAnalysisVisual({
                 <p className="flex h-full items-center justify-center text-xs text-graphite/45">—</p>
               )}
             </div>
-            <ul className="space-y-2.5">
+            <ul className="min-w-0 space-y-2.5">
               {macroList.map((macro) => (
                 <li key={macro.label} className="rounded-xl border border-olive-900/6 bg-white/80 px-3 py-2">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="flex items-center gap-2 text-sm font-medium text-graphite">
+                    <span className="flex min-w-0 items-center gap-2 text-sm font-medium text-graphite">
                       <span
-                        className="h-2.5 w-2.5 rounded-full ring-2 ring-white"
+                        className="h-2.5 w-2.5 shrink-0 rounded-full ring-2 ring-white"
                         style={{ backgroundColor: macro.color }}
                       />
-                      {macro.label}
+                      <span className="truncate">{macro.label}</span>
                     </span>
-                    <span className="text-sm font-semibold tabular-nums text-graphite">
+                    <span className="shrink-0 text-sm font-semibold tabular-nums text-graphite">
                       {macro.percent}%
                     </span>
                   </div>
@@ -244,6 +248,7 @@ export default function NutrientAnalysisVisual({
         density={analysis.caloricDensity}
         kcal={analysis.totals.kcal}
         title={densityTitle}
+        note={densityNote}
         compact={compact}
       />
 

@@ -99,6 +99,8 @@ create table if not exists public.appointments (
   ),
   payment_method_id uuid,
   amount_cents integer not null default 0,
+  payment_validated_at timestamptz,
+  payment_validated_by uuid references public.profiles (id) on delete set null,
   google_event_id text,
   meet_link text,
   created_at timestamptz not null default now(),
@@ -132,6 +134,32 @@ create table if not exists public.payment_methods (
 alter table public.appointments
   add constraint appointments_payment_method_id_fkey
   foreign key (payment_method_id) references public.payment_methods (id) on delete set null;
+
+create table if not exists public.appointment_documents (
+  id uuid primary key default gen_random_uuid(),
+  appointment_id uuid not null references public.appointments (id) on delete cascade,
+  patient_id uuid not null references public.patients (id) on delete cascade,
+  doc_type text not null check (doc_type in ('payment_proof', 'invoice')),
+  storage_path text not null,
+  mime_type text not null,
+  file_name text,
+  uploaded_by_role text not null check (uploaded_by_role in ('patient', 'nutritionist')),
+  extracted_amount_cents integer,
+  extracted_paid_at timestamptz,
+  extracted_payer_name text,
+  extraction_json jsonb not null default '{}'::jsonb,
+  extraction_status text not null default 'pending' check (
+    extraction_status in ('pending', 'ok', 'failed')
+  ),
+  amount_matches boolean,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists appointment_documents_appointment_idx
+  on public.appointment_documents (appointment_id);
+create index if not exists appointment_documents_patient_idx
+  on public.appointment_documents (patient_id);
 
 -- Google Calendar
 create table if not exists public.google_calendar_connections (
@@ -185,7 +213,9 @@ create table if not exists public.diet_supplements (
   product_name text not null,
   dosage text not null,
   posology text not null,
-  notes text
+  notes text,
+  group_id uuid,
+  group_title text
 );
 
 create table if not exists public.diet_referrals (
@@ -258,6 +288,29 @@ create table if not exists public.lab_reference_ranges (
   ref_max numeric,
   interpretation_notes text
 );
+
+-- Prontuário clínico (texto por sessão)
+create table if not exists public.clinical_records (
+  id uuid primary key default gen_random_uuid(),
+  patient_id uuid not null references public.patients (id) on delete cascade,
+  appointment_id uuid references public.appointments (id) on delete set null,
+  session_at timestamptz not null default now(),
+  title text,
+  body_text text not null default '',
+  notes text,
+  storage_path text,
+  mime_type text,
+  file_name text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists clinical_records_patient_session_idx
+  on public.clinical_records (patient_id, session_at desc);
+
+create index if not exists clinical_records_appointment_idx
+  on public.clinical_records (appointment_id)
+  where appointment_id is not null;
 
 -- Insights
 create table if not exists public.patient_insights (
@@ -351,6 +404,7 @@ alter table public.patients enable row level security;
 alter table public.availability_rules enable row level security;
 alter table public.availability_blocks enable row level security;
 alter table public.appointments enable row level security;
+alter table public.appointment_documents enable row level security;
 alter table public.payment_settings enable row level security;
 alter table public.payment_methods enable row level security;
 alter table public.google_calendar_connections enable row level security;
@@ -363,6 +417,7 @@ alter table public.body_measurements enable row level security;
 alter table public.progress_photos enable row level security;
 alter table public.lab_reports enable row level security;
 alter table public.lab_results enable row level security;
+alter table public.clinical_records enable row level security;
 alter table public.lab_reference_ranges enable row level security;
 alter table public.patient_insights enable row level security;
 alter table public.diet_checkins enable row level security;
@@ -428,6 +483,31 @@ create policy "appointments_update_nutritionist"
 on public.appointments for update
 using (public.is_nutritionist());
 
+create policy "appointment_documents_select_own_or_nutritionist"
+on public.appointment_documents for select
+using (
+  patient_id = public.current_patient_id()
+  or public.is_nutritionist()
+);
+
+create policy "appointment_documents_patient_insert_proof"
+on public.appointment_documents for insert
+with check (
+  patient_id = public.current_patient_id()
+  and uploaded_by_role = 'patient'
+  and doc_type = 'payment_proof'
+  and exists (
+    select 1 from public.appointments a
+    where a.id = appointment_id
+      and a.patient_id = public.current_patient_id()
+  )
+);
+
+create policy "appointment_documents_nutritionist_write"
+on public.appointment_documents for all
+using (public.is_nutritionist())
+with check (public.is_nutritionist());
+
 -- Payment (patients read active methods + settings, nutritionist write)
 create policy "payment_settings_select_authenticated"
 on public.payment_settings for select to authenticated
@@ -456,7 +536,13 @@ with check (nutritionist_id = auth.uid());
 -- Generic patient-owned tables
 create policy "diet_plans_patient_read"
 on public.diet_plans for select
-using (patient_id = public.current_patient_id() or public.is_nutritionist());
+using (
+  public.is_nutritionist()
+  or (
+    patient_id = public.current_patient_id()
+    and status = 'active'
+  )
+);
 
 create policy "diet_plans_nutritionist_write"
 on public.diet_plans for all
@@ -544,6 +630,11 @@ create policy "progress_photos_write"
 on public.progress_photos for all
 using (patient_id = public.current_patient_id() or public.is_nutritionist())
 with check (patient_id = public.current_patient_id() or public.is_nutritionist());
+
+create policy "clinical_records_nutritionist_all"
+on public.clinical_records for all
+using (public.is_nutritionist())
+with check (public.is_nutritionist());
 
 create policy "lab_reports_patient_published"
 on public.lab_reports for select

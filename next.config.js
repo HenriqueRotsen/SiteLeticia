@@ -18,7 +18,8 @@ const securityHeaders = [
       "img-src 'self' data: blob: https:",
       "font-src 'self' data:",
       "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://world.openfoodfacts.org https://www.googleapis.com https://oauth2.googleapis.com",
-      "frame-src https://www.google.com https://meet.google.com",
+      "frame-src 'self' blob: https://www.google.com https://meet.google.com",
+      "child-src 'self' blob:",
       "object-src 'none'",
       "base-uri 'self'",
       "form-action 'self'"

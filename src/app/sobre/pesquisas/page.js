@@ -14,7 +14,7 @@ import {
 export const metadata = {
   title: "Pesquisas | Letícia Cunha",
   description:
-    "Artigos publicados e linhas de pesquisa em nutrição clínica — Letícia Vitória Ramos da Cunha, mestranda UFMG."
+    "Artigos publicados e linhas de pesquisa em nutrição clínica — Letícia Cunha, mestranda UFMG."
 };
 
 export default function PesquisasPage() {

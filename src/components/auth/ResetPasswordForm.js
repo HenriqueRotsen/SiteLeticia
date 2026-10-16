@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
+import { PASSWORD_RULES } from "@/lib/validation/password";
 import { btnPrimary, inputClassName } from "@/components/layout/AppShell";
 import PasswordInput from "@/components/ui/PasswordInput";
 
@@ -9,12 +10,28 @@ export default function ResetPasswordForm() {
   const [form, setForm] = useState({ password: "", confirmPassword: "" });
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState("");
-  const [feedbackTone, setFeedbackTone] = useState("neutral");
+
+  const passwordChecks = useMemo(
+    () => PASSWORD_RULES.map((rule) => ({ ...rule, ok: rule.test(form.password) })),
+    [form.password]
+  );
 
   async function handleSubmit(event) {
     event.preventDefault();
     setLoading(true);
     setFeedback("");
+
+    if (!PASSWORD_RULES.every((rule) => rule.test(form.password))) {
+      setLoading(false);
+      setFeedback("Senha fraca. Atenda a todos os requisitos.");
+      return;
+    }
+
+    if (form.password !== form.confirmPassword) {
+      setLoading(false);
+      setFeedback("As senhas não coincidem.");
+      return;
+    }
 
     const response = await fetch("/api/auth/reset-password", {
       method: "POST",
@@ -26,7 +43,6 @@ export default function ResetPasswordForm() {
     setLoading(false);
 
     if (!response.ok) {
-      setFeedbackTone("error");
       setFeedback(result.message || "Não foi possível redefinir a senha.");
       return;
     }
@@ -36,7 +52,9 @@ export default function ResetPasswordForm() {
 
   return (
     <form className="space-y-4" onSubmit={handleSubmit}>
-      <p className="text-sm text-graphite/60">Escolha uma nova senha com pelo menos 8 caracteres.</p>
+      <p className="text-sm text-graphite/60">
+        Escolha uma senha forte com maiúscula, minúscula, número e caractere especial.
+      </p>
 
       <div>
         <label className="mb-2 block text-sm font-medium text-graphite/70" htmlFor="password">
@@ -50,6 +68,16 @@ export default function ResetPasswordForm() {
           value={form.password}
           onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))}
         />
+        <ul className="mt-2 grid grid-cols-1 gap-1 sm:grid-cols-2">
+          {passwordChecks.map((rule) => (
+            <li
+              key={rule.id}
+              className={`text-xs ${rule.ok ? "text-olive-700" : "text-graphite/45"}`}
+            >
+              {rule.ok ? "✓" : "○"} {rule.label}
+            </li>
+          ))}
+        </ul>
       </div>
 
       <div>

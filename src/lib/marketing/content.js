@@ -2,9 +2,9 @@ export const site = {
   name: "Letícia Cunha",
   role: "Nutricionista clínica",
   domain: "Saúde & Nutrição",
-  email: process.env.NEXT_PUBLIC_CONTACT_EMAIL || "contato@leticia-cunha.com.br",
-  whatsapp: process.env.NEXT_PUBLIC_CONTACT_WHATSAPP || "5531999999999",
-  instagram: process.env.NEXT_PUBLIC_CONTACT_INSTAGRAM || "leticia.cunha.nutri",
+  email: process.env.NEXT_PUBLIC_CONTACT_EMAIL || "leticiavrcunha@gmail.com",
+  whatsapp: process.env.NEXT_PUBLIC_CONTACT_WHATSAPP || "5531995244214",
+  instagram: process.env.NEXT_PUBLIC_CONTACT_INSTAGRAM || "leticiavrcunha",
   city: "Belo Horizonte, MG"
 };
 
@@ -16,9 +16,29 @@ export const navLinks = [
 ];
 
 export const credentials = [
-  { label: "Formada em Enfermagem", detail: "Base clínica para leitura de sinais, exames e cuidado integral." },
+  { label: "Formada em Enfermagem (UFMG)", detail: "Base clínica para leitura de sinais, exames e cuidado integral." },
   { label: "Graduanda em Nutrição", detail: "Formação contínua em ciências dos alimentos e conduta nutricional." },
   { label: "Mestranda em Nutrição e Saúde (UFMG)", detail: "Linha Nutrição Clínica e Experimental, orientação Profª Luciana Bastos Rodrigues." }
+];
+
+/** Destaques compactos do hero (ao lado da história bariátrica). */
+export const heroHighlights = [
+  {
+    value: "−50 kg",
+    label: "Perdeu após bariátrica em 2022"
+  },
+  {
+    value: "Mestrado",
+    label: "Nutrição clínica · UFMG"
+  },
+  {
+    value: "Enfermeira e nutricionista",
+    label: "Dupla formação"
+  },
+  {
+    value: "+7 artigos",
+    label: "Publicações científicas"
+  }
 ];
 
 export const specialties = [
@@ -43,13 +63,13 @@ export const specialties = [
 export const pillars = [
   {
     number: "01",
-    title: "Ciência aplicada à rotina",
+    title: "Ciência aplicada",
     text: "Evidências traduzidas em escolhas possíveis, sem rigidez desnecessária."
   },
   {
     number: "02",
     title: "Olhar individual",
-    text: "Cada plano considera história, sintomas, rotina, preferências e objetivos reais."
+    text: "Cada plano considera história, sintomas, rotina, preferências e objetivos."
   },
   {
     number: "03",
@@ -95,13 +115,13 @@ export const lattes = {
 };
 
 export const researchProfile = {
-  fullName: "Letícia Vitória Ramos da Cunha",
+  fullName: "Letícia Cunha",
   program: "Mestrado Profissional — Pós-Graduação em Nutrição e Saúde",
   institution: "Universidade Federal de Minas Gerais (UFMG)",
   researchLine: "Nutrição Clínica e Experimental",
   advisor: "Profª Luciana Bastos Rodrigues",
   advisorLine:
-    "Genética, bioquímica e biologia molecular aplicadas à nutrição clínica — com ênfase em medicina de precisão.",
+    "Genética, bioquímica e biologia molecular aplicadas à nutrição clínica, com ênfase em medicina de precisão.",
   admission: "2025/1",
   expectedCompletion: "Março/2027"
 };
@@ -111,13 +131,13 @@ export const researchAreas = [
     tag: "Nutrição clínica",
     title: "Terapia nutricional individualizada",
     description:
-      "Estudo de condutas nutricionais baseadas em diretrizes, fenótipo clínico e tomada de decisão compartilhada — especialmente em situações complexas."
+      "Estudo de condutas nutricionais baseadas em diretrizes, fenótipo clínico e tomada de decisão compartilhada, especialmente em situações complexas."
   },
   {
-    tag: "Materno-infantil",
-    title: "Nutrição no cuidado de mães e bebês",
+    tag: "Bariátrica",
+    title: "Nutrição bariátrica",
     description:
-      "Integração entre suporte nutricional, aleitamento materno e estratégias como o Método Canguru para promover crescimento e vínculo."
+      "Acompanhamento nutricional antes e depois da cirurgia, com foco em adesão, prevenção de deficiências e manutenção de resultados a longo prazo."
   },
   {
     tag: "Cuidados paliativos",
@@ -129,7 +149,7 @@ export const researchAreas = [
     tag: "Precisão & metabolismo",
     title: "Nutrição de precisão e reabilitação metabólica",
     description:
-      "Interesse em biomarcadores, variabilidade metabólica e reabilitação nutricional — com foco em bariátrica e manutenção de resultados."
+      "Interesse em biomarcadores, variabilidade metabólica e reabilitação nutricional, com foco em bariátrica e manutenção de resultados."
   }
 ];
 
@@ -164,7 +184,7 @@ export const researchArticles = [
 
 export const researchFocus = [
   {
-    title: "Projeto de mestrado — UFMG",
+    title: "Projeto de mestrado (UFMG)",
     period: "2025–2027",
     description:
       "Investigação na linha de Nutrição Clínica e Experimental, com orientação da Profª Luciana Bastos Rodrigues, integrando ciência básica e aplicação clínica."
@@ -172,7 +192,7 @@ export const researchFocus = [
   {
     title: "Medicina de precisão aplicada à nutrição",
     description:
-      "Interesse em genética, bioquímica e biologia molecular como suporte à conduta nutricional individualizada — eixo central da linha de pesquisa da orientadora."
+      "Interesse em genética, bioquímica e biologia molecular como suporte à conduta nutricional individualizada, eixo central da linha de pesquisa da orientadora."
   },
   {
     title: "Tradução de evidência para a consulta",
@@ -199,6 +219,22 @@ export function whatsappLink(phone, message = "") {
   const digits = String(phone || "").replace(/\D/g, "");
   const text = message ? `?text=${encodeURIComponent(message)}` : "";
   return `https://wa.me/${digits}${text}`;
+}
+
+export function formatWhatsappDisplay(phone) {
+  const digits = String(phone || "").replace(/\D/g, "");
+  if (!digits) return "";
+
+  let country = "";
+  let local = digits;
+  if (digits.startsWith("55") && digits.length >= 12) {
+    country = "+55 ";
+    local = digits.slice(2);
+  }
+
+  if (local.length <= 2) return `${country}${local}`.trim();
+  if (local.length <= 7) return `${country}(${local.slice(0, 2)}) ${local.slice(2)}`.trim();
+  return `${country}(${local.slice(0, 2)}) ${local.slice(2, local.length - 4)}-${local.slice(-4)}`.trim();
 }
 
 export function instagramLink(handle) {

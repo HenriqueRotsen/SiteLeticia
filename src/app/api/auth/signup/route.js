@@ -21,13 +21,16 @@ export async function POST(request) {
     body = signupSchema.parse(await request.json());
   } catch (error) {
     return NextResponse.json(
-      { message: error.errors?.[0]?.message || "Dados inválidos." },
+      {
+        message:
+          error.issues?.[0]?.message || error.errors?.[0]?.message || "Dados inválidos."
+      },
       { status: 400 }
     );
   }
 
   const supabase = createSupabaseAdmin();
-  const phoneNormalized = body.phone.replace(/\D/g, "");
+  const phoneNormalized = String(body.phone || "").replace(/\D/g, "");
 
   const { data: existingByCpf } = await supabase
     .from("patients")

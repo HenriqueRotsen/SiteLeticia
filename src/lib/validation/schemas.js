@@ -1,21 +1,46 @@
 import { z } from "zod";
 import { GOALS } from "@/lib/constants";
-import { isValidCpf, normalizeCpf } from "@/lib/cpf";
+import { isValidCpf, normalizeCpf } from "@/lib/cpf-utils";
+import { isValidPhone, normalizePhone } from "@/lib/phone";
+import { isStrongPassword } from "@/lib/validation/password";
 
-export const signupSchema = z.object({
-  fullName: z.string().min(2, "Nome inválido."),
-  email: z.string().email("E-mail inválido."),
-  password: z.string().min(8, "Senha deve ter ao menos 8 caracteres."),
-  phone: z.string().min(10, "WhatsApp inválido."),
-  cpf: z
-    .string()
-    .refine((value) => isValidCpf(value), "CPF inválido.")
-    .transform(normalizeCpf),
-  goal: z.enum(GOALS),
-  consent: z.literal(true, {
-    errorMap: () => ({ message: "É necessário aceitar a política de privacidade." })
+const strongPasswordSchema = z
+  .string()
+  .min(8, "Senha deve ter ao menos 8 caracteres.")
+  .refine(isStrongPassword, {
+    message:
+      "Senha fraca. Use maiúscula, minúscula, número e caractere especial."
+  });
+
+export const signupSchema = z
+  .object({
+    fullName: z
+      .string()
+      .trim()
+      .min(2, "Nome inválido.")
+      .refine((value) => value.split(/\s+/).filter(Boolean).length >= 2, {
+        message: "Informe nome e sobrenome."
+      }),
+    email: z.string().trim().email("E-mail inválido."),
+    password: strongPasswordSchema,
+    confirmPassword: z.string().min(1, "Confirme a senha."),
+    phone: z
+      .string()
+      .refine(isValidPhone, "WhatsApp inválido.")
+      .transform(normalizePhone),
+    cpf: z
+      .string()
+      .refine((value) => isValidCpf(value), "CPF inválido.")
+      .transform(normalizeCpf),
+    goal: z.enum(GOALS),
+    consent: z.literal(true, {
+      errorMap: () => ({ message: "É necessário aceitar a política de privacidade." })
+    })
   })
-});
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "As senhas não coincidem.",
+    path: ["confirmPassword"]
+  });
 
 export const loginSchema = z.object({
   email: z.string().email(),
@@ -28,8 +53,8 @@ export const forgotPasswordSchema = z.object({
 
 export const resetPasswordSchema = z
   .object({
-    password: z.string().min(8, "Senha deve ter ao menos 8 caracteres."),
-    confirmPassword: z.string().min(8, "Confirme a nova senha.")
+    password: strongPasswordSchema,
+    confirmPassword: z.string().min(1, "Confirme a nova senha.")
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "As senhas não coincidem.",
@@ -81,7 +106,9 @@ export const dietSupplementSchema = z.object({
   dosage: z.string().min(1),
   posology: z.string().min(1),
   notes: z.string().optional().nullable(),
-  sortOrder: z.number().int().default(0)
+  sortOrder: z.number().int().default(0),
+  groupId: z.string().optional().nullable(),
+  groupTitle: z.string().optional().nullable()
 });
 
 export const dietReferralSchema = z.object({
@@ -89,7 +116,23 @@ export const dietReferralSchema = z.object({
   professionalName: z.string().optional().nullable(),
   reason: z.string().min(1),
   urgency: z.enum(["routine", "priority"]).default("routine"),
+  bodyText: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
+  sortOrder: z.number().int().default(0)
+});
+
+export const dietExamItemSchema = z.object({
+  name: z.string().min(1),
+  category: z.enum(["principal", "complementary"]).default("principal"),
+  whenToRequest: z.string().optional().nullable()
+});
+
+export const dietExamOrderSchema = z.object({
+  title: z.string().min(1).default("Pedido de exames"),
+  exams: z.array(dietExamItemSchema).default([]),
+  collectionNotes: z.array(z.string()).default([]),
+  observations: z.string().optional().nullable(),
+  meta: z.record(z.any()).optional().nullable(),
   sortOrder: z.number().int().default(0)
 });
 
@@ -131,7 +174,8 @@ export const dietPlanSchema = z.object({
     )
     .default([]),
   supplements: z.array(dietSupplementSchema).default([]),
-  referrals: z.array(dietReferralSchema).default([])
+  referrals: z.array(dietReferralSchema).default([]),
+  examOrders: z.array(dietExamOrderSchema).default([])
 });
 
 export const bodyMeasurementSchema = z.object({

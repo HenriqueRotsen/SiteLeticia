@@ -3,8 +3,13 @@
 --   progress-photos
 --   lab-reports
 --   diet-plans
+--   payment-docs
+--   clinical-records
 --
 -- Policies exemplo (ajustar no dashboard):
 -- progress-photos: upload/read apenas owner path = patient_id/*
 -- lab-reports: upload nutritionist + read patient published reports via signed URLs
 -- diet-plans: upload/read apenas nutricionista (path = patient_id/*)
+-- payment-docs: path = patient_id/appointment_id/* — paciente sobe comprovantes;
+--   nutricionista sobe NF; leitura via signed URLs na API
+-- clinical-records: opcional (legado). Prontuário atual é texto em clinical_records.body_text

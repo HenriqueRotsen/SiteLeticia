@@ -7,10 +7,19 @@ export const APPOINTMENT_STATUS_LABELS = {
 
 export const PAYMENT_STATUS_LABELS = {
   pending: "Pendente",
-  paid: "Pago",
+  paid: "Validado",
   failed: "Falhou",
   waived: "Isento"
 };
+
+export const PAYMENT_DOC_TYPE_LABELS = {
+  payment_proof: "Comprovante",
+  invoice: "Nota fiscal"
+};
+
+export function labelPaymentDocType(type) {
+  return PAYMENT_DOC_TYPE_LABELS[type] || type || "—";
+}
 
 export const LAB_REPORT_STATUS_LABELS = {
   draft: "Em revisão",

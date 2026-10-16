@@ -2,7 +2,13 @@ import Link from "next/link";
 import Reveal from "@/components/Reveal";
 import ContactForm from "@/components/marketing/ContactForm";
 import MarketingShell, { PageHero, SectionEyebrow } from "@/components/marketing/MarketingShell";
-import { contactReasons, instagramLink, site, whatsappLink } from "@/lib/marketing/content";
+import {
+  contactReasons,
+  formatWhatsappDisplay,
+  instagramLink,
+  site,
+  whatsappLink
+} from "@/lib/marketing/content";
 
 export const metadata = {
   title: "Contato | Letícia Cunha",
@@ -38,10 +44,18 @@ export default function ContatoPage() {
               <dl className="mt-6 space-y-5 text-sm">
                 <div>
                   <dt className="text-[10px] font-semibold uppercase tracking-[0.18em] text-graphite/45">WhatsApp</dt>
-                  <dd className="mt-2">
+                  <dd className="mt-2 space-y-1">
                     <a
                       href={whatsappLink(site.whatsapp, "Olá, Letícia! Gostaria de mais informações.")}
-                      className="font-semibold text-olive-800 underline decoration-olive-900/20 underline-offset-4"
+                      className="block font-semibold text-graphite hover:text-olive-800"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {formatWhatsappDisplay(site.whatsapp)}
+                    </a>
+                    <a
+                      href={whatsappLink(site.whatsapp, "Olá, Letícia! Gostaria de mais informações.")}
+                      className="inline-flex text-sm font-semibold text-olive-800 underline decoration-olive-900/20 underline-offset-4"
                       target="_blank"
                       rel="noopener noreferrer"
                     >

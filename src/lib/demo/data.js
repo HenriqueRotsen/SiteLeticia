@@ -7,6 +7,10 @@ function futureDate(days, hour, minute = 0) {
   return d.toISOString();
 }
 
+function pastDate(days, hour, minute = 0) {
+  return futureDate(-Math.abs(days), hour, minute);
+}
+
 function slotStarts(days, hour) {
   return futureDate(days, hour);
 }
@@ -54,7 +58,8 @@ export const demoPaymentSettings = {
   consultation_price_cents: 25000,
   return_price_cents: 18000,
   currency: "BRL",
-  instructions: "PIX antecipado para confirmar o horário. Envie o comprovante pelo WhatsApp.",
+  instructions:
+    "Após agendar, envie o comprovante (PDF ou foto) em Minhas consultas. A prescrição só libera após a validação.",
   cancellation_policy: "Cancelamentos com pelo menos 24h de antecedência."
 };
 
@@ -84,10 +89,12 @@ export const demoAvailabilityRules = [
 
 export const demoDietPlan = {
   id: "diet-1",
+  patient_id: patientId,
   title: "Plano alimentar FatSecret · semana 1",
   notes: "Beba 2L de água por dia. Evite ultraprocessados.",
   status: "active",
   source: "fatsecret_csv",
+  created_at: pastDate(21, 11),
   diet_meals: [
     {
       id: "meal-1",
@@ -191,6 +198,26 @@ export const demoDietPlan = {
       reason: "Avaliação de tireoide e metabolismo",
       urgency: "routine",
       notes: null
+    }
+  ],
+  diet_exam_orders: [
+    {
+      id: "exam-1",
+      sort_order: 0,
+      title: "Pedido de exames",
+      exams: [
+        { name: "Hemograma completo", category: "principal" },
+        { name: "Glicemia de jejum", category: "principal" },
+        { name: "TSH", category: "principal" },
+        {
+          name: "Vitamina D (25-OH)",
+          category: "complementary",
+          whenToRequest: "Se não houver resultado recente (< 6 meses)"
+        }
+      ],
+      collection_notes: ["Jejum de 8 a 12 horas", "Preferencialmente pela manhã"],
+      observations: null,
+      meta: {}
     }
   ]
 };
@@ -326,10 +353,29 @@ export const demoFoodResults = [
 export function createInitialDemoState() {
   const startsAt = futureDate(3, 10);
   const endsAt = new Date(new Date(startsAt).getTime() + 60 * 60 * 1000).toISOString();
+  const pastStarts = pastDate(14, 10);
+  const pastEnds = new Date(new Date(pastStarts).getTime() + 60 * 60 * 1000).toISOString();
+  const validatedAt = pastDate(13, 16);
 
   return {
     patientProfile: { ...demoPatient },
     appointments: [
+      {
+        id: "appt-0",
+        patient_id: patientId,
+        starts_at: pastStarts,
+        ends_at: pastEnds,
+        duration_min: 60,
+        buffer_min: 15,
+        type: "consultation",
+        status: "completed",
+        payment_status: "paid",
+        amount_cents: 25000,
+        payment_validated_at: validatedAt,
+        payment_validated_by: demoNutritionist.id,
+        meet_link: null,
+        patients: { full_name: demoPatient.full_name, phone: demoPatient.phone }
+      },
       {
         id: "appt-1",
         patient_id: patientId,
@@ -345,13 +391,97 @@ export function createInitialDemoState() {
         patients: { full_name: demoPatient.full_name, phone: demoPatient.phone }
       }
     ],
+    appointmentDocuments: [
+      {
+        id: "doc-proof-0",
+        appointment_id: "appt-0",
+        patient_id: patientId,
+        doc_type: "payment_proof",
+        storage_path: "demo/appt-0/proof.pdf",
+        mime_type: "application/pdf",
+        file_name: "comprovante-pix.pdf",
+        uploaded_by_role: "patient",
+        extracted_amount_cents: 25000,
+        extracted_paid_at: pastDate(13, 15),
+        extracted_payer_name: demoPatient.full_name,
+        extraction_status: "ok",
+        extraction_json: { method: "demo", confidence: 1 },
+        amount_matches: true,
+        url: null,
+        created_at: pastDate(13, 15)
+      },
+      {
+        id: "doc-invoice-0",
+        appointment_id: "appt-0",
+        patient_id: patientId,
+        doc_type: "invoice",
+        storage_path: "demo/appt-0/nf.pdf",
+        mime_type: "application/pdf",
+        file_name: "nota-fiscal.pdf",
+        uploaded_by_role: "nutritionist",
+        extracted_amount_cents: 25000,
+        extracted_paid_at: pastDate(13, 18),
+        extracted_payer_name: demoPatient.full_name,
+        extraction_status: "ok",
+        extraction_json: { method: "demo", confidence: 1, matchesExpected: true, matchesProof: true },
+        amount_matches: true,
+        url: null,
+        created_at: pastDate(13, 18)
+      }
+    ],
     photos: [],
     availabilityRules: [...demoAvailabilityRules],
     availabilityBlocks: [],
     paymentSettings: { ...demoPaymentSettings },
     paymentMethods: [...demoPaymentMethods],
     googleConnected: false,
-    labReports: createInitialLabReports()
+    labReports: createInitialLabReports(),
+    dietPlans: [{ ...demoDietPlan }],
+    clinicalRecords: [
+      {
+        id: "clinical-1",
+        patient_id: patientId,
+        appointment_id: "appt-0",
+        session_at: pastDate(21, 10),
+        title: "Consulta inicial · anamnese",
+        body_text: `Paciente: Maria Demo Silva
+
+Queixa: dificuldade em manter rotina alimentar no jantar.
+
+Avaliação: peso 68 kg; meta −4 kg em 3 meses; rotina sedentária.
+
+Conduta: iniciar plano com foco em café da manhã estruturado.
+
+Próximos passos: retorno em 3 semanas com registro alimentar.`,
+        notes: null,
+        storage_path: null,
+        mime_type: "text/plain",
+        file_name: null,
+        created_at: pastDate(21, 11),
+        updated_at: pastDate(21, 11)
+      },
+      {
+        id: "clinical-2",
+        patient_id: patientId,
+        appointment_id: null,
+        session_at: pastDate(7, 15),
+        title: "Retorno · reavaliação",
+        body_text: `Revisão de adesão e ajuste de porções.
+
+Evolução: adesão boa ao café da manhã; jantar ainda irregular. Relata mais energia; mantém treino 2x/semana.
+
+Conduta: ajuste de porções no jantar e reforço de proteína.
+
+Próximos passos: retorno em 30 dias.`,
+        notes: null,
+        storage_path: null,
+        mime_type: "text/plain",
+        file_name: null,
+        created_at: pastDate(7, 16),
+        updated_at: pastDate(7, 16)
+      }
+    ],
+    presets: []
   };
 }
 

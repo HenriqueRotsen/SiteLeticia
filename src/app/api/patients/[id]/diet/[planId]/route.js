@@ -30,12 +30,20 @@ export async function PATCH(request, { params }) {
   }
 
   if (status === "active") {
-    await auth.ctx.supabase
+    const { error: archiveError } = await auth.ctx.supabase
       .from("diet_plans")
       .update({ status: "archived", updated_at: new Date().toISOString() })
       .eq("patient_id", params.id)
       .eq("status", "active")
       .neq("id", params.planId);
+
+    if (archiveError) {
+      console.error("Diet plan archive failed:", archiveError);
+      return NextResponse.json(
+        { message: "Não foi possível desativar o plano anterior." },
+        { status: 500 }
+      );
+    }
   }
 
   const { data: plan, error } = await auth.ctx.supabase

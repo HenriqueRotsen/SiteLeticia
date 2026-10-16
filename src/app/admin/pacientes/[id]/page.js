@@ -7,6 +7,7 @@ import {
   CalendarClock,
   ClipboardList,
   FileSpreadsheet,
+  FileText,
   FlaskConical,
   Phone,
   Scale,
@@ -81,6 +82,7 @@ export default function AdminPatientDetailPage() {
   const [patient, setPatient] = useState(null);
   const [appointments, setAppointments] = useState([]);
   const [dietPlans, setDietPlans] = useState([]);
+  const [clinicalRecords, setClinicalRecords] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -88,12 +90,14 @@ export default function AdminPatientDetailPage() {
     Promise.all([
       fetch(`/api/admin/patients/${params.id}`).then((r) => r.json()),
       fetch(`/api/admin/appointments?patientId=${params.id}`).then((r) => r.json()),
-      fetch(`/api/patients/${params.id}/diet`).then((r) => r.json())
+      fetch(`/api/patients/${params.id}/diet`).then((r) => r.json()),
+      fetch(`/api/patients/${params.id}/prontuario`).then((r) => r.json())
     ])
-      .then(([patientData, appointmentsData, dietData]) => {
+      .then(([patientData, appointmentsData, dietData, clinicalData]) => {
         setPatient(patientData.patient || null);
         setAppointments(appointmentsData.appointments || []);
         setDietPlans(dietData.dietPlans || []);
+        setClinicalRecords(clinicalData.records || []);
       })
       .finally(() => setLoading(false));
   }, [params.id]);
@@ -116,6 +120,16 @@ export default function AdminPatientDetailPage() {
     return { upcoming: upcomingList, past: pastList };
   }, [appointments]);
 
+  const sortedDietPlans = useMemo(() => {
+    return [...dietPlans].sort((a, b) => {
+      if (a.status === "active" && b.status !== "active") return -1;
+      if (b.status === "active" && a.status !== "active") return 1;
+      return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+    });
+  }, [dietPlans]);
+
+  const activePlan = sortedDietPlans.find((plan) => plan.status === "active") || null;
+
   if (loading || !patient) {
     return (
       <AdminShell title="Paciente" breadcrumbs={["Admin", "Pacientes"]} userName="Letícia">
@@ -123,8 +137,6 @@ export default function AdminPatientDetailPage() {
       </AdminShell>
     );
   }
-
-  const activePlan = dietPlans.find((plan) => plan.status === "active");
 
   return (
     <AdminShell
@@ -196,6 +208,10 @@ export default function AdminPatientDetailPage() {
             <Link href={`/admin/pacientes/${params.id}/dieta?new=1`} className={btnPrimary()}>
               <ClipboardList className="h-4 w-4" strokeWidth={1.75} />
               Nova prescrição
+            </Link>
+            <Link href={`/admin/pacientes/${params.id}/prontuario`} className={btnSecondary()}>
+              <FileText className="h-4 w-4" strokeWidth={1.75} />
+              Prontuário
             </Link>
             <Link href={`/admin/pacientes/${params.id}/exames`} className={btnSecondary()}>
               <FlaskConical className="h-4 w-4" strokeWidth={1.75} />
@@ -299,7 +315,9 @@ export default function AdminPatientDetailPage() {
               <div>
                 <h2 className="font-semibold text-graphite">Planos alimentares</h2>
                 <p className="text-xs text-graphite/45">
-                  {dietPlans.length} {dietPlans.length === 1 ? "plano" : "planos"}
+                  {sortedDietPlans.length}{" "}
+                  {sortedDietPlans.length === 1 ? "plano" : "planos"}
+                  {activePlan ? " · atual no topo" : ""}
                 </p>
               </div>
             </div>
@@ -312,33 +330,44 @@ export default function AdminPatientDetailPage() {
           </div>
 
           <div className="p-5">
-            {dietPlans.length ? (
+            {sortedDietPlans.length ? (
               <ul className="space-y-2.5">
-                {dietPlans.map((plan) => {
+                {sortedDietPlans.map((plan) => {
                   const mealCount = (plan.diet_meals || []).length;
                   const supplementCount = (plan.diet_supplements || []).length;
                   const referralCount = (plan.diet_referrals || []).length;
+                  const examCount = (plan.diet_exam_orders || []).reduce(
+                    (sum, order) => sum + (order.exams || []).length,
+                    0
+                  );
+                  const isActive = plan.status === "active";
 
                   return (
                     <li key={plan.id}>
                       <Link
                         href={`/admin/pacientes/${params.id}/dieta?planId=${plan.id}`}
                         className={`block rounded-2xl border px-4 py-3 transition hover:border-olive-300 hover:bg-olive-50/40 ${
-                          plan.status === "active"
+                          isActive
                             ? "border-olive-300 bg-olive-50/50 ring-1 ring-olive-200/60"
-                            : "border-olive-900/8 bg-white"
+                            : "border-olive-900/8 bg-white opacity-80"
                         }`}
                       >
                         <div className="flex flex-wrap items-start justify-between gap-2">
                           <div className="min-w-0">
                             <p className="truncate text-sm font-semibold text-graphite">
                               {plan.title || "Plano alimentar"}
+                              {isActive ? (
+                                <span className="ml-2 text-[11px] font-semibold text-olive-800">
+                                  · plano atual
+                                </span>
+                              ) : null}
                             </p>
                             <p className="mt-0.5 text-xs text-graphite/45">
                               {formatDate(plan.created_at)}
                               {mealCount ? ` · ${mealCount} refeições` : ""}
                               {supplementCount ? ` · ${supplementCount} suplementos` : ""}
                               {referralCount ? ` · ${referralCount} encaminh.` : ""}
+                              {examCount ? ` · ${examCount} exames` : ""}
                             </p>
                           </div>
                           <Badge variant={dietBadgeVariant(plan.status)}>
@@ -356,6 +385,60 @@ export default function AdminPatientDetailPage() {
           </div>
         </Card>
       </div>
+
+      <Card className="mt-5 overflow-hidden p-0 sm:p-0">
+        <div className="flex items-center justify-between border-b border-olive-900/10 bg-gradient-to-r from-amber-50/80 to-porcelain px-5 py-4">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-100 text-amber-800">
+              <FileText className="h-5 w-5" strokeWidth={1.75} />
+            </span>
+            <div>
+              <h2 className="font-semibold text-graphite">Prontuário clínico</h2>
+              <p className="text-xs text-graphite/45">
+                {clinicalRecords.length}{" "}
+                {clinicalRecords.length === 1 ? "registro" : "registros"} · evolução por sessão
+              </p>
+            </div>
+          </div>
+          <Link
+            href={`/admin/pacientes/${params.id}/prontuario`}
+            className="text-xs font-semibold text-olive-700 hover:text-olive-800"
+          >
+            Abrir →
+          </Link>
+        </div>
+        <div className="p-5">
+          {clinicalRecords.length ? (
+            <ul className="space-y-2.5">
+              {clinicalRecords.slice(0, 5).map((record) => (
+                <li key={record.id}>
+                  <Link
+                    href={`/admin/pacientes/${params.id}/prontuario`}
+                    className="block rounded-2xl border border-olive-900/8 bg-white px-4 py-3 transition hover:border-olive-300 hover:bg-olive-50/40"
+                  >
+                    <p className="truncate text-sm font-semibold text-graphite">
+                      {record.title || "Registro de sessão"}
+                    </p>
+                    <p className="mt-0.5 text-xs text-graphite/45">
+                      {formatDate(record.session_at)}
+                      {(record.body_text || record.body_md)
+                        ? ` · ${String(record.body_text || record.body_md)
+                            .replace(/\s+/g, " ")
+                            .trim()
+                            .slice(0, 48)}${
+                            String(record.body_text || record.body_md).length > 48 ? "…" : ""
+                          }`
+                        : ""}
+                    </p>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <EmptyState icon={FileText} message="Nenhum prontuário anexado ainda" />
+          )}
+        </div>
+      </Card>
     </AdminShell>
   );
 }

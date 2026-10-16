@@ -23,6 +23,7 @@ import CsvUploadZone from "@/components/ui/CsvUploadZone";
 import MealDietAccordion from "@/components/ui/MealDietAccordion";
 import Modal from "@/components/ui/Modal";
 import PlanWizardStepper from "@/components/ui/PlanWizardStepper";
+import ExamOrderList from "@/components/ui/ExamOrderList";
 import ReferralList from "@/components/ui/ReferralList";
 import SupplementPrescriptionList from "@/components/ui/SupplementPrescriptionList";
 import { computePatientMetabolism } from "@/lib/metabolism/bmr";
@@ -33,6 +34,7 @@ import {
   toStoredPortion
 } from "@/lib/foods/measures";
 import { labelDietStatus } from "@/lib/labels";
+import { flattenSupplementEntries, groupSupplementRows } from "@/lib/diets/supplements";
 
 function formatPlanDate(date = new Date()) {
   return date.toLocaleDateString("pt-BR");
@@ -55,19 +57,13 @@ function emptyDraft(patientName) {
     extractionMethod: null,
     meals: [],
     supplements: [],
-    referrals: []
+    referrals: [],
+    examOrders: []
   };
 }
 
 function mapSupplements(plan) {
-  return (plan.diet_supplements || plan.supplements || []).map((item, index) => ({
-    clientId: item.id || crypto.randomUUID(),
-    productName: item.product_name || item.productName || "",
-    dosage: item.dosage || "",
-    posology: item.posology || "",
-    notes: item.notes || "",
-    sortOrder: item.sort_order ?? item.sortOrder ?? index
-  }));
+  return groupSupplementRows(plan.diet_supplements || plan.supplements || []);
 }
 
 function mapReferrals(plan) {
@@ -77,7 +73,25 @@ function mapReferrals(plan) {
     professionalName: item.professional_name || item.professionalName || "",
     reason: item.reason || "",
     urgency: item.urgency || "routine",
+    bodyText: item.body_text || item.bodyText || "",
     notes: item.notes || "",
+    sortOrder: item.sort_order ?? item.sortOrder ?? index
+  }));
+}
+
+function mapExamOrders(plan) {
+  return (plan.diet_exam_orders || plan.examOrders || []).map((item, index) => ({
+    clientId: item.id || crypto.randomUUID(),
+    title: item.title || "Pedido de exames",
+    meta: item.meta || null,
+    exams: (item.exams || []).map((exam) => ({
+      clientId: crypto.randomUUID(),
+      name: exam.name || "",
+      category: exam.category === "complementary" ? "complementary" : "principal",
+      whenToRequest: exam.whenToRequest || exam.when_to_request || ""
+    })),
+    collectionNotes: item.collection_notes || item.collectionNotes || [],
+    observations: item.observations || "",
     sortOrder: item.sort_order ?? item.sortOrder ?? index
   }));
 }
@@ -167,7 +181,8 @@ function mapApiPlanToDraft(plan) {
       })
     })),
     supplements: mapSupplements(plan),
-    referrals: mapReferrals(plan)
+    referrals: mapReferrals(plan),
+    examOrders: mapExamOrders(plan)
   };
 }
 
@@ -233,7 +248,7 @@ export default function PacienteDietaPage() {
           const selected = plans.find((plan) => plan.id === planIdParam);
           if (selected) {
             setDraft(mapApiPlanToDraft(selected));
-            setMaxReached(3);
+            setMaxReached(4);
             return;
           }
           setFeedbackTone("error");
@@ -315,13 +330,15 @@ export default function PacienteDietaPage() {
         }))
       })),
       diet_supplements: draft?.supplements || [],
-      diet_referrals: draft?.referrals || []
+      diet_referrals: draft?.referrals || [],
+      diet_exam_orders: draft?.examOrders || []
     });
 
     setDraft({
       ...nextDraft,
       supplements: draft?.supplements || [],
-      referrals: draft?.referrals || []
+      referrals: draft?.referrals || [],
+      examOrders: draft?.examOrders || []
     });
     setExtractMeta({
       summary: data.summary,
@@ -406,23 +423,32 @@ export default function PacienteDietaPage() {
             )
         }))
       })),
-      supplements: sanitizeListForSave(draft.supplements, ["productName", "dosage", "posology"]).map(
-        (item, index) => ({
-          productName: item.productName.trim(),
-          dosage: item.dosage.trim(),
-          posology: item.posology.trim(),
-          notes: item.notes?.trim() || null,
-          sortOrder: index
-        })
-      ),
+      supplements: flattenSupplementEntries(draft.supplements || []),
       referrals: sanitizeListForSave(draft.referrals, ["specialty", "reason"]).map((item, index) => ({
         specialty: item.specialty.trim(),
         professionalName: item.professionalName?.trim() || null,
         reason: item.reason.trim(),
         urgency: item.urgency || "routine",
+        bodyText: item.bodyText?.trim() || null,
         notes: item.notes?.trim() || null,
         sortOrder: index
-      }))
+      })),
+      examOrders: (draft.examOrders || [])
+        .map((order, index) => ({
+          title: String(order.title || "Pedido de exames").trim() || "Pedido de exames",
+          exams: (order.exams || [])
+            .filter((exam) => String(exam.name || "").trim())
+            .map((exam) => ({
+              name: exam.name.trim(),
+              category: exam.category === "complementary" ? "complementary" : "principal",
+              whenToRequest: exam.whenToRequest?.trim() || null
+            })),
+          collectionNotes: order.collectionNotes || [],
+          observations: order.observations?.trim() || null,
+          meta: order.meta || null,
+          sortOrder: index
+        }))
+        .filter((order) => order.exams.length > 0)
     };
 
     let response;
@@ -505,54 +531,18 @@ export default function PacienteDietaPage() {
     router.push(`/admin/pacientes/${patientId}`);
   }
 
-  async function deactivatePlan() {
-    if (!draft?.id) return;
-    setSaving(true);
-    setFeedback("");
-    const response = await fetch(`/api/patients/${patientId}/diet/${draft.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: "archived" })
-    });
-    const data = await response.json().catch(() => ({}));
-    setSaving(false);
-    setConfirmAction(null);
-
-    if (!response.ok) {
-      setFeedbackTone("error");
-      setFeedback(data.message || "Erro ao desativar plano.");
-      return;
-    }
-
-    setDraft((current) => ({ ...current, status: "archived" }));
-    setFeedbackTone("success");
-    setFeedback("Plano desativado.");
-  }
-
-  async function deletePlan() {
-    if (!draft?.id) return;
-    setSaving(true);
-    setFeedback("");
-    const response = await fetch(`/api/patients/${patientId}/diet/${draft.id}`, {
-      method: "DELETE"
-    });
-    const data = await response.json().catch(() => ({}));
-    setSaving(false);
-    setConfirmAction(null);
-
-    if (!response.ok) {
-      setFeedbackTone("error");
-      setFeedback(data.message || "Erro ao excluir plano.");
-      return;
-    }
-
-    router.push(`/admin/pacientes/${patientId}`);
-  }
-
   return (
     <AdminShell
       title="Prescrição"
-      breadcrumbs={["Admin", "Pacientes", patient?.full_name || "...", "Prescrição"]}
+      breadcrumbs={[
+        "Admin",
+        "Pacientes",
+        {
+          label: patient?.full_name || "...",
+          href: `/admin/pacientes/${patientId}`
+        },
+        "Prescrição"
+      ]}
     >
       <div className="mb-5 rounded-2xl border border-olive-900/10 bg-porcelain/90 px-4 py-4 sm:px-5">
         <PlanWizardStepper step={wizardStep} maxReached={maxReached} onStepChange={goToStep} />
@@ -620,8 +610,8 @@ export default function PacienteDietaPage() {
       </div>
 
       {wizardStep === 1 ? (
-        <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(360px,0.8fr)]">
-          <div className="space-y-5">
+        <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_280px] xl:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="min-w-0 space-y-4">
             {readOnly ? (
               <Card>
                 <div className="grid gap-3">
@@ -735,6 +725,7 @@ export default function PacienteDietaPage() {
           <SupplementPrescriptionList
             items={draft?.supplements || []}
             readOnly={readOnly}
+            patientName={patient?.full_name || ""}
             onChange={
               readOnly
                 ? undefined
@@ -749,8 +740,32 @@ export default function PacienteDietaPage() {
           <ReferralList
             items={draft?.referrals || []}
             readOnly={readOnly}
+            patientName={patient?.full_name || ""}
+            patientContext={{
+              patientName: patient?.full_name || "",
+              birthDate: patient?.birth_date,
+              sex: patient?.sex
+            }}
             onChange={
               readOnly ? undefined : (referrals) => updateDraftField("referrals", referrals)
+            }
+          />
+        </div>
+      ) : null}
+
+      {wizardStep === 4 ? (
+        <div className="mx-auto max-w-6xl space-y-5">
+          <ExamOrderList
+            orders={draft?.examOrders || []}
+            readOnly={readOnly}
+            patientName={patient?.full_name || ""}
+            patientContext={{
+              patientName: patient?.full_name || "",
+              birthDate: patient?.birth_date,
+              sex: patient?.sex
+            }}
+            onChange={
+              readOnly ? undefined : (examOrders) => updateDraftField("examOrders", examOrders)
             }
           />
 
@@ -793,7 +808,7 @@ export default function PacienteDietaPage() {
                     Voltar
                   </button>
                 ) : null}
-                {wizardStep < 3 ? (
+                {wizardStep < 4 ? (
                   <button
                     type="button"
                     className={btnPrimary()}
@@ -808,22 +823,15 @@ export default function PacienteDietaPage() {
           ) : null}
 
           {!readOnly && wizardStep === 1 ? (
-            <>
-              <span className="text-sm text-graphite/45">
-                {draft?.meals?.length
-                  ? `${draft.meals.length} refeições`
-                  : "Sem refeições ainda"}
-              </span>
-              <button
-                type="button"
-                className={btnPrimary()}
-                disabled={!draft?.meals?.length || extracting}
-                onClick={() => goToStep(2)}
-              >
-                Continuar
-                <ArrowRight className="h-4 w-4" strokeWidth={1.75} />
-              </button>
-            </>
+            <button
+              type="button"
+              className={btnPrimary()}
+              disabled={!draft?.meals?.length || extracting}
+              onClick={() => goToStep(2)}
+            >
+              Continuar
+              <ArrowRight className="h-4 w-4" strokeWidth={1.75} />
+            </button>
           ) : null}
 
           {!readOnly && wizardStep === 2 ? (
@@ -842,6 +850,19 @@ export default function PacienteDietaPage() {
           {!readOnly && wizardStep === 3 ? (
             <>
               <button type="button" className={btnSecondary()} onClick={() => goToStep(2)}>
+                <ArrowLeft className="h-4 w-4" strokeWidth={1.75} />
+                Voltar
+              </button>
+              <button type="button" className={btnPrimary()} onClick={() => goToStep(4)}>
+                Continuar
+                <ArrowRight className="h-4 w-4" strokeWidth={1.75} />
+              </button>
+            </>
+          ) : null}
+
+          {!readOnly && wizardStep === 4 ? (
+            <>
+              <button type="button" className={btnSecondary()} onClick={() => goToStep(3)}>
                 <ArrowLeft className="h-4 w-4" strokeWidth={1.75} />
                 Voltar
               </button>

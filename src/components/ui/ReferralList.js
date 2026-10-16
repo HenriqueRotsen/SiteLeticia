@@ -10,6 +10,8 @@ import {
   UserRoundPlus
 } from "lucide-react";
 import { Card, btnSecondary, inputClassName } from "@/components/layout/AppShell";
+import PresetPicker from "@/components/ui/PresetPicker";
+import { mapReferralPresetItem } from "@/lib/presets/format";
 
 function emptyReferral() {
   return {
@@ -18,6 +20,7 @@ function emptyReferral() {
     professionalName: "",
     reason: "",
     urgency: "routine",
+    bodyText: "",
     notes: ""
   };
 }
@@ -60,6 +63,12 @@ function ReferralPreview({ items, readOnly }) {
                       {item.professionalName}
                     </p>
                   ) : null}
+                  {item.bodyText ? (
+                    <p className="mt-2 whitespace-pre-wrap rounded-lg bg-linen/60 px-2.5 py-2 text-[11px] leading-relaxed text-graphite/65">
+                      {item.bodyText.slice(0, 240)}
+                      {item.bodyText.length > 240 ? "…" : ""}
+                    </p>
+                  ) : null}
                   {item.notes ? (
                     <p className="mt-1.5 border-t border-olive-900/6 pt-1.5 text-[11px] text-graphite/45">
                       {item.notes}
@@ -83,7 +92,15 @@ function ReferralPreview({ items, readOnly }) {
 /**
  * Lista de encaminhamentos para outros profissionais de saúde.
  */
-export default function ReferralList({ items = [], onChange, readOnly = false }) {
+export default function ReferralList({
+  items = [],
+  onChange,
+  readOnly = false,
+  patientName = "",
+  patientContext = null
+}) {
+  const context = patientContext || { patientName };
+
   function updateItem(clientId, patch) {
     onChange?.(items.map((item) => (item.clientId === clientId ? { ...item, ...patch } : item)));
   }
@@ -96,9 +113,19 @@ export default function ReferralList({ items = [], onChange, readOnly = false })
     onChange?.([...items, emptyReferral()]);
   }
 
+  function applyPresets(presets, { values } = {}) {
+    const mapped = presets.map((preset) =>
+      mapReferralPresetItem(preset, {
+        patientName: context.patientName || patientName,
+        variableValues: values || {}
+      })
+    );
+    onChange?.([...items, ...mapped]);
+  }
+
   if (readOnly) {
     return (
-      <div className="mx-auto max-w-2xl">
+      <div className="mx-auto max-w-2xl space-y-4">
         <ReferralPreview items={items} readOnly />
       </div>
     );
@@ -115,15 +142,24 @@ export default function ReferralList({ items = [], onChange, readOnly = false })
             <div>
               <h2 className="font-semibold text-graphite">Encaminhamentos</h2>
               <p className="text-xs text-graphite/45">
-                {items.length} {items.length === 1 ? "profissional" : "profissionais"}
+                {items.length} {items.length === 1 ? "parecer" : "pareceres"}
               </p>
             </div>
           </div>
-          <button type="button" className={btnSecondary()} onClick={addItem}>
-            <Plus className="h-4 w-4" strokeWidth={1.75} />
-            Adicionar
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className={btnSecondary()} onClick={addItem}>
+              <Plus className="h-4 w-4" strokeWidth={1.75} />
+              Adicionar
+            </button>
+          </div>
         </div>
+
+        <PresetPicker
+          type="referral_letter"
+          label="Template de encaminhamento"
+          patientContext={context}
+          onApply={applyPresets}
+        />
 
         {!items.length ? (
           <button
@@ -213,7 +249,7 @@ export default function ReferralList({ items = [], onChange, readOnly = false })
               </div>
 
               <label className="block text-xs text-graphite/55">
-                Motivo
+                Motivo (resumo)
                 <div className="relative mt-1">
                   <FileText className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-graphite/30" />
                   <input
@@ -225,6 +261,18 @@ export default function ReferralList({ items = [], onChange, readOnly = false })
                     placeholder="Motivo do encaminhamento"
                   />
                 </div>
+              </label>
+
+              <label className="block text-xs text-graphite/55">
+                Texto do parecer (para o paciente apresentar ao médico)
+                <textarea
+                  className={`mt-1 min-h-[160px] ${inputClassName()}`}
+                  value={item.bodyText || ""}
+                  onChange={(event) =>
+                    updateItem(item.clientId, { bodyText: event.target.value })
+                  }
+                  placeholder="Corpo da carta / solicitação de parecer…"
+                />
               </label>
 
               <div className="grid gap-3 sm:grid-cols-2">

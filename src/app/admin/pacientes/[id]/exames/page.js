@@ -11,6 +11,8 @@ import { labelPublishedBy, labelUploadedBy } from "@/lib/labels";
 
 export default function AdminLabsPage() {
   const params = useParams();
+  const patientId = params.id;
+  const [patientName, setPatientName] = useState("");
   const [reports, setReports] = useState([]);
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
@@ -19,14 +21,27 @@ export default function AdminLabsPage() {
   const [reviewingId, setReviewingId] = useState("");
 
   async function loadReports() {
-    const res = await fetch(`/api/patients/${params.id}/labs`);
+    const res = await fetch(`/api/patients/${patientId}/labs`);
     const data = await res.json();
     setReports(data.reports || []);
   }
 
   useEffect(() => {
-    loadReports();
-  }, [params.id]);
+    let cancelled = false;
+
+    Promise.all([
+      fetch(`/api/admin/patients/${patientId}`).then((r) => r.json()),
+      fetch(`/api/patients/${patientId}/labs`).then((r) => r.json())
+    ]).then(([patientData, labsData]) => {
+      if (cancelled) return;
+      setPatientName(patientData.patient?.full_name || "");
+      setReports(labsData.reports || []);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [patientId]);
 
   async function uploadPdf(file) {
     setUploading(true);
@@ -83,7 +98,15 @@ export default function AdminLabsPage() {
     <AdminShell
       title="Exames do paciente"
       subtitle="Upload, revisão com análise automática e publicação"
-      breadcrumbs={["Admin", "Pacientes", "Exames"]}
+      breadcrumbs={[
+        "Admin",
+        "Pacientes",
+        {
+          label: patientName || "...",
+          href: `/admin/pacientes/${patientId}`
+        },
+        "Exames"
+      ]}
       userName="Letícia"
     >
       <Card className="mb-6">

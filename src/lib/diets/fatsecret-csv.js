@@ -134,7 +134,12 @@ export function parsePortionLabel(rawLabel) {
     );
 
   if (isCountable) {
-    const portionG = totalGrams || 100;
+    // Nutrientes da linha FatSecret são da porção inteira. Sem gramas:
+    // fatia unitária ~50g; demais casos assume 100g no total da linha.
+    let portionG = totalGrams;
+    if (portionG == null) {
+      portionG = /fatias?/i.test(label) && count === 1 ? 50 : 100;
+    }
     return {
       portionG,
       amountLabel: label,
@@ -166,18 +171,26 @@ export function parsePortionLabel(rawLabel) {
 
 function leadingSpaceCount(line) {
   // FatSecret coloca espaços de indentação dentro das aspas em algumas linhas de porção.
-  const stripped = String(line || "").replace(/^"/, "");
-  const match = stripped.match(/^[ ]*/);
-  return match ? match[0].length : 0;
+  // Também aceita tabs (tratados como 1 nível = 1 espaço lógico de indentação do relatório).
+  const stripped = String(line || "").replace(/^\uFEFF?"/, "").replace(/^\uFEFF/, "");
+  let count = 0;
+  for (const char of stripped) {
+    if (char === " ") count += 1;
+    else if (char === "\t") count += 1;
+    else break;
+  }
+  return count;
 }
 
 function isHeaderRow(cells) {
-  const first = decodeHtmlEntities(cells[0] || "").toLowerCase();
-  return first === "data" || first.includes("cals");
+  const first = decodeHtmlEntities(cells[0] || "")
+    .replace(/^\uFEFF/, "")
+    .toLowerCase();
+  return first === "data" || first.startsWith("data") || first.includes("cals");
 }
 
 function isDayOrTotalRow(name) {
-  const normalized = name.toLowerCase();
+  const normalized = name.toLowerCase().trim();
   return (
     normalized === "total" ||
     normalized.startsWith("segunda") ||
@@ -189,13 +202,16 @@ function isDayOrTotalRow(name) {
     normalized.startsWith("sábado") ||
     normalized.startsWith("sabado") ||
     normalized.startsWith("domingo") ||
+    /,\s*(janeiro|fevereiro|mar[cç]o|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)\b/i.test(
+      normalized
+    ) ||
     /\d{4}/.test(normalized)
   );
 }
 
 function isMealName(name) {
-  const normalized = name.toLowerCase();
-  return /^(caf[eé]|almo[cç]o|jantar|lanche|ceia|cola[cç]|snack|breakfast|lunch|dinner)/i.test(
+  const normalized = name.toLowerCase().trim();
+  return /^(caf[eé]|almo[cç]o|jantar|lanches?(?:\/outros)?|ceia|cola[cç]|snack|breakfast|lunch|dinner)/i.test(
     normalized
   );
 }
@@ -263,7 +279,9 @@ function toStoredItem(food) {
 export function extractDietPlanFromFatSecretCsv(csvText, options = {}) {
   const lines = String(csvText || "")
     .replace(/^\uFEFF/, "")
-    .split(/\r?\n/);
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .split("\n");
 
   const meals = [];
   let currentMeal = null;
@@ -290,16 +308,21 @@ export function extractDietPlanFromFatSecretCsv(csvText, options = {}) {
     if (rawLine.trim().startsWith("#")) continue;
 
     const indent = leadingSpaceCount(rawLine);
-    const cells = parseCsvLine(rawLine).map((cell) => decodeHtmlEntities(cell.trim()));
+    const cells = parseCsvLine(rawLine).map((cell) =>
+      decodeHtmlEntities(String(cell || "").replace(/^\uFEFF/, "").trim())
+    );
     if (!cells.length) continue;
     if (isHeaderRow(cells)) continue;
 
     const name = cells[0] || "";
     if (!name) continue;
 
-    // Linha só de porção (sem nutrientes)
-    const onlyPortion = cells.length === 1 || cells.slice(1).every((cell) => !String(cell || "").trim());
-    if (onlyPortion && indent >= 3) {
+    const nutrientCells = cells.slice(1);
+    const hasNutrients = nutrientCells.some((cell) => String(cell || "").trim() !== "");
+    const onlyPortion = !hasNutrients;
+
+    // Linha só de porção (sem nutrientes) — indent 3+ no Detailed Report
+    if (onlyPortion && (indent >= 3 || (indent >= 2 && pendingFood && !pendingFood.portionLabel))) {
       if (pendingFood) pendingFood.portionLabel = name;
       continue;
     }
@@ -315,6 +338,7 @@ export function extractDietPlanFromFatSecretCsv(csvText, options = {}) {
       continue;
     }
 
+    // Refeição: 1 espaço no Detailed Report (Café/Almoço/Jantar/Lanches…)
     if (indent === 1 || (indent < 2 && isMealName(name))) {
       flushMeal();
       currentMeal = {
@@ -325,7 +349,9 @@ export function extractDietPlanFromFatSecretCsv(csvText, options = {}) {
       continue;
     }
 
-    // Alimento (indent >= 2)
+    // Alimento (indent >= 2) com nutrientes da porção
+    if (!hasNutrients) continue;
+
     if (!currentMeal) {
       currentMeal = {
         name: "Refeição",

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
 import AdminShell from "@/components/layout/AdminShell";
 import Badge from "@/components/ui/Badge";
@@ -19,6 +20,7 @@ function formatPhone(phone) {
 }
 
 export default function AdminPatientsPage() {
+  const router = useRouter();
   const [patients, setPatients] = useState([]);
   const [q, setQ] = useState("");
 
@@ -93,6 +95,7 @@ export default function AdminPatientsPage() {
             }
           ]}
           rows={patients.map((p) => ({ ...p, id: p.id }))}
+          onRowDoubleClick={(row) => router.push(`/admin/pacientes/${row.id}`)}
         />
       </Card>
     </AdminShell>

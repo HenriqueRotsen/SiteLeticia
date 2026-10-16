@@ -13,6 +13,11 @@ const SAMPLE_CSV = readFileSync(
   "utf8"
 );
 
+const SAMPLE_CSV_OCT_2026 = readFileSync(
+  resolve(process.cwd(), "src/lib/diets/fixtures/fatsecret-detailed-report-2026-10-13.csv"),
+  "utf8"
+);
+
 describe("parseFatSecretNumber", () => {
   it("parses Brazilian decimal commas", () => {
     expect(parseFatSecretNumber("52,85")).toBe(52.85);
@@ -49,6 +54,13 @@ describe("parsePortionLabel", () => {
     expect(parsePortionLabel("2 pequenos")).toMatchObject({
       measureUnit: "unidades",
       measureAmount: 2,
+      gramsPerUnit: 50,
+      estimated: true
+    });
+    expect(parsePortionLabel("1 fatia")).toMatchObject({
+      portionG: 50,
+      measureUnit: "unidades",
+      measureAmount: 1,
       gramsPerUnit: 50,
       estimated: true
     });
@@ -103,5 +115,59 @@ describe("extractDietPlanFromFatSecretCsv", () => {
     const snack = plan.meals[3].items.find((item) => item.label.includes("Pão Francês"));
     expect(snack.portionG).toBe(100);
     expect(snack.nutritionSnapshot.portionEstimated).toBe(true);
+  });
+
+  it("parses the October 2026 FatSecret export (BOM + CRLF + Lanches/Outros)", () => {
+    const plan = extractDietPlanFromFatSecretCsv(SAMPLE_CSV_OCT_2026);
+
+    expect(plan.reportDate).toMatch(/outubro 13, 2026/i);
+    expect(plan.meals.map((meal) => meal.name)).toEqual([
+      "Café da Manhã",
+      "Almoço",
+      "Jantar",
+      "Lanches/Outros"
+    ]);
+
+    const breakfast = plan.meals[0];
+    expect(breakfast.items.map((item) => item.label)).toEqual([
+      "Pão de Forma",
+      "Poços de Caldas Requeijão Cremoso",
+      "Dux Whey Cappuccino Isolado",
+      "Leite Integral"
+    ]);
+
+    const bread = breakfast.items[0];
+    expect(bread.portionG).toBe(50);
+    expect(bread.nutritionSnapshot.amountLabel).toBe("1 fatia");
+    expect(bread.nutritionSnapshot.portionEstimated).toBe(true);
+
+    const requeijao = breakfast.items[1];
+    expect(requeijao.portionG).toBe(30);
+    expect(requeijao.nutritionSnapshot.measureUnit).toBe("colher_sopa");
+
+    const milk = breakfast.items[3];
+    expect(milk.portionG).toBe(400);
+    expect(milk.nutritionSnapshot.measureUnit).toBe("ml");
+
+    const chicken = plan.meals[2].items.find((item) =>
+      item.label.includes("Sobrecoxa")
+    );
+    expect(chicken).toBeTruthy();
+    expect(chicken.portionG).toBe(100);
+
+    const snackMilk = plan.meals[3].items.find((item) => item.label.includes("Italac"));
+    expect(snackMilk.portionG).toBe(200);
+    expect(snackMilk.nutritionSnapshot.measureUnit).toBe("ml");
+
+    // Totais do dia no CSV: 1678 kcal / 148,99 g proteína
+    const totalKcal = plan.meals
+      .flatMap((meal) => meal.items)
+      .reduce((sum, item) => {
+        const grams = Number(item.quantity || 0) * Number(item.portionG || 0);
+        const kcal100 = Number(item.per100g?.kcal || 0);
+        return sum + (grams * kcal100) / 100;
+      }, 0);
+    expect(totalKcal).toBeGreaterThan(1600);
+    expect(totalKcal).toBeLessThan(1750);
   });
 });

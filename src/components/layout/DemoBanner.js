@@ -34,7 +34,7 @@ export default function DemoBanner() {
   return (
     <div
       ref={ref}
-      className="border-b border-amber-200/80 bg-gradient-to-r from-amber-50 to-orange-50 px-4 py-2.5 text-center text-sm text-amber-950"
+      className="sticky top-0 z-50 border-b border-amber-200/80 bg-gradient-to-r from-amber-50 to-orange-50 px-4 py-2.5 text-center text-sm text-amber-950"
     >
       <span className="font-medium">Modo demonstração</span>
       <span className="mx-2 text-amber-700/60">·</span>

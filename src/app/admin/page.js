@@ -11,7 +11,7 @@ import {
   XAxis,
   YAxis
 } from "recharts";
-import { CalendarDays, FlaskConical, Users } from "lucide-react";
+import { CalendarDays, CircleDollarSign, FlaskConical, Users } from "lucide-react";
 import AdminShell from "@/components/layout/AdminShell";
 import { Card, DataTable, formatCurrency } from "@/components/layout/AppShell";
 import Badge, { appointmentBadge, paymentBadge } from "@/components/ui/Badge";
@@ -55,13 +55,14 @@ export default function AdminDashboardPage() {
       breadcrumbs={["Admin", "Dashboard"]}
       userName="Letícia"
     >
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatCard
           label="Pacientes ativos"
           value={data.stats?.patients || 0}
           hint="Cadastrados na plataforma"
           icon={Users}
           tone="olive"
+          href="/admin/pacientes"
         />
         <StatCard
           label="Consultas hoje"
@@ -69,6 +70,19 @@ export default function AdminDashboardPage() {
           hint="Agenda do dia"
           icon={CalendarDays}
           tone="sand"
+          href="/admin/consultas"
+        />
+        <StatCard
+          label="Faturamento do mês"
+          value={formatCurrency(data.stats?.revenueMonthCents || 0)}
+          hint={
+            data.stats?.pendingPaymentValidation
+              ? `${data.stats.pendingPaymentValidation} aguardando validação`
+              : "Pagamentos validados"
+          }
+          icon={CircleDollarSign}
+          tone="olive"
+          href="/admin/financeiro"
         />
         <StatCard
           label="Exames pendentes"

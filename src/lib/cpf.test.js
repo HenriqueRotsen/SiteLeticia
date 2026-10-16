@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isValidCpf, maskCpf, normalizeCpf } from "@/lib/cpf";
+import { formatCpf, isValidCpf, maskCpf, normalizeCpf } from "@/lib/cpf-utils";
 import { blockedUntil, overlapsWithBuffer } from "@/lib/scheduling/slots";
 import { CONSULTATION_DURATION_MIN, SLOT_INTERVAL_MIN } from "@/lib/constants";
 
@@ -18,6 +18,13 @@ describe("cpf", () => {
 
   it("normalizes digits", () => {
     expect(normalizeCpf("529.982.247-25")).toBe("52998224725");
+  });
+
+  it("formats CPF progressively", () => {
+    expect(formatCpf("529")).toBe("529");
+    expect(formatCpf("529982")).toBe("529.982");
+    expect(formatCpf("529982247")).toBe("529.982.247");
+    expect(formatCpf("52998224725")).toBe("529.982.247-25");
   });
 });
 

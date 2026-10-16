@@ -33,15 +33,23 @@ function NutrientValue({ nutrient, value, compact = false }) {
   const empty = value == null || value === "";
 
   return (
-    <div className={`min-w-0 ${empty ? "opacity-45" : ""}`}>
-      <p className={`truncate font-medium text-current/55 ${compact ? "text-[9px]" : "text-[10px]"}`}>
+    <div className={`min-w-0 overflow-hidden ${empty ? "opacity-45" : ""}`}>
+      <p
+        className={`truncate font-medium leading-tight text-current/55 ${
+          compact ? "text-[9px]" : "text-[10px]"
+        }`}
+      >
         {nutrient.fullLabel}
       </p>
-      <p className={`mt-0.5 font-semibold tabular-nums ${compact ? "text-xs" : "text-base"}`}>
+      <p
+        className={`mt-0.5 truncate font-semibold tabular-nums leading-tight ${
+          compact ? "text-xs" : "text-sm"
+        }`}
+      >
         {empty
           ? "—"
           : formatNutrientValue(nutrient.key, value).replace(` ${nutrient.unit}`, "")}
-        <span className="ml-1 text-[9px] font-medium opacity-50">{nutrient.unit}</span>
+        <span className="ml-0.5 text-[9px] font-medium opacity-50">{nutrient.unit}</span>
       </p>
     </div>
   );
@@ -59,15 +67,24 @@ export default function FatSecretNutrientGrid({
 
   if (!isCompact) {
     return (
-      <div className="space-y-3">
+      <div className="@container space-y-3">
         {title ? <p className="text-sm font-semibold text-graphite">{title}</p> : null}
-        <div className="grid gap-2 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-2 @[36rem]:grid-cols-2">
           {GROUPS.map((group) => (
-            <section key={group.title} className={`rounded-2xl border p-3.5 ${group.className}`}>
+            <section
+              key={group.title}
+              className={`@container min-w-0 overflow-hidden rounded-2xl border p-3.5 ${group.className}`}
+            >
               <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-graphite/45">
                 {group.title}
               </p>
-              <div className={`grid gap-3 ${group.keys.length === 1 ? "grid-cols-1" : "grid-cols-3"}`}>
+              <div
+                className={
+                  group.keys.length === 1
+                    ? "grid grid-cols-1 gap-3"
+                    : "grid grid-cols-1 gap-3 @[11rem]:grid-cols-3"
+                }
+              >
                 {group.keys.map((key) => {
                   const nutrient = FATSECRET_REPORT_NUTRIENTS.find((entry) => entry.key === key);
                   return (

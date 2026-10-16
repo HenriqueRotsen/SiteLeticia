@@ -3,7 +3,8 @@
 const STEPS = [
   { id: 1, label: "Prescrição Dietética" },
   { id: 2, label: "Prescrição de Suplementação" },
-  { id: 3, label: "Encaminhamentos" }
+  { id: 3, label: "Encaminhamentos" },
+  { id: 4, label: "Exames" }
 ];
 
 /**

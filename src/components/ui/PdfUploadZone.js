@@ -7,6 +7,8 @@ export default function PdfUploadZone({
   label = "Enviar PDF",
   description = "Arraste o laudo em PDF ou clique para selecionar.",
   hint = "PDF · até 10 MB",
+  accept = "application/pdf",
+  dropLabel = "Clique ou arraste o PDF",
   uploading = false,
   disabled = false,
   onFileSelect
@@ -64,14 +66,14 @@ export default function PdfUploadZone({
             )}
           </div>
           <p className="mt-5 text-sm font-semibold text-graphite">
-            {uploading ? "Processando PDF..." : dragging ? "Solte o arquivo" : "Clique ou arraste o PDF"}
+            {uploading ? "Enviando..." : dragging ? "Solte o arquivo" : dropLabel}
           </p>
           <p className="mt-2 text-sm text-graphite/55">{hint}</p>
         </label>
         <input
           id={inputId}
           type="file"
-          accept="application/pdf"
+          accept={accept}
           className="sr-only"
           disabled={disabled || uploading}
           onChange={(event) => handleFile(event.target.files?.[0])}

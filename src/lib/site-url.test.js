@@ -30,21 +30,21 @@ describe("getSiteUrl", () => {
 
     const url = getSiteUrl(
       mockRequest({
-        "x-forwarded-host": "app.leticia.com.br",
+        "x-forwarded-host": "leticiavrcunha.com.br",
         "x-forwarded-proto": "https"
       })
     );
 
-    expect(url).toBe("https://app.leticia.com.br");
+    expect(url).toBe("https://leticiavrcunha.com.br");
   });
 
   it("uses configured public URL when not localhost", () => {
     process.env.NODE_ENV = "production";
-    process.env.NEXT_PUBLIC_SITE_URL = "https://app.leticia.com.br/";
+    process.env.NEXT_PUBLIC_SITE_URL = "https://leticiavrcunha.com.br/";
 
     const url = getSiteUrl();
 
-    expect(url).toBe("https://app.leticia.com.br");
+    expect(url).toBe("https://leticiavrcunha.com.br");
   });
 
   it("falls back to VERCEL_URL when configured URL is localhost in production", () => {
@@ -59,12 +59,12 @@ describe("getSiteUrl", () => {
   });
 
   it("builds auth callback with encoded next path", () => {
-    process.env.NEXT_PUBLIC_SITE_URL = "https://app.leticia.com.br";
+    process.env.NEXT_PUBLIC_SITE_URL = "https://leticiavrcunha.com.br";
 
     const callback = buildAuthCallbackUrl(null, "/redefinir-senha");
 
     expect(callback).toBe(
-      "https://app.leticia.com.br/auth/callback?next=%2Fredefinir-senha"
+      "https://leticiavrcunha.com.br/auth/callback?next=%2Fredefinir-senha"
     );
   });
 });

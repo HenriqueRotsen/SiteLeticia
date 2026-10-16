@@ -14,6 +14,8 @@ import {
   generateDemoSlots,
   patientId
 } from "@/lib/demo/data";
+import { getSeedPresetsAsRows } from "@/lib/presets/seed";
+import { extractDietPlanFromCsvBuffer } from "@/lib/diets/fatsecret-csv";
 
 let state = createInitialDemoState();
 
@@ -23,6 +25,61 @@ function json(body, status = 200) {
 
 export function resetDemoState() {
   state = createInitialDemoState();
+}
+
+function docsForAppointment(appointmentId) {
+  return (state.appointmentDocuments || [])
+    .filter((doc) => doc.appointment_id === appointmentId)
+    .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+}
+
+function summarizeDemoDocs(documents = []) {
+  const proofs = documents.filter((d) => d.doc_type === "payment_proof");
+  const invoices = documents.filter((d) => d.doc_type === "invoice");
+  return {
+    latestProof: proofs[0] || null,
+    latestInvoice: invoices[0] || null,
+    hasProof: proofs.length > 0,
+    hasInvoice: invoices.length > 0,
+    hasMismatch: documents.some((d) => d.amount_matches === false)
+  };
+}
+
+function patientHasValidatedPaymentDemo(patientIdValue) {
+  return (state.appointments || []).some(
+    (appt) =>
+      appt.patient_id === patientIdValue &&
+      (appt.payment_status === "paid" || appt.payment_status === "waived")
+  );
+}
+
+function ensureDemoPresets() {
+  if (!state.presets?.length) {
+    state.presets = getSeedPresetsAsRows();
+  }
+  return state.presets;
+}
+
+function createDemoDocument({ appointment, fileName, docType, uploadedByRole, amountCents }) {
+  const matches = amountCents === appointment.amount_cents;
+  return {
+    id: `doc-${Date.now()}`,
+    appointment_id: appointment.id,
+    patient_id: appointment.patient_id,
+    doc_type: docType,
+    storage_path: `demo/${appointment.id}/${docType}-${Date.now()}.pdf`,
+    mime_type: "application/pdf",
+    file_name: fileName || `${docType}.pdf`,
+    uploaded_by_role: uploadedByRole,
+    extracted_amount_cents: amountCents,
+    extracted_paid_at: new Date().toISOString(),
+    extracted_payer_name: demoPatient.full_name,
+    extraction_status: "ok",
+    extraction_json: { method: "demo", confidence: 1 },
+    amount_matches: matches,
+    url: null,
+    created_at: new Date().toISOString()
+  };
 }
 
 export async function handleDemoApi(request) {
@@ -151,51 +208,167 @@ export async function handleDemoApi(request) {
       }
     });
   }
-  if (path === "/api/patients/me/diet" && method === "GET") return json({ dietPlan: demoDietPlan });
+  if (path === "/api/patients/me/diet" && method === "GET") {
+    if (!patientHasValidatedPaymentDemo(patientId)) {
+      return json({
+        dietPlan: null,
+        dietPlans: [],
+        patientName: state.patientProfile?.full_name || demoPatient.full_name,
+        paymentGate: {
+          locked: true,
+          reason:
+            "Sua prescrição será liberada após o envio do comprovante de pagamento e a validação pela nutricionista."
+        }
+      });
+    }
+    const plans = (state.dietPlans || [])
+      .filter(
+        (plan) =>
+          (plan.patient_id === patientId || !plan.patient_id) &&
+          (plan.status === "active" || plan.status === "archived")
+      )
+      .slice()
+      .sort((a, b) => {
+        if (a.status === "active" && b.status !== "active") return -1;
+        if (b.status === "active" && a.status !== "active") return 1;
+        return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+      });
+    const activePlan = plans.find((plan) => plan.status === "active") || null;
+    return json({
+      dietPlan: activePlan,
+      dietPlans: plans,
+      patientName: state.patientProfile?.full_name || demoPatient.full_name,
+      paymentGate: { locked: false }
+    });
+  }
+
+  if (path.match(/^\/api\/appointments\/[^/]+\/documents$/) && method === "GET") {
+    const id = path.split("/")[3];
+    const appointment = state.appointments.find((a) => a.id === id && a.patient_id === patientId);
+    if (!appointment) return json({ message: "Consulta não encontrada." }, 404);
+    const documents = docsForAppointment(id);
+    return json({
+      documents,
+      summary: summarizeDemoDocs(documents),
+      appointment: {
+        id: appointment.id,
+        amount_cents: appointment.amount_cents,
+        payment_status: appointment.payment_status
+      }
+    });
+  }
+
+  if (path.match(/^\/api\/appointments\/[^/]+\/documents$/) && method === "POST") {
+    const id = path.split("/")[3];
+    const appointment = state.appointments.find((a) => a.id === id && a.patient_id === patientId);
+    if (!appointment) return json({ message: "Consulta não encontrada." }, 404);
+    const document = createDemoDocument({
+      appointment,
+      fileName: "comprovante-demo.pdf",
+      docType: "payment_proof",
+      uploadedByRole: "patient",
+      amountCents: appointment.amount_cents
+    });
+    state.appointmentDocuments = [document, ...(state.appointmentDocuments || [])];
+    return json({ document });
+  }
+
+  if (path === "/api/patients/me/finance" && method === "GET") {
+    const rows = state.appointments
+      .filter((a) => a.patient_id === patientId)
+      .map((appt) => {
+        const documents = docsForAppointment(appt.id);
+        return { ...appt, documents, summary: summarizeDemoDocs(documents) };
+      });
+    const paid = rows.filter((r) => r.payment_status === "paid");
+    return json({
+      summary: {
+        expensesCents: paid.reduce((sum, r) => sum + (r.amount_cents || 0), 0),
+        paidCount: paid.length,
+        pendingCount: rows.filter((r) => r.payment_status === "pending").length
+      },
+      appointments: rows
+    });
+  }
 
   if (path.match(/^\/api\/patients\/[^/]+\/diet\/extract$/) && method === "POST") {
+    const formData = await request.formData().catch(() => null);
+    const file = formData?.get("file");
+    const titleOverride = formData?.get("title")?.toString()?.trim();
+    const defaultTitle =
+      titleOverride || `Plano alimentar FatSecret · ${demoPatient.full_name || "paciente"}`;
+
+    if (!file || typeof file === "string") {
+      return json({ message: "CSV obrigatório." }, 400);
+    }
+
+    const buffer = Buffer.from(await file.arrayBuffer());
+    let extraction;
+    try {
+      extraction = await extractDietPlanFromCsvBuffer(buffer, { title: defaultTitle });
+    } catch (error) {
+      console.error("Demo diet CSV extract failed:", error);
+      return json({ message: "Não foi possível ler o CSV da dieta." }, 500);
+    }
+
+    if (!extraction.plan?.meals?.length) {
+      return json(
+        {
+          message:
+            "Não encontramos refeições no arquivo. Use o export CSV Detailed Report do FatSecret."
+        },
+        400
+      );
+    }
+
     const plan = {
-      title: "Plano alimentar FatSecret · demo",
-      notes: "Importado do CSV Detailed Report (modo demo).",
+      ...extraction.plan,
+      title: titleOverride || extraction.plan.title || defaultTitle,
+      notes: extraction.plan.notes || "",
       status: "active",
       source: "fatsecret_csv",
       sourcePdfPath: null,
-      extractionSummary: "CSV importado: 2 refeição(ões) e 4 item(ns).",
-      extractionMethod: "fatsecret_csv",
-      meals: (demoDietPlan.diet_meals || []).map((meal, index) => ({
-        name: meal.name,
-        sortOrder: index,
-        items: (meal.diet_items || []).map((item) => ({
-          source: "fatsecret_csv",
-          externalId: null,
-          label: item.label,
-          quantity: item.quantity,
-          portionG: item.portion_g,
-          nutritionSnapshot: item.nutrition_snapshot || {
-            kcal: 100,
-            protein_g: 10,
-            carbs_g: 10,
-            fat_g: 3,
-            measureUnit: "gramas",
-            measureAmount: item.portion_g
-          }
-        }))
-      }))
+      extractionSummary: extraction.summary,
+      extractionMethod: extraction.method
     };
 
     return json({
       ok: true,
       plan,
-      summary: plan.extractionSummary,
-      method: "fatsecret_csv",
-      warning: null
+      summary: extraction.summary,
+      method: extraction.method,
+      warning: extraction.warning
     });
   }
 
   if (path.match(/^\/api\/patients\/[^/]+\/diet$/) && method === "GET") {
-    const plans = state.dietPlans || [
-      { ...demoDietPlan, source: "fatsecret_csv", created_at: new Date().toISOString() }
-    ];
+    const targetPatientId = path.split("/")[3];
+    if (!state.dietPlans) state.dietPlans = [{ ...demoDietPlan }];
+
+    const belongsToPatient = (plan) =>
+      plan.patient_id === targetPatientId || (!plan.patient_id && targetPatientId === patientId);
+
+    // Autocorreção: no máximo um plano ativo por paciente (mantém o mais recente).
+    const actives = state.dietPlans
+      .filter((plan) => belongsToPatient(plan) && plan.status === "active")
+      .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+    if (actives.length > 1) {
+      const keepId = actives[0].id;
+      state.dietPlans = state.dietPlans.map((plan) =>
+        belongsToPatient(plan) && plan.status === "active" && plan.id !== keepId
+          ? { ...plan, status: "archived", updated_at: new Date().toISOString() }
+          : plan
+      );
+    }
+
+    const plans = state.dietPlans
+      .filter(belongsToPatient)
+      .slice()
+      .sort((a, b) => {
+        if (a.status === "active" && b.status !== "active") return -1;
+        if (b.status === "active" && a.status !== "active") return 1;
+        return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+      });
     return json({ dietPlans: plans });
   }
   if (path === "/api/patients/me/labs" && method === "GET") {
@@ -262,13 +435,66 @@ export async function handleDemoApi(request) {
   if (path === "/api/patients/me/insights" && method === "GET") return json({ insights: demoInsights });
 
   if (path === "/api/admin/dashboard" && method === "GET") {
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    const monthPaid = state.appointments.filter(
+      (a) =>
+        a.payment_status === "paid" &&
+        new Date(a.starts_at) >= monthStart &&
+        new Date(a.starts_at) <= monthEnd
+    );
+    const pendingValidation = state.appointments.filter(
+      (a) => a.payment_status === "pending" && summarizeDemoDocs(docsForAppointment(a.id)).hasProof
+    ).length;
+
     return json({
       stats: {
         patients: demoPatientsList.length,
         appointmentsToday: 1,
-        pendingLabs: getDemoPendingLabReports(state.labReports).length
+        pendingLabs: getDemoPendingLabReports(state.labReports).length,
+        revenueMonthCents: monthPaid.reduce((sum, a) => sum + (a.amount_cents || 0), 0),
+        pendingPaymentValidation: pendingValidation
       },
-      upcoming: state.appointments
+      upcoming: state.appointments.filter((a) => a.status === "scheduled")
+    });
+  }
+
+  if (path === "/api/admin/finance" && method === "GET") {
+    const month = url.searchParams.get("month");
+    const match = String(month || "").match(/^(\d{4})-(\d{2})$/);
+    const now = new Date();
+    const year = match ? Number(match[1]) : now.getFullYear();
+    const monthIndex = match ? Number(match[2]) - 1 : now.getMonth();
+    const start = new Date(year, monthIndex, 1);
+    const end = new Date(year, monthIndex + 1, 0, 23, 59, 59, 999);
+    const rows = state.appointments
+      .filter((a) => {
+        const at = new Date(a.starts_at);
+        return at >= start && at <= end;
+      })
+      .map((appt) => {
+        const documents = docsForAppointment(appt.id);
+        return { ...appt, documents, summary: summarizeDemoDocs(documents) };
+      });
+    const paid = rows.filter((r) => r.payment_status === "paid");
+    const pendingValidation = rows.filter(
+      (r) => r.payment_status === "pending" && r.summary.hasProof
+    );
+    return json({
+      period: { year, month: monthIndex + 1, start: start.toISOString(), end: end.toISOString() },
+      summary: {
+        revenueCents: paid.reduce((sum, r) => sum + (r.amount_cents || 0), 0),
+        paidCount: paid.length,
+        waivedCount: rows.filter((r) => r.payment_status === "waived").length,
+        pendingValidationCount: pendingValidation.length,
+        awaitingProofCount: rows.filter((r) => r.payment_status === "pending" && !r.summary.hasProof)
+          .length,
+        mismatchCount: rows.filter((r) => r.summary.hasMismatch).length
+      },
+      appointments: rows,
+      pendingValidation,
+      mismatches: rows.filter((r) => r.summary.hasMismatch)
     });
   }
 
@@ -299,6 +525,73 @@ export async function handleDemoApi(request) {
     return json({ patient: demoPatient });
   }
 
+  if (path === "/api/admin/presets" && method === "GET") {
+    const type = url.searchParams.get("type");
+    const activeAll = url.searchParams.get("active") === "all";
+    if (url.searchParams.get("resync") === "1") state.presets = [];
+    let presets = ensureDemoPresets();
+    if (type) presets = presets.filter((item) => item.type === type);
+    if (!activeAll) presets = presets.filter((item) => item.active !== false);
+    return json({ presets });
+  }
+
+  if (path === "/api/admin/presets" && method === "POST") {
+    const body = await request.json().catch(() => ({}));
+    ensureDemoPresets();
+    if (!["supplement_pack", "exam_order", "referral_letter"].includes(body.type)) {
+      return json({ message: "Tipo de preset inválido." }, 400);
+    }
+    if (!String(body.title || "").trim()) {
+      return json({ message: "Título obrigatório." }, 400);
+    }
+    const slugBase = String(body.slug || body.title)
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
+      .slice(0, 60);
+    const preset = {
+      id: `preset-${Date.now()}`,
+      type: body.type,
+      title: String(body.title).trim(),
+      slug: slugBase || `preset-${Date.now()}`,
+      content: body.content || {},
+      sortOrder: Number(body.sortOrder) || 0,
+      active: body.active !== false
+    };
+    state.presets = [preset, ...state.presets];
+    return json({ preset });
+  }
+
+  if (path.match(/^\/api\/admin\/presets\/[^/]+$/) && method === "PATCH") {
+    const id = path.split("/").pop();
+    const body = await request.json().catch(() => ({}));
+    ensureDemoPresets();
+    state.presets = state.presets.map((preset) =>
+      preset.id === id
+        ? {
+            ...preset,
+            title: body.title ?? preset.title,
+            content: body.content ?? preset.content,
+            active: body.active ?? preset.active
+          }
+        : preset
+    );
+    return json({ preset: state.presets.find((item) => item.id === id) });
+  }
+
+  if (path.match(/^\/api\/admin\/presets\/[^/]+$/) && method === "DELETE") {
+    const id = path.split("/").pop();
+    ensureDemoPresets();
+    const before = state.presets.length;
+    state.presets = state.presets.filter((preset) => preset.id !== id);
+    if (state.presets.length === before) {
+      return json({ message: "Preset não encontrado." }, 404);
+    }
+    return json({ ok: true });
+  }
+
   if (path === "/api/admin/appointments" && method === "GET") {
     const filterPatientId = url.searchParams.get("patientId");
     const appointments = filterPatientId
@@ -307,11 +600,57 @@ export async function handleDemoApi(request) {
     return json({ appointments });
   }
 
+  if (path.match(/^\/api\/admin\/appointments\/[^/]+\/documents$/) && method === "GET") {
+    const id = path.split("/")[4];
+    const appointment = state.appointments.find((a) => a.id === id);
+    if (!appointment) return json({ message: "Consulta não encontrada." }, 404);
+    const documents = docsForAppointment(id);
+    return json({ documents, summary: summarizeDemoDocs(documents), appointment });
+  }
+
+  if (path.match(/^\/api\/admin\/appointments\/[^/]+\/documents$/) && method === "POST") {
+    const id = path.split("/")[4];
+    const appointment = state.appointments.find((a) => a.id === id);
+    if (!appointment) return json({ message: "Consulta não encontrada." }, 404);
+    const formData = await request.formData().catch(() => null);
+    const docType = formData?.get("docType") === "payment_proof" ? "payment_proof" : "invoice";
+    const document = createDemoDocument({
+      appointment,
+      fileName: docType === "invoice" ? "nota-fiscal-demo.pdf" : "comprovante-demo.pdf",
+      docType,
+      uploadedByRole: "nutritionist",
+      amountCents: appointment.amount_cents
+    });
+    state.appointmentDocuments = [document, ...(state.appointmentDocuments || [])];
+    return json({ document });
+  }
+
   if (path.match(/^\/api\/admin\/appointments\/[^/]+\/payment$/) && method === "PATCH") {
     const id = path.split("/")[4];
     const body = await request.json();
+    if (!["pending", "paid", "waived"].includes(body.paymentStatus)) {
+      return json({ message: "Status inválido." }, 400);
+    }
+    if (body.paymentStatus === "paid" && !summarizeDemoDocs(docsForAppointment(id)).hasProof) {
+      return json(
+        { message: "Anexe ou aguarde o comprovante do paciente antes de validar." },
+        400
+      );
+    }
+    const now = new Date().toISOString();
     state.appointments = state.appointments.map((a) =>
-      a.id === id ? { ...a, payment_status: body.paymentStatus } : a
+      a.id === id
+        ? {
+            ...a,
+            payment_status: body.paymentStatus,
+            payment_validated_at:
+              body.paymentStatus === "paid" || body.paymentStatus === "waived" ? now : null,
+            payment_validated_by:
+              body.paymentStatus === "paid" || body.paymentStatus === "waived"
+                ? "demo-nutritionist-001"
+                : null
+          }
+        : a
     );
     const updated = state.appointments.find((a) => a.id === id);
     return json({ appointment: updated });
@@ -435,6 +774,7 @@ export async function handleDemoApi(request) {
   }
 
   if (path.match(/^\/api\/patients\/[^/]+\/diet$/) && method === "POST") {
+    const targetPatientId = path.split("/")[3];
     const contentType = request.headers.get("content-type") || "";
     let body = {};
     if (contentType.includes("multipart/form-data")) {
@@ -448,19 +788,30 @@ export async function handleDemoApi(request) {
       body = await request.json().catch(() => ({}));
     }
 
-    if (body.status === "active" && state.dietPlans) {
-      state.dietPlans = state.dietPlans.map((plan) =>
-        plan.status === "active" ? { ...plan, status: "archived" } : plan
-      );
+    if (!state.dietPlans) state.dietPlans = [{ ...demoDietPlan }];
+
+    const nextStatus = body.status || "active";
+    // Publicar ativo → arquiva automaticamente os planos ativos anteriores do mesmo paciente
+    if (nextStatus === "active") {
+      state.dietPlans = state.dietPlans.map((plan) => {
+        const samePatient =
+          plan.patient_id === targetPatientId ||
+          (!plan.patient_id && targetPatientId === patientId);
+        return samePatient && plan.status === "active"
+          ? { ...plan, status: "archived", updated_at: new Date().toISOString() }
+          : plan;
+      });
     }
 
     const plan = {
       id: `diet-${Date.now()}`,
+      patient_id: targetPatientId,
       title: body.title || "Plano demo",
       notes: body.notes || null,
-      status: body.status || "active",
+      status: nextStatus,
       source: body.source || "fatsecret_csv",
       created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
       diet_meals: (body.meals || []).map((meal, index) => ({
         id: `meal-${Date.now()}-${index}`,
         name: meal.name,
@@ -478,7 +829,9 @@ export async function handleDemoApi(request) {
         product_name: item.productName,
         dosage: item.dosage,
         posology: item.posology,
-        notes: item.notes || null
+        notes: item.notes || null,
+        group_id: item.groupId || null,
+        group_title: item.groupTitle || null
       })),
       diet_referrals: (body.referrals || []).map((item, index) => ({
         id: `ref-${Date.now()}-${index}`,
@@ -487,28 +840,44 @@ export async function handleDemoApi(request) {
         professional_name: item.professionalName || null,
         reason: item.reason,
         urgency: item.urgency || "routine",
+        body_text: item.bodyText || null,
         notes: item.notes || null
+      })),
+      diet_exam_orders: (body.examOrders || []).map((item, index) => ({
+        id: `exam-${Date.now()}-${index}`,
+        sort_order: item.sortOrder ?? index,
+        title: item.title || "Pedido de exames",
+        exams: item.exams || [],
+        collection_notes: item.collectionNotes || [],
+        observations: item.observations || null,
+        meta: item.meta || {}
       }))
     };
 
-    if (!state.dietPlans) state.dietPlans = [{ ...demoDietPlan, created_at: new Date().toISOString() }];
     state.dietPlans.unshift(plan);
     return json({ ok: true, planId: plan.id, plan, uploaded: false });
   }
 
   if (path.match(/^\/api\/patients\/[^/]+\/diet\/[^/]+$/) && method === "PATCH") {
-    const planId = path.split("/").pop();
+    const parts = path.split("/");
+    const targetPatientId = parts[3];
+    const planId = parts[5];
     const body = await request.json().catch(() => ({}));
-    if (!state.dietPlans) state.dietPlans = [{ ...demoDietPlan, created_at: new Date().toISOString() }];
+    if (!state.dietPlans) state.dietPlans = [{ ...demoDietPlan }];
     if (body.status === "active") {
-      state.dietPlans = state.dietPlans.map((plan) =>
-        plan.status === "active" && plan.id !== planId
-          ? { ...plan, status: "archived" }
-          : plan
-      );
+      state.dietPlans = state.dietPlans.map((plan) => {
+        const samePatient =
+          plan.patient_id === targetPatientId ||
+          (!plan.patient_id && targetPatientId === patientId);
+        return samePatient && plan.status === "active" && plan.id !== planId
+          ? { ...plan, status: "archived", updated_at: new Date().toISOString() }
+          : plan;
+      });
     }
     state.dietPlans = state.dietPlans.map((plan) =>
-      plan.id === planId ? { ...plan, status: body.status || plan.status } : plan
+      plan.id === planId
+        ? { ...plan, status: body.status || plan.status, updated_at: new Date().toISOString() }
+        : plan
     );
     const plan = state.dietPlans.find((item) => item.id === planId);
     if (!plan) return json({ message: "Plano não encontrado." }, 404);
@@ -519,6 +888,92 @@ export async function handleDemoApi(request) {
     const planId = path.split("/").pop();
     if (!state.dietPlans) state.dietPlans = [];
     state.dietPlans = state.dietPlans.filter((plan) => plan.id !== planId);
+    return json({ ok: true });
+  }
+
+  if (path.match(/^\/api\/patients\/[^/]+\/prontuario$/) && method === "GET") {
+    const patient = path.split("/")[3];
+    if (!state.clinicalRecords) state.clinicalRecords = [];
+    const records = state.clinicalRecords
+      .filter((item) => item.patient_id === patient)
+      .slice()
+      .sort((a, b) => new Date(b.session_at || 0) - new Date(a.session_at || 0))
+      .map((item) => ({
+        ...item,
+        body_text: item.body_text ?? item.body_md ?? ""
+      }));
+    return json({ records });
+  }
+
+  if (path.match(/^\/api\/patients\/[^/]+\/prontuario$/) && method === "POST") {
+    const patient = path.split("/")[3];
+    if (!state.clinicalRecords) state.clinicalRecords = [];
+    const body = await request.json().catch(() => ({}));
+    const bodyText = String(body.bodyText ?? body.body_text ?? body.bodyMd ?? body.body_md ?? "");
+    if (!bodyText.trim()) return json({ message: "Cole o texto do prontuário." }, 400);
+    const sessionAt = body.sessionAt || body.session_at ? new Date(body.sessionAt || body.session_at) : new Date();
+    const record = {
+      id: `clinical-${Date.now()}`,
+      patient_id: patient,
+      appointment_id: body.appointmentId || body.appointment_id || null,
+      session_at: Number.isNaN(sessionAt.getTime())
+        ? new Date().toISOString()
+        : sessionAt.toISOString(),
+      title: String(body.title || "").trim() || null,
+      body_text: bodyText,
+      notes: null,
+      storage_path: null,
+      mime_type: "text/plain",
+      file_name: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    state.clinicalRecords.unshift(record);
+    return json({ record });
+  }
+
+  if (path.match(/^\/api\/patients\/[^/]+\/prontuario$/) && method === "PATCH") {
+    const patient = path.split("/")[3];
+    if (!state.clinicalRecords) state.clinicalRecords = [];
+    const body = await request.json().catch(() => ({}));
+    const record = state.clinicalRecords.find(
+      (item) => item.id === body.recordId && item.patient_id === patient
+    );
+    if (!record) return json({ message: "Registro não encontrado." }, 404);
+    if (body.title !== undefined) record.title = String(body.title || "").trim() || null;
+    if (
+      body.bodyText !== undefined ||
+      body.body_text !== undefined ||
+      body.bodyMd !== undefined ||
+      body.body_md !== undefined
+    ) {
+      const bodyText = String(body.bodyText ?? body.body_text ?? body.bodyMd ?? body.body_md ?? "");
+      if (!bodyText.trim()) return json({ message: "Cole o texto do prontuário." }, 400);
+      record.body_text = bodyText;
+    }
+    if (body.sessionAt !== undefined || body.session_at !== undefined) {
+      const next = new Date(body.sessionAt ?? body.session_at);
+      if (!Number.isNaN(next.getTime())) record.session_at = next.toISOString();
+    }
+    if (body.appointmentId !== undefined || body.appointment_id !== undefined) {
+      record.appointment_id = body.appointmentId ?? body.appointment_id ?? null;
+    }
+    record.updated_at = new Date().toISOString();
+    return json({ record });
+  }
+
+  if (path.match(/^\/api\/patients\/[^/]+\/prontuario\/[^/]+$/) && method === "DELETE") {
+    const parts = path.split("/");
+    const patient = parts[3];
+    const recordId = parts[5];
+    if (!state.clinicalRecords) state.clinicalRecords = [];
+    const before = state.clinicalRecords.length;
+    state.clinicalRecords = state.clinicalRecords.filter(
+      (item) => !(item.id === recordId && item.patient_id === patient)
+    );
+    if (state.clinicalRecords.length === before) {
+      return json({ message: "Registro não encontrado." }, 404);
+    }
     return json({ ok: true });
   }
 

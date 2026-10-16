@@ -289,14 +289,27 @@ export default function AppShell({
               <div className="min-w-0">
                 {breadcrumbs.length ? (
                   <nav className="mb-1 flex flex-wrap items-center gap-1 text-xs text-graphite/45">
-                    {breadcrumbs.map((crumb, index) => (
-                      <span key={`${crumb}-${index}`} className="flex items-center gap-1">
-                        {index > 0 ? <ChevronRight className="h-3 w-3 shrink-0" /> : null}
-                        <span className={index === breadcrumbs.length - 1 ? "text-graphite/70" : ""}>
-                          {crumb}
+                    {breadcrumbs.map((crumb, index) => {
+                      const label = typeof crumb === "string" ? crumb : crumb?.label;
+                      const href = typeof crumb === "string" ? null : crumb?.href || null;
+                      const isLast = index === breadcrumbs.length - 1;
+
+                      return (
+                        <span key={`${label}-${index}`} className="flex items-center gap-1">
+                          {index > 0 ? <ChevronRight className="h-3 w-3 shrink-0" /> : null}
+                          {href && !isLast ? (
+                            <Link
+                              href={href}
+                              className="transition hover:text-olive-800 hover:underline hover:underline-offset-2"
+                            >
+                              {label}
+                            </Link>
+                          ) : (
+                            <span className={isLast ? "text-graphite/70" : ""}>{label}</span>
+                          )}
                         </span>
-                      </span>
-                    ))}
+                      );
+                    })}
                   </nav>
                 ) : null}
                 <h1 className="truncate text-lg font-semibold tracking-tight text-graphite sm:text-2xl">{title}</h1>
@@ -370,7 +383,12 @@ export function TableShell({ children }) {
   return <div className="-mx-1 overflow-x-auto">{children}</div>;
 }
 
-export function DataTable({ columns, rows, emptyMessage = "Nenhum registro." }) {
+export function DataTable({
+  columns,
+  rows,
+  emptyMessage = "Nenhum registro.",
+  onRowDoubleClick
+}) {
   if (!rows?.length) {
     return <p className="py-8 text-center text-sm text-graphite/45">{emptyMessage}</p>;
   }
@@ -392,7 +410,14 @@ export function DataTable({ columns, rows, emptyMessage = "Nenhum registro." }) 
         </thead>
         <tbody className="divide-y divide-olive-900/5">
           {rows.map((row) => (
-            <tr key={row.id} className="group transition hover:bg-linen/70">
+            <tr
+              key={row.id}
+              className={`group transition hover:bg-linen/70 ${
+                onRowDoubleClick ? "cursor-pointer" : ""
+              }`}
+              onDoubleClick={() => onRowDoubleClick?.(row)}
+              title={onRowDoubleClick ? "Clique duplo para abrir" : undefined}
+            >
               {columns.map((col) => (
                 <td key={col.key} className="py-3.5 pr-4 text-graphite/70">
                   {col.render ? col.render(row) : row[col.key]}
