@@ -1,15 +1,45 @@
 export function normalizeWaitlistPhone(value = "") {
-  return String(value).replace(/\D/g, "");
+  let digits = String(value || "").replace(/\D/g, "");
+  // Brasil: remove DDI 55 quando sobra DDD+número (10–11 dígitos).
+  if (digits.length >= 12 && digits.startsWith("55")) {
+    digits = digits.slice(2);
+  }
+  return digits;
+}
+
+function phoneLookupVariants(phone) {
+  const normalized = normalizeWaitlistPhone(phone);
+  if (!normalized) return [];
+  const variants = new Set([normalized, `55${normalized}`]);
+  return [...variants];
 }
 
 export async function getWaitlistEntryByPhone(supabase, phone) {
-  const normalized = normalizeWaitlistPhone(phone);
-  if (normalized.length < 10) return null;
+  const variants = phoneLookupVariants(phone);
+  if (!variants.length || variants[0].length < 10) return null;
 
   const { data, error } = await supabase
     .from("waitlist")
     .select("id, full_name, phone, goal, status, created_at")
-    .eq("phone", normalized)
+    .in("phone", variants)
+    .order("id", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
+async function findPatientByPhone(supabase, phone) {
+  const variants = phoneLookupVariants(phone);
+  if (!variants.length) return null;
+
+  const { data, error } = await supabase
+    .from("patients")
+    .select("id, waitlist_id, user_id, phone, source")
+    .in("phone", variants)
+    .order("created_at", { ascending: true })
+    .limit(1)
     .maybeSingle();
 
   if (error) throw error;
@@ -72,14 +102,7 @@ export async function getWaitlistStatus(supabase, { phone, waitlistId } = {}) {
 
 export async function syncWaitlistPatient(supabase, { waitlistId, fullName, phone, goal }) {
   const phoneNormalized = normalizeWaitlistPhone(phone);
-
-  const { data: existing, error: existingError } = await supabase
-    .from("patients")
-    .select("id, waitlist_id, user_id")
-    .eq("phone", phoneNormalized)
-    .maybeSingle();
-
-  if (existingError) throw existingError;
+  const existing = await findPatientByPhone(supabase, phoneNormalized);
 
   if (existing) {
     const { error: updateError } = await supabase
@@ -89,6 +112,7 @@ export async function syncWaitlistPatient(supabase, { waitlistId, fullName, phon
         phone: phoneNormalized,
         goal,
         waitlist_id: waitlistId,
+        source: existing.source === "admin" ? existing.source : "waitlist",
         updated_at: new Date().toISOString()
       })
       .eq("id", existing.id);
@@ -125,6 +149,58 @@ export async function syncWaitlistPatient(supabase, { waitlistId, fullName, phon
     .eq("id", waitlistId);
 
   return created.id;
+}
+
+/**
+ * Garante que toda entrada da waitlist exista em patients (idempotente).
+ */
+export async function syncAllWaitlistToPatients(supabase) {
+  const { data: entries, error } = await supabase
+    .from("waitlist")
+    .select("id, full_name, phone, goal")
+    .order("id", { ascending: true });
+
+  if (error) throw error;
+
+  let created = 0;
+  let linked = 0;
+  let failed = 0;
+  const errors = [];
+
+  for (const entry of entries || []) {
+    try {
+      const before = await findPatientByPhone(supabase, entry.phone);
+      await syncWaitlistPatient(supabase, {
+        waitlistId: entry.id,
+        fullName: entry.full_name,
+        phone: entry.phone,
+        goal: entry.goal
+      });
+      if (before) linked += 1;
+      else created += 1;
+    } catch (err) {
+      failed += 1;
+      errors.push({ waitlistId: entry.id, message: err.message || "Falha ao sincronizar" });
+    }
+  }
+
+  const { count: waitlistTotal } = await supabase
+    .from("waitlist")
+    .select("id", { count: "exact", head: true });
+
+  const { count: patientsFromWaitlist } = await supabase
+    .from("patients")
+    .select("id", { count: "exact", head: true })
+    .or("source.eq.waitlist,waitlist_id.not.is.null");
+
+  return {
+    waitlistTotal: waitlistTotal || 0,
+    patientsFromWaitlist: patientsFromWaitlist || 0,
+    created,
+    linked,
+    failed,
+    errors: errors.slice(0, 10)
+  };
 }
 
 export async function ensureWaitlistEntry(supabase, { fullName, phone, goal }) {

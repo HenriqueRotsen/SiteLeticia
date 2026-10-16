@@ -1241,6 +1241,13 @@ export async function handleDemoApi(request) {
     return json({ ok: true });
   }
 
+  if (path.match(/^\/api\/patients\/[^/]+\/labs\/file(?:\/[^/]+)?$/) && method === "GET") {
+    // PDF demo: redireciona para um PDF público de teste.
+    return NextResponse.redirect(
+      "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
+    );
+  }
+
   if (path.match(/^\/api\/patients\/[^/]+\/labs$/) && method === "GET") {
     const patient = path.split("/")[3];
     return json({
@@ -1248,9 +1255,7 @@ export async function handleDemoApi(request) {
         .filter((report) => report.patient_id === patient)
         .map((report) => ({
           ...report,
-          file_url:
-            report.file_url ||
-            "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
+          file_url: `/api/patients/${patient}/labs/file/${encodeURIComponent(report.id)}`
         }))
     });
   }

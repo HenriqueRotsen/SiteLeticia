@@ -28,12 +28,12 @@ export default function MarketingShell({ children }) {
   return (
     <div className="min-h-screen overflow-x-hidden">
       <header className="sticky top-0 z-40 border-b border-olive-900/8 bg-porcelain/80 backdrop-blur-md">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-6 px-5 py-4 sm:px-8">
-          <Link href="/" className="group">
-            <p className="font-display text-xl leading-snug text-graphite transition group-hover:text-olive-800">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:gap-6 sm:px-8 sm:py-4">
+          <Link href="/" className="group min-w-0">
+            <p className="truncate font-display text-lg leading-snug text-graphite transition group-hover:text-olive-800 sm:text-xl">
               {site.name}
             </p>
-            <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-graphite/45">
+            <p className="mt-0.5 truncate text-[10px] font-semibold uppercase tracking-[0.18em] text-graphite/45 sm:mt-1 sm:tracking-[0.22em]">
               {site.domain}
             </p>
           </Link>
@@ -61,32 +61,40 @@ export default function MarketingShell({ children }) {
 
           <button
             type="button"
-            className="rounded-full border border-olive-900/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-graphite lg:hidden"
+            className="shrink-0 rounded-full border border-olive-900/10 px-3.5 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-graphite lg:hidden"
             onClick={() => setOpen((value) => !value)}
             aria-expanded={open}
-            aria-label="Abrir menu"
+            aria-label={open ? "Fechar menu" : "Abrir menu"}
           >
-            Menu
+            {open ? "Fechar" : "Menu"}
           </button>
         </div>
 
         {open ? (
-          <div className="border-t border-olive-900/8 bg-porcelain px-5 py-5 lg:hidden">
-            <nav className="flex flex-col gap-4">
+          <div className="border-t border-olive-900/8 bg-porcelain px-4 py-4 sm:px-5 sm:py-5 lg:hidden">
+            <nav className="flex flex-col gap-1">
               {navLinks.map((link) => (
-                <NavLink key={link.href} {...link} onClick={() => setOpen(false)} />
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setOpen(false)}
+                  className="rounded-xl px-3 py-3 text-sm font-semibold text-graphite/75 transition hover:bg-linen hover:text-olive-800"
+                >
+                  {link.label}
+                </Link>
               ))}
+              <div className="my-2 border-t border-olive-900/8" />
               <Link
                 href="/entrar"
                 onClick={() => setOpen(false)}
-                className="text-xs font-semibold uppercase tracking-[0.16em] text-graphite/60"
+                className="rounded-xl px-3 py-3 text-sm font-semibold text-graphite/60 transition hover:bg-linen"
               >
                 Entrar
               </Link>
               <Link
                 href="/criar-conta"
                 onClick={() => setOpen(false)}
-                className="rounded-full bg-graphite px-5 py-3 text-center text-xs font-bold uppercase tracking-[0.16em] text-porcelain"
+                className="mt-1 rounded-full bg-graphite px-5 py-3.5 text-center text-xs font-bold uppercase tracking-[0.16em] text-porcelain"
               >
                 Criar conta
               </Link>
