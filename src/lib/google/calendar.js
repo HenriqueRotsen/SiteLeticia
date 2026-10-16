@@ -111,6 +111,18 @@ export async function createGoogleCalendarEvent({
 
   if (!response.ok) {
     const err = await response.text();
+    // Contas pessoais às vezes falham ao criar Meet; tenta evento simples.
+    if (conferencePayloadFailed(err)) {
+      return createGoogleCalendarEventWithoutMeet({
+        accessToken,
+        calendarId,
+        summary,
+        description,
+        startIso,
+        endIso,
+        attendeeEmail
+      });
+    }
     throw new Error(`Google Calendar error: ${err}`);
   }
 
@@ -121,6 +133,55 @@ export async function createGoogleCalendarEvent({
     null;
 
   return { googleEventId: event.id, meetLink };
+}
+
+function conferencePayloadFailed(errorText) {
+  const text = String(errorText || "").toLowerCase();
+  return (
+    text.includes("conference") ||
+    text.includes("hangout") ||
+    text.includes("meet") ||
+    text.includes("invalidConference")
+  );
+}
+
+async function createGoogleCalendarEventWithoutMeet({
+  accessToken,
+  calendarId = "primary",
+  summary,
+  description,
+  startIso,
+  endIso,
+  attendeeEmail
+}) {
+  const url = new URL(
+    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`
+  );
+  url.searchParams.set("sendUpdates", "all");
+
+  const response = await fetch(url.toString(), {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      summary,
+      description,
+      start: { dateTime: startIso, timeZone: TIMEZONE },
+      end: { dateTime: endIso, timeZone: TIMEZONE },
+      attendees: attendeeEmail ? [{ email: attendeeEmail, responseStatus: "needsAction" }] : [],
+      reminders: { useDefault: true }
+    })
+  });
+
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`Google Calendar error: ${err}`);
+  }
+
+  const event = await response.json();
+  return { googleEventId: event.id, meetLink: null };
 }
 
 export async function deleteGoogleCalendarEvent(accessToken, eventId, calendarId = "primary") {
