@@ -4,7 +4,6 @@ import { requirePatient } from "@/lib/auth";
 import { createSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { extractLabReportFromPdfBuffer } from "@/lib/labs/extract";
 import { ALLOWED_PDF_TYPES, MAX_PDF_BYTES } from "@/lib/constants";
-import { compressPdfBuffer } from "@/lib/media/compress-pdf";
 import { writeAuditLog, getClientIp } from "@/lib/audit";
 import { createStorageSignedUrl } from "@/lib/storage/signed-url";
 import { fulfillExamOrdersFromLabReport } from "@/lib/labs/fulfill-orders";
@@ -65,7 +64,9 @@ function toPatientReport(report, fileUrl) {
     uploaded_by: report.uploaded_by,
     published_by: report.published_by,
     reviewed_at: report.reviewed_at,
-    file_url: fileUrl
+    // Proxy interno evita PDF quebrado/CORS na URL assinada do Storage
+    file_url: `/api/patients/me/labs/file?id=${encodeURIComponent(report.id)}`,
+    signed_url: fileUrl
   };
 
   if (report.status !== "published") {
@@ -92,15 +93,8 @@ async function extractAndStorePdf(originalBuffer) {
     };
   }
 
-  let storedBuffer = originalBuffer;
-  try {
-    const compressed = await compressPdfBuffer(originalBuffer);
-    storedBuffer = compressed.buffer;
-  } catch {
-    storedBuffer = originalBuffer;
-  }
-
-  return { extraction, storedBuffer };
+  // Guarda o original: compressão (Ghostscript/pdf-lib) vinha corrompendo laudos escaneados.
+  return { extraction, storedBuffer: originalBuffer };
 }
 
 async function readPdfFromForm(formData) {

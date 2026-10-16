@@ -3,8 +3,14 @@
  * Docs: https://ai.google.dev/api/generate-content
  */
 
-const DEFAULT_MODEL = "gemini-2.5-flash";
-const MAX_INLINE_PDF_BYTES = 4 * 1024 * 1024;
+const DEFAULT_MODEL = "gemini-3.5-flash";
+const FALLBACK_MODELS = [
+  "gemini-3.5-flash",
+  "gemini-flash-latest",
+  "gemini-3.8-flash",
+  "gemini-3.5-flash-lite"
+];
+const MAX_INLINE_PDF_BYTES = 8 * 1024 * 1024;
 
 export function getGeminiApiKey() {
   return process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY || "";
@@ -22,6 +28,11 @@ export function canSendPdfInline(buffer) {
   return Boolean(buffer?.length) && buffer.length <= MAX_INLINE_PDF_BYTES;
 }
 
+function modelCandidates() {
+  const preferred = getGeminiModel();
+  return [...new Set([preferred, ...FALLBACK_MODELS])];
+}
+
 function extractTextFromResponse(payload) {
   const parts = payload?.candidates?.[0]?.content?.parts || [];
   return parts
@@ -36,26 +47,7 @@ function stripJsonFence(text) {
   return fenced ? fenced[1].trim() : trimmed;
 }
 
-/**
- * @param {{
- *   prompt: string,
- *   system?: string,
- *   pdfBuffer?: Buffer|null,
- *   temperature?: number,
- *   json?: boolean
- * }} options
- */
-export async function generateGeminiContent({
-  prompt,
-  system = "",
-  pdfBuffer = null,
-  temperature = 0.1,
-  json = true
-} = {}) {
-  const apiKey = getGeminiApiKey();
-  if (!apiKey) return null;
-
-  const model = getGeminiModel();
+function buildRequestBody({ prompt, system, pdfBuffer, temperature, json }) {
   const parts = [];
 
   if (pdfBuffer && canSendPdfInline(pdfBuffer)) {
@@ -83,6 +75,10 @@ export async function generateGeminiContent({
     };
   }
 
+  return body;
+}
+
+async function callGeminiModel(model, body, apiKey) {
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
     {
@@ -91,24 +87,71 @@ export async function generateGeminiContent({
         "Content-Type": "application/json",
         "x-goog-api-key": apiKey
       },
-      body: JSON.stringify(body)
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(90000)
     }
   );
 
-  if (!response.ok) {
-    const details = await response.text().catch(() => "");
-    throw new Error(`Gemini falhou (${response.status}): ${details.slice(0, 240)}`);
+  const details = await response.text().catch(() => "");
+  return { response, details };
+}
+
+/**
+ * @param {{
+ *   prompt: string,
+ *   system?: string,
+ *   pdfBuffer?: Buffer|null,
+ *   temperature?: number,
+ *   json?: boolean
+ * }} options
+ */
+export async function generateGeminiContent({
+  prompt,
+  system = "",
+  pdfBuffer = null,
+  temperature = 0.1,
+  json = true
+} = {}) {
+  const apiKey = getGeminiApiKey();
+  if (!apiKey) return null;
+
+  const body = buildRequestBody({ prompt, system, pdfBuffer, temperature, json });
+  const errors = [];
+
+  for (const model of modelCandidates()) {
+    try {
+      const { response, details } = await callGeminiModel(model, body, apiKey);
+
+      if (!response.ok) {
+        errors.push(`${model}: ${response.status} ${details.slice(0, 160)}`);
+        // modelo descontinuado / não encontrado → tenta próximo
+        if (response.status === 404 || response.status === 400) continue;
+        throw new Error(`Gemini falhou (${response.status}): ${details.slice(0, 240)}`);
+      }
+
+      const payload = JSON.parse(details);
+      const text = extractTextFromResponse(payload);
+      if (!text) {
+        errors.push(`${model}: resposta vazia`);
+        continue;
+      }
+
+      if (!json) return { text, raw: payload, model };
+
+      try {
+        return { data: JSON.parse(stripJsonFence(text)), text, raw: payload, model };
+      } catch {
+        errors.push(`${model}: JSON inválido`);
+        continue;
+      }
+    } catch (error) {
+      if (error?.name === "TimeoutError" || error?.name === "AbortError") {
+        errors.push(`${model}: timeout`);
+        continue;
+      }
+      errors.push(`${model}: ${error.message || "erro"}`);
+    }
   }
 
-  const payload = await response.json();
-  const text = extractTextFromResponse(payload);
-  if (!text) return null;
-
-  if (!json) return { text, raw: payload };
-
-  try {
-    return { data: JSON.parse(stripJsonFence(text)), text, raw: payload };
-  } catch {
-    throw new Error("Gemini retornou JSON inválido.");
-  }
+  throw new Error(`Gemini indisponível. ${errors.slice(0, 3).join(" | ")}`);
 }
