@@ -6,6 +6,7 @@ import PatientShell from "@/components/layout/PatientShell";
 import { Card, formatCurrency } from "@/components/layout/AppShell";
 import Badge, { paymentBadge } from "@/components/ui/Badge";
 import { labelPaymentDocType } from "@/lib/labels";
+import { formatAppointmentDateTime } from "@/lib/datetime";
 
 export default function PatientFinanceiroPage() {
   const [data, setData] = useState(null);
@@ -60,7 +61,7 @@ export default function PatientFinanceiroPage() {
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div>
                       <p className="font-semibold">
-                        {new Date(appt.starts_at).toLocaleString("pt-BR")}
+                        {formatAppointmentDateTime(appt.starts_at)}
                       </p>
                       <p className="mt-1 text-sm">{formatCurrency(appt.amount_cents)}</p>
                     </div>
