@@ -9,6 +9,11 @@ import {
 } from "@/lib/auth/mfa-cookies";
 
 async function resolvePostAuthPath(supabase, requestedNext) {
+  // Fluxo de recuperação de senha não deve ser redirecionado para /app ou /admin.
+  if (requestedNext?.startsWith("/redefinir-senha")) {
+    return "/redefinir-senha";
+  }
+
   const {
     data: { user }
   } = await supabase.auth.getUser();
