@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { getClientIp } from "@/lib/audit";
 import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit";
-import { buildAuthCallbackUrl } from "@/lib/site-url";
+import { getSiteUrl } from "@/lib/site-url";
 import { forgotPasswordSchema } from "@/lib/validation/schemas";
 import { passwordResetEmail, sendEmail } from "@/lib/email/resend";
 
@@ -26,20 +26,22 @@ export async function POST(request) {
 
   try {
     const admin = createSupabaseAdmin();
-    const redirectTo = buildAuthCallbackUrl(request, "/redefinir-senha");
+    const siteUrl = getSiteUrl(request);
 
     const { data, error } = await admin.auth.admin.generateLink({
       type: "recovery",
-      email: body.email,
-      options: { redirectTo }
+      email: body.email
     });
 
-    if (error || !data?.properties?.action_link) {
-      console.error("Forgot password generateLink failed:", error?.message || "missing link");
+    const tokenHash = data?.properties?.hashed_token;
+    if (error || !tokenHash) {
+      console.error("Forgot password generateLink failed:", error?.message || "missing token");
       return NextResponse.json(generic);
     }
 
-    const resetUrl = data.properties.action_link;
+    // Link próprio: evita o verify do Supabase perder o redirect para /redefinir-senha
+    const resetUrl = `${siteUrl}/auth/confirm?token_hash=${encodeURIComponent(tokenHash)}&type=recovery&next=${encodeURIComponent("/redefinir-senha")}`;
+
     const emailContent = passwordResetEmail({ resetUrl });
     await sendEmail({
       to: body.email,
