@@ -40,6 +40,7 @@ function toPatientReport(report, fileUrl) {
     published_by: report.published_by,
     reviewed_at: report.reviewed_at,
     analyzing: report.status === "draft" && analyzing,
+    meta: report.meta || null,
     file_url: `/api/patients/me/labs/file?id=${encodeURIComponent(report.id)}`,
     signed_url: fileUrl
   };
@@ -101,6 +102,22 @@ export async function GET() {
   return NextResponse.json({ reports, examOrders });
 }
 
+function readDeclaredTiming(formData) {
+  const timing = formData.get("declaredTiming")?.toString();
+  if (timing === "before" || timing === "after") return timing;
+  return null;
+}
+
+async function insertLabReport(supabase, row) {
+  const withMeta = await supabase.from("lab_reports").insert(row).select("*").single();
+  if (!withMeta.error) return withMeta;
+  if (String(withMeta.error.message || "").includes("meta")) {
+    const { meta, ...rest } = row;
+    return supabase.from("lab_reports").insert(rest).select("*").single();
+  }
+  return withMeta;
+}
+
 export async function POST(request) {
   const auth = await requirePatient();
   if (auth.error) return auth.error;
@@ -108,6 +125,14 @@ export async function POST(request) {
   const formData = await request.formData();
   const parsed = await readPdfFromForm(formData);
   if (parsed.error) return parsed.error;
+
+  const declaredTiming = readDeclaredTiming(formData);
+  if (!declaredTiming) {
+    return NextResponse.json(
+      { message: "Informe se o exame é anterior ou posterior à consulta." },
+      { status: 400 }
+    );
+  }
 
   const supabase = createSupabaseAdmin();
   const patientId = auth.ctx.patient.id;
@@ -122,19 +147,16 @@ export async function POST(request) {
     return NextResponse.json({ message: "Falha no upload." }, { status: 500 });
   }
 
-  const { data: report, error } = await supabase
-    .from("lab_reports")
-    .insert({
-      patient_id: patientId,
-      storage_path: path,
-      extracted_text: "",
-      ai_interpretation: null,
-      interpretation_summary: PENDING_ANALYSIS,
-      uploaded_by: "patient",
-      status: "draft"
-    })
-    .select("*")
-    .single();
+  const { data: report, error } = await insertLabReport(supabase, {
+    patient_id: patientId,
+    storage_path: path,
+    extracted_text: "",
+    ai_interpretation: null,
+    interpretation_summary: PENDING_ANALYSIS,
+    uploaded_by: "patient",
+    status: "draft",
+    meta: { declared_timing: declaredTiming }
+  });
 
   if (error) return NextResponse.json({ message: "Erro ao salvar laudo." }, { status: 500 });
 
@@ -151,7 +173,8 @@ export async function POST(request) {
   return NextResponse.json({
     report: toPatientReport(report, fileUrl),
     examOrders,
-    needsAnalysis: true
+    needsAnalysis: true,
+    declaredTiming
   });
 }
 
@@ -164,6 +187,14 @@ export async function PUT(request) {
   const reportId = formData.get("reportId")?.toString();
   if (!reportId) {
     return NextResponse.json({ message: "Laudo obrigatório." }, { status: 400 });
+  }
+
+  const declaredTiming = readDeclaredTiming(formData);
+  if (!declaredTiming) {
+    return NextResponse.json(
+      { message: "Informe se o exame é anterior ou posterior à consulta." },
+      { status: 400 }
+    );
   }
 
   const parsed = await readPdfFromForm(formData);
@@ -203,18 +234,32 @@ export async function PUT(request) {
 
   await supabase.from("lab_results").delete().eq("report_id", reportId);
 
-  const { data: report, error } = await supabase
+  const updatePayload = {
+    storage_path: path,
+    extracted_text: "",
+    ai_interpretation: null,
+    interpretation_summary: PENDING_ANALYSIS,
+    meta: { declared_timing: declaredTiming }
+  };
+
+  let { data: report, error } = await supabase
     .from("lab_reports")
-    .update({
-      storage_path: path,
-      extracted_text: "",
-      ai_interpretation: null,
-      interpretation_summary: PENDING_ANALYSIS
-    })
+    .update(updatePayload)
     .eq("id", reportId)
     .eq("patient_id", patientId)
     .select("*")
     .single();
+
+  if (error && String(error.message || "").includes("meta")) {
+    const { meta, ...rest } = updatePayload;
+    ({ data: report, error } = await supabase
+      .from("lab_reports")
+      .update(rest)
+      .eq("id", reportId)
+      .eq("patient_id", patientId)
+      .select("*")
+      .single());
+  }
 
   if (error) return NextResponse.json({ message: "Erro ao atualizar laudo." }, { status: 500 });
 
@@ -235,7 +280,8 @@ export async function PUT(request) {
   return NextResponse.json({
     report: toPatientReport(report, fileUrl),
     examOrders,
-    needsAnalysis: true
+    needsAnalysis: true,
+    declaredTiming
   });
 }
 
