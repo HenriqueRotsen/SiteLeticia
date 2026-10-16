@@ -49,14 +49,17 @@ describe("timezone-aware slots", () => {
       expect(time <= "16:00").toBe(true);
     }
 
-    const times = slots.map((slot) =>
+    const firstMonday = slots.filter((slot) => {
+      const key = new Date(slot.startsAt).toLocaleDateString("en-CA", { timeZone: TIMEZONE });
+      return key === "2026-10-19";
+    });
+    const times = firstMonday.map((slot) =>
       new Date(slot.startsAt).toLocaleTimeString("pt-BR", {
         timeZone: TIMEZONE,
         hour: "2-digit",
         minute: "2-digit"
       })
     );
-    expect(times[0]).toBe("09:00");
     expect(times).toEqual(["09:00", "10:15", "11:30", "12:45", "14:00", "15:15"]);
   });
 });
