@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import AdminShell from "@/components/layout/AdminShell";
 import { Card } from "@/components/layout/AppShell";
 import Badge, { appointmentBadge } from "@/components/ui/Badge";
+import BookingToggleCard from "@/components/ui/BookingToggleCard";
 
 export default function AdminAgendaPage() {
   const [appointments, setAppointments] = useState([]);
@@ -43,6 +44,7 @@ export default function AdminAgendaPage() {
 
   return (
     <AdminShell title="Agenda" breadcrumbs={["Admin", "Agenda"]} userName="Letícia">
+      <BookingToggleCard onFeedback={setFeedback} onError={setError} />
       {error ? (
         <p className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
           {error}
