@@ -493,6 +493,7 @@ export async function handleDemoApi(request) {
           uploaded_by: report.uploaded_by,
           published_by: report.published_by,
           reviewed_at: report.reviewed_at,
+          meta: report.meta || null,
           file_url: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
         };
         if (report.status !== "published") return base;
@@ -506,6 +507,14 @@ export async function handleDemoApi(request) {
   }
 
   if (path === "/api/patients/me/labs" && method === "POST") {
+    const form = await request.formData().catch(() => null);
+    const declaredTiming = form?.get("declaredTiming")?.toString();
+    if (declaredTiming !== "before" && declaredTiming !== "after") {
+      return json(
+        { message: "Informe se o exame é anterior ou posterior à consulta." },
+        { status: 400 }
+      );
+    }
     const report = {
       id: `lab-${Date.now()}`,
       patient_id: patientId,
@@ -513,10 +522,11 @@ export async function handleDemoApi(request) {
       uploaded_by: "patient",
       published_by: null,
       created_at: new Date().toISOString(),
-      ai_interpretation: demoLabReport.ai_interpretation,
-      interpretation_summary: demoLabReport.ai_interpretation,
-      lab_results: demoLabReport.lab_results,
-      storage_path: `demo/labs/${Date.now()}.pdf`
+      ai_interpretation: null,
+      interpretation_summary: "Analisando automaticamente…",
+      lab_results: [],
+      storage_path: `demo/labs/${Date.now()}.pdf`,
+      meta: { declared_timing: declaredTiming }
     };
     state.labReports.unshift(report);
     return json({
@@ -527,6 +537,7 @@ export async function handleDemoApi(request) {
         uploaded_by: report.uploaded_by,
         published_by: null,
         analyzing: true,
+        meta: report.meta,
         file_url: `/api/patients/me/labs/file?id=${encodeURIComponent(report.id)}`
       },
       examOrders: demoExamOrders(),
@@ -540,9 +551,55 @@ export async function handleDemoApi(request) {
       (item) => item.id === body.reportId && item.patient_id === patientId
     );
     if (!report) return json({ message: "Laudo não encontrado." }, { status: 404 });
+
+    const timing =
+      body.declaredTiming === "before" || body.declaredTiming === "after"
+        ? body.declaredTiming
+        : report.meta?.declared_timing || "after";
+
+    if (timing === "before") {
+      report.lab_results = [];
+      report.meta = {
+        ...(report.meta || {}),
+        declared_timing: "before",
+        timing: "before",
+        usable_for_orders: false,
+        validation_code: "before_consultation"
+      };
+      report.ai_interpretation =
+        "Laudo anterior à consulta: arquivado sem preencher os exames solicitados.";
+      report.interpretation_summary = report.ai_interpretation;
+      return json({
+        report: {
+          id: report.id,
+          status: report.status,
+          created_at: report.created_at,
+          uploaded_by: report.uploaded_by,
+          analyzing: false,
+          meta: report.meta,
+          file_url: `/api/patients/me/labs/file?id=${encodeURIComponent(report.id)}`
+        },
+        examOrders: demoExamOrders(),
+        fulfillment: { doneCount: 0, method: "skipped" },
+        validation: {
+          ok: true,
+          code: "before_consultation",
+          usableForOrders: false,
+          timing: "before"
+        }
+      });
+    }
+
     report.lab_results = demoLabReport.lab_results;
     report.ai_interpretation = demoLabReport.ai_interpretation;
     report.interpretation_summary = demoLabReport.ai_interpretation;
+    report.meta = {
+      ...(report.meta || {}),
+      declared_timing: "after",
+      timing: "after",
+      usable_for_orders: true,
+      validation_code: "ok"
+    };
     const fulfillment = fulfillDemoExamOrders(report.lab_results);
     return json({
       report: {
@@ -551,16 +608,25 @@ export async function handleDemoApi(request) {
         created_at: report.created_at,
         uploaded_by: report.uploaded_by,
         analyzing: false,
+        meta: report.meta,
         file_url: `/api/patients/me/labs/file?id=${encodeURIComponent(report.id)}`
       },
       examOrders: fulfillment.examOrders,
-      fulfillment: { doneCount: fulfillment.doneCount, method: "demo" }
+      fulfillment: { doneCount: fulfillment.doneCount, method: "demo" },
+      validation: { ok: true, code: "ok", usableForOrders: true, timing: "after" }
     });
   }
 
   if (path === "/api/patients/me/labs" && method === "PUT") {
     const form = await request.formData();
     const reportId = form.get("reportId")?.toString();
+    const declaredTiming = form.get("declaredTiming")?.toString();
+    if (declaredTiming !== "before" && declaredTiming !== "after") {
+      return json(
+        { message: "Informe se o exame é anterior ou posterior à consulta." },
+        { status: 400 }
+      );
+    }
     const report = state.labReports.find(
       (item) => item.id === reportId && item.patient_id === patientId
     );
@@ -571,6 +637,7 @@ export async function handleDemoApi(request) {
     report.created_at = new Date().toISOString();
     report.ai_interpretation = null;
     report.interpretation_summary = "Analisando automaticamente…";
+    report.meta = { ...(report.meta || {}), declared_timing: declaredTiming };
     return json({
       report: {
         id: report.id,
@@ -579,6 +646,7 @@ export async function handleDemoApi(request) {
         uploaded_by: report.uploaded_by,
         published_by: null,
         analyzing: true,
+        meta: report.meta,
         file_url: `/api/patients/me/labs/file?id=${encodeURIComponent(report.id)}`
       },
       examOrders: demoExamOrders(),
@@ -1170,7 +1238,14 @@ export async function handleDemoApi(request) {
   if (path.match(/^\/api\/patients\/[^/]+\/labs$/) && method === "GET") {
     const patient = path.split("/")[3];
     return json({
-      reports: state.labReports.filter((report) => report.patient_id === patient)
+      reports: state.labReports
+        .filter((report) => report.patient_id === patient)
+        .map((report) => ({
+          ...report,
+          file_url:
+            report.file_url ||
+            "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
+        }))
     });
   }
 

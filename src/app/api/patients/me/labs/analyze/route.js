@@ -24,9 +24,13 @@ export async function POST(request) {
   if (auth.error) return auth.error;
 
   let reportId = "";
+  let declaredTiming = null;
   try {
     const body = await request.json();
     reportId = body.reportId || "";
+    if (body.declaredTiming === "before" || body.declaredTiming === "after") {
+      declaredTiming = body.declaredTiming;
+    }
   } catch {
     return NextResponse.json({ message: "Dados inválidos." }, { status: 400 });
   }
@@ -54,7 +58,11 @@ export async function POST(request) {
   }
 
   try {
-    const result = await analyzeStoredLabReport({ patientId, reportId });
+    const result = await analyzeStoredLabReport({
+      patientId,
+      reportId,
+      declaredTiming
+    });
     const examOrders = await loadPatientExamOrders(supabase, patientId);
     return NextResponse.json({
       report: {
@@ -65,12 +73,18 @@ export async function POST(request) {
         file_url: `/api/patients/me/labs/file?id=${encodeURIComponent(result.report.id)}`
       },
       examOrders,
-      fulfillment: result.fulfillment
+      fulfillment: result.fulfillment,
+      validation: result.validation
     });
   } catch (error) {
+    const status = error.code === "wrong_patient" ? 422 : 500;
     return NextResponse.json(
-      { message: error.message || "Falha na análise automática." },
-      { status: 500 }
+      {
+        message: error.message || "Falha na análise automática.",
+        code: error.code || "analyze_error",
+        validation: error.validation || null
+      },
+      { status }
     );
   }
 }

@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import { ExternalLink } from "lucide-react";
 import AdminShell from "@/components/layout/AdminShell";
-import { Card } from "@/components/layout/AppShell";
+import { Card, btnSecondary } from "@/components/layout/AppShell";
 import Badge, { labReportBadge } from "@/components/ui/Badge";
 import ExamOrderStatusList from "@/components/ui/ExamOrderStatusList";
 import LabReportReview from "@/components/ui/LabReportReview";
@@ -179,20 +180,42 @@ export default function AdminLabsPage() {
                         {report.published_by ? (
                           <Badge variant="info">{labelPublishedBy(report.published_by)}</Badge>
                         ) : null}
+                        {report.meta?.timing === "before" ? (
+                          <Badge variant="warning">Anterior à consulta</Badge>
+                        ) : null}
+                        {report.meta?.usable_for_orders === false ? (
+                          <Badge variant="neutral">Não preenche pedido</Badge>
+                        ) : null}
                       </div>
                     </div>
-                    {report.status === "draft" ? (
-                      <button
-                        type="button"
-                        onClick={() => setReviewingId(isReviewing ? "" : report.id)}
-                        className="rounded-xl bg-olive-700 px-4 py-2.5 text-sm font-semibold text-white"
-                      >
-                        {isReviewing ? "Fechar revisão" : "Revisar"}
-                      </button>
-                    ) : report.interpretation_summary ? (
-                      <p className="max-w-xl text-sm leading-6 text-graphite/70">{report.interpretation_summary}</p>
-                    ) : null}
+                    <div className="flex flex-wrap items-center gap-2">
+                      {report.file_url ? (
+                        <a
+                          href={report.file_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className={btnSecondary("!px-3 !py-2 text-xs")}
+                        >
+                          <ExternalLink className="h-3.5 w-3.5" strokeWidth={2} />
+                          Ver PDF
+                        </a>
+                      ) : null}
+                      {report.status === "draft" ? (
+                        <button
+                          type="button"
+                          onClick={() => setReviewingId(isReviewing ? "" : report.id)}
+                          className="rounded-xl bg-olive-700 px-4 py-2.5 text-sm font-semibold text-white"
+                        >
+                          {isReviewing ? "Fechar revisão" : "Revisar"}
+                        </button>
+                      ) : null}
+                    </div>
                   </div>
+                  {report.status !== "draft" && report.interpretation_summary && !isReviewing ? (
+                    <p className="mt-3 max-w-3xl text-sm leading-6 text-graphite/70">
+                      {report.interpretation_summary}
+                    </p>
+                  ) : null}
 
                   {isReviewing && report.status === "draft" ? (
                     <LabReportReview

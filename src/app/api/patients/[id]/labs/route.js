@@ -169,7 +169,12 @@ export async function GET(_request, { params }) {
     .eq("patient_id", params.id)
     .order("created_at", { ascending: false });
 
-  return NextResponse.json({ reports: data || [] });
+  const reports = (data || []).map((report) => ({
+    ...report,
+    file_url: `/api/patients/${params.id}/labs/file?id=${encodeURIComponent(report.id)}`
+  }));
+
+  return NextResponse.json({ reports });
 }
 
 export async function PATCH(request, { params }) {

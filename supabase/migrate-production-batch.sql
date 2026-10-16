@@ -261,3 +261,7 @@ using (
   )
 );
 
+-- Metadados de validação do laudo (timing / paciente / data).
+alter table public.lab_reports
+  add column if not exists meta jsonb not null default '{}'::jsonb;
+
