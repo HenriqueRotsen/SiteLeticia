@@ -3,11 +3,40 @@
 import { useEffect, useState } from "react";
 import AdminShell from "@/components/layout/AdminShell";
 import { Card } from "@/components/layout/AppShell";
+import { centsToReais, formatReais, parseReaisInput, reaisToCents } from "@/lib/money";
+
+function MoneyReaisField({ label, value, onChange, placeholder }) {
+  return (
+    <label className="text-sm">
+      {label}
+      <input
+        type="text"
+        inputMode="numeric"
+        autoComplete="off"
+        value={formatReais(value)}
+        onChange={(event) => onChange(parseReaisInput(event.target.value))}
+        onKeyDown={(event) => {
+          if (event.key === "ArrowUp") {
+            event.preventDefault();
+            onChange((Number(value) || 0) + 1);
+          }
+          if (event.key === "ArrowDown") {
+            event.preventDefault();
+            onChange(Math.max(0, (Number(value) || 0) - 1));
+          }
+        }}
+        className="mt-1 w-full rounded-xl border px-3 py-2"
+        placeholder={placeholder}
+      />
+      <span className="mt-1 block text-xs text-graphite/45">Valor em reais (de R$ 1 em R$ 1)</span>
+    </label>
+  );
+}
 
 export default function PagamentoConfigPage() {
   const [settings, setSettings] = useState({
-    consultationPriceCents: 0,
-    returnPriceCents: null,
+    consultationPriceReais: 0,
+    returnPriceReais: null,
     instructions: "",
     cancellationPolicy: ""
   });
@@ -28,8 +57,11 @@ export default function PagamentoConfigPage() {
     ]);
     if (s.settings) {
       setSettings({
-        consultationPriceCents: s.settings.consultation_price_cents,
-        returnPriceCents: s.settings.return_price_cents,
+        consultationPriceReais: centsToReais(s.settings.consultation_price_cents),
+        returnPriceReais:
+          s.settings.return_price_cents == null
+            ? null
+            : centsToReais(s.settings.return_price_cents),
         instructions: s.settings.instructions || "",
         cancellationPolicy: s.settings.cancellation_policy || ""
       });
@@ -45,7 +77,15 @@ export default function PagamentoConfigPage() {
     const res = await fetch("/api/admin/payment-settings", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(settings)
+      body: JSON.stringify({
+        consultationPriceCents: reaisToCents(settings.consultationPriceReais),
+        returnPriceCents:
+          settings.returnPriceReais == null || settings.returnPriceReais === ""
+            ? null
+            : reaisToCents(settings.returnPriceReais),
+        instructions: settings.instructions,
+        cancellationPolicy: settings.cancellationPolicy
+      })
     });
     setFeedback(res.ok ? "Configurações salvas." : "Erro ao salvar.");
   }
@@ -67,28 +107,20 @@ export default function PagamentoConfigPage() {
       <Card className="mb-4">
         <h2 className="font-semibold">Valores</h2>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <label className="text-sm">
-            Consulta (centavos)
-            <input
-              type="number"
-              value={settings.consultationPriceCents}
-              onChange={(e) =>
-                setSettings((c) => ({ ...c, consultationPriceCents: Number(e.target.value) }))
-              }
-              className="mt-1 w-full rounded-xl border px-3 py-2"
-            />
-          </label>
-          <label className="text-sm">
-            Retorno (centavos)
-            <input
-              type="number"
-              value={settings.returnPriceCents ?? ""}
-              onChange={(e) =>
-                setSettings((c) => ({ ...c, returnPriceCents: Number(e.target.value) || null }))
-              }
-              className="mt-1 w-full rounded-xl border px-3 py-2"
-            />
-          </label>
+          <MoneyReaisField
+            label="Consulta (R$)"
+            value={settings.consultationPriceReais}
+            onChange={(value) => setSettings((c) => ({ ...c, consultationPriceReais: value }))}
+            placeholder="R$ 0"
+          />
+          <MoneyReaisField
+            label="Retorno (R$)"
+            value={settings.returnPriceReais ?? 0}
+            onChange={(value) =>
+              setSettings((c) => ({ ...c, returnPriceReais: value === 0 ? null : value }))
+            }
+            placeholder="R$ 0"
+          />
         </div>
         <textarea
           value={settings.instructions}
