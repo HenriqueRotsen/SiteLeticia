@@ -1,3 +1,5 @@
+import { generateSlotsFromRules } from "@/lib/scheduling/slots";
+
 const patientId = "demo-patient-001";
 
 function futureDate(days, hour, minute = 0) {
@@ -486,29 +488,11 @@ Próximos passos: retorno em 30 dias.`,
 }
 
 export function generateDemoSlots(fromIso, toIso) {
-  const from = new Date(fromIso);
-  const to = new Date(toIso);
-  const slots = [];
-  const cursor = new Date(from);
-  cursor.setHours(0, 0, 0, 0);
-
-  while (cursor <= to) {
-    const weekday = cursor.getDay();
-    const rules = demoAvailabilityRules.filter((r) => r.weekday === weekday);
-    for (const rule of rules) {
-      for (let hour = 9; hour <= 16; hour += 1) {
-        if (hour === 16 && rule.end_time.startsWith("12")) continue;
-        const start = new Date(cursor);
-        start.setHours(hour, 0, 0, 0);
-        if (start < from || start > to) continue;
-        const end = new Date(start.getTime() + 60 * 60 * 1000);
-        slots.push({ startsAt: start.toISOString(), endsAt: end.toISOString() });
-      }
-    }
-    cursor.setDate(cursor.getDate() + 1);
-  }
-
-  return slots.slice(0, 24);
+  return generateSlotsFromRules({
+    from: new Date(fromIso),
+    to: new Date(toIso),
+    rules: demoAvailabilityRules
+  }).slice(0, 24);
 }
 
 export { patientId };

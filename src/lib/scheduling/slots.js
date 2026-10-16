@@ -4,23 +4,12 @@ import {
   SLOT_INTERVAL_MIN,
   TIMEZONE
 } from "@/lib/constants";
-
-function parseTimeOnDate(date, timeStr) {
-  const [hours, minutes] = timeStr.split(":").map(Number);
-  const d = new Date(date);
-  d.setHours(hours, minutes, 0, 0);
-  return d;
-}
-
-function getWeekdayInTimezone(date) {
-  const formatter = new Intl.DateTimeFormat("en-US", {
-    timeZone: TIMEZONE,
-    weekday: "short"
-  });
-  const day = formatter.format(date);
-  const map = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
-  return map[day];
-}
+import {
+  addZonedDays,
+  getWeekdayInTimezone,
+  parseTimeOnZonedDay,
+  startOfZonedDay
+} from "@/lib/scheduling/timezone";
 
 export function appointmentEnd(start) {
   return new Date(start.getTime() + CONSULTATION_DURATION_MIN * 60 * 1000);
@@ -32,14 +21,12 @@ export function blockedUntil(start) {
 
 export function overlapsWithBuffer(existingStart, candidateStart) {
   const existingBlockEnd = blockedUntil(existingStart);
-  const candidateBlockEnd = blockedUntil(candidateStart);
   const candidateEnd = appointmentEnd(candidateStart);
 
   return candidateStart < existingBlockEnd && candidateEnd > existingStart;
 }
 
 export function isSlotBlocked(candidateStart, busyRanges) {
-  const candidateEnd = appointmentEnd(candidateStart);
   const blockEnd = blockedUntil(candidateStart);
 
   return busyRanges.some(({ start, end }) => {
@@ -58,10 +45,8 @@ export function generateSlotsFromRules({
   googleBusy = []
 }) {
   const slots = [];
-  const cursor = new Date(from);
-  cursor.setHours(0, 0, 0, 0);
-
-  const endDate = new Date(to);
+  let cursor = startOfZonedDay(from, TIMEZONE);
+  const endDate = startOfZonedDay(to, TIMEZONE);
 
   const busyRanges = [
     ...appointments
@@ -72,12 +57,12 @@ export function generateSlotsFromRules({
   ];
 
   while (cursor <= endDate) {
-    const weekday = getWeekdayInTimezone(cursor);
-    const dayRules = rules.filter((r) => r.active && r.weekday === weekday);
+    const weekday = getWeekdayInTimezone(cursor, TIMEZONE);
+    const dayRules = rules.filter((r) => r.active && Number(r.weekday) === weekday);
 
     for (const rule of dayRules) {
-      let slotStart = parseTimeOnDate(cursor, rule.start_time);
-      const dayEnd = parseTimeOnDate(cursor, rule.end_time);
+      let slotStart = parseTimeOnZonedDay(cursor, rule.start_time, TIMEZONE);
+      const dayEnd = parseTimeOnZonedDay(cursor, rule.end_time, TIMEZONE);
 
       while (appointmentEnd(slotStart) <= dayEnd) {
         if (slotStart >= from && slotStart <= to && !isSlotBlocked(slotStart, busyRanges)) {
@@ -90,7 +75,7 @@ export function generateSlotsFromRules({
       }
     }
 
-    cursor.setDate(cursor.getDate() + 1);
+    cursor = addZonedDays(cursor, 1, TIMEZONE);
   }
 
   return slots;
