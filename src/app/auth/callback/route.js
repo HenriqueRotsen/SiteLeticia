@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getSiteUrl } from "@/lib/site-url";
+import {
+  MFA_OK_COOKIE,
+  MFA_PENDING_COOKIE,
+  mfaCookieOptions,
+  signMfaOk
+} from "@/lib/auth/mfa-cookies";
 
 async function resolvePostAuthPath(supabase, requestedNext) {
   const {
@@ -50,6 +56,18 @@ export async function GET(request) {
     }
   }
 
+  const {
+    data: { user }
+  } = await supabase.auth.getUser();
+
   const safeNext = await resolvePostAuthPath(supabase, nextPath);
-  return NextResponse.redirect(new URL(safeNext, siteUrl));
+  const response = NextResponse.redirect(new URL(safeNext, siteUrl));
+
+  // Link de e-mail (recovery) já prova posse da caixa — libera 2FA desta sessão.
+  if (user?.id && (nextPath.startsWith("/redefinir-senha") || nextPath === "/redefinir-senha")) {
+    response.cookies.set(MFA_OK_COOKIE, await signMfaOk(user.id), mfaCookieOptions(12 * 60 * 60));
+    response.cookies.set(MFA_PENDING_COOKIE, "", { ...mfaCookieOptions(0), maxAge: 0 });
+  }
+
+  return response;
 }

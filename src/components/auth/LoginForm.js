@@ -31,10 +31,16 @@ export default function LoginForm() {
       return;
     }
 
+    if (result.requiresMfa) {
+      const next = searchParams.get("next");
+      const qs = next ? `?next=${encodeURIComponent(next)}` : "";
+      window.location.href = `/verificar-codigo${qs}`;
+      return;
+    }
+
     const requestedNext = searchParams.get("next");
     const roleHome = result.redirectTo || (result.role === "nutritionist" ? "/admin" : "/app");
 
-    // Nutricionista não deve cair na área do paciente por default.
     if (result.role === "nutritionist") {
       const safeNext =
         requestedNext && requestedNext.startsWith("/admin") ? requestedNext : roleHome;
