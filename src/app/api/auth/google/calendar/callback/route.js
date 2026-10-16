@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { encryptText } from "@/lib/crypto";
 import { exchangeGoogleCode } from "@/lib/google/calendar";
+import { getSiteUrl } from "@/lib/site-url";
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
@@ -9,7 +10,7 @@ export async function GET(request) {
   const state = searchParams.get("state");
   const error = searchParams.get("error");
 
-  const redirectBase = `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/admin/configuracoes/integracoes`;
+  const redirectBase = `${getSiteUrl(request)}/admin/configuracoes/integracoes`;
 
   if (error || !code || !state) {
     return NextResponse.redirect(`${redirectBase}?error=oauth`);

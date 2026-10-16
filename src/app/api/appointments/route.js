@@ -85,7 +85,10 @@ export async function POST(request) {
   if (nutritionist && process.env.GOOGLE_CLIENT_ID) {
     try {
       const token = await getGoogleAccessToken(nutritionist.id);
-      if (token) {
+      if (!token) {
+        calendarWarning =
+          "Consulta agendada, mas o Google Calendar não está conectado. Reconecte em Integrações.";
+      } else {
         const event = await createGoogleCalendarEvent({
           accessToken: token,
           summary: `Consulta nutricional — ${auth.ctx.patient.full_name}`,
@@ -103,9 +106,12 @@ export async function POST(request) {
           .update({ meet_link: meetLink, google_event_id: googleEventId })
           .eq("id", appointment.id);
       }
-    } catch {
-      calendarWarning = "Consulta agendada, mas o Google Meet não pôde ser criado.";
+    } catch (error) {
+      console.error("Google Calendar event failed:", error?.message || error);
+      calendarWarning = "Consulta agendada, mas o evento no Google Calendar não pôde ser criado.";
     }
+  } else if (nutritionist && !process.env.GOOGLE_CLIENT_ID) {
+    calendarWarning = "Consulta agendada. Google Calendar não configurado no servidor.";
   }
 
   await writeAuditLog({
