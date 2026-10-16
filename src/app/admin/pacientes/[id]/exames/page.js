@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import AdminShell from "@/components/layout/AdminShell";
 import { Card } from "@/components/layout/AppShell";
 import Badge, { labReportBadge } from "@/components/ui/Badge";
+import ExamOrderStatusList from "@/components/ui/ExamOrderStatusList";
 import LabReportReview from "@/components/ui/LabReportReview";
 import PdfUploadZone from "@/components/ui/PdfUploadZone";
 import { labelPublishedBy, labelUploadedBy } from "@/lib/labels";
@@ -14,16 +15,26 @@ export default function AdminLabsPage() {
   const patientId = params.id;
   const [patientName, setPatientName] = useState("");
   const [reports, setReports] = useState([]);
+  const [examOrders, setExamOrders] = useState([]);
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
   const [uploading, setUploading] = useState(false);
   const [savingId, setSavingId] = useState("");
   const [reviewingId, setReviewingId] = useState("");
 
+  async function loadExamOrders() {
+    const res = await fetch(`/api/patients/${patientId}/diet`);
+    const data = await res.json().catch(() => ({}));
+    const plans = data.dietPlans || [];
+    const plan = plans.find((item) => item.status === "active") || plans[0] || null;
+    setExamOrders(plan?.diet_exam_orders || []);
+  }
+
   async function loadReports() {
     const res = await fetch(`/api/patients/${patientId}/labs`);
     const data = await res.json();
     setReports(data.reports || []);
+    await loadExamOrders();
   }
 
   useEffect(() => {
@@ -31,11 +42,15 @@ export default function AdminLabsPage() {
 
     Promise.all([
       fetch(`/api/admin/patients/${patientId}`).then((r) => r.json()),
-      fetch(`/api/patients/${patientId}/labs`).then((r) => r.json())
-    ]).then(([patientData, labsData]) => {
+      fetch(`/api/patients/${patientId}/labs`).then((r) => r.json()),
+      fetch(`/api/patients/${patientId}/diet`).then((r) => r.json()).catch(() => ({}))
+    ]).then(([patientData, labsData, dietData]) => {
       if (cancelled) return;
       setPatientName(patientData.patient?.full_name || "");
       setReports(labsData.reports || []);
+      const plans = dietData.dietPlans || [];
+      const plan = plans.find((item) => item.status === "active") || plans[0] || null;
+      setExamOrders(plan?.diet_exam_orders || []);
     });
 
     return () => {
@@ -60,7 +75,12 @@ export default function AdminLabsPage() {
       return;
     }
 
-    setFeedback("PDF recebido. A análise automática já está disponível para revisão.");
+    const done = data.fulfillment?.doneCount || 0;
+    setFeedback(
+      done > 0
+        ? `PDF recebido. ${done} item(ns) do pedido foram marcados como feitos. Revise a análise.`
+        : "PDF recebido. A análise automática já está disponível para revisão."
+    );
     setReviewingId(data.report?.id || "");
     await loadReports();
   }
@@ -112,7 +132,7 @@ export default function AdminLabsPage() {
       <Card className="mb-6">
         <PdfUploadZone
           label="Enviar PDF de exames"
-          description="Você ou o paciente enviam o PDF. O sistema tenta extrair marcadores pelo texto do laudo para você revisar e publicar."
+          description="Você ou o paciente enviam o PDF. O Gemini compara com o pedido, marca itens feitos e gera parecer inicial para revisão."
           uploading={uploading}
           onFileSelect={uploadPdf}
         />
@@ -125,6 +145,12 @@ export default function AdminLabsPage() {
           </p>
         ) : null}
       </Card>
+
+      {examOrders.length ? (
+        <Card className="mb-6" title="Pedido de exames e resultados">
+          <ExamOrderStatusList orders={examOrders} />
+        </Card>
+      ) : null}
 
       <Card title="Histórico de laudos">
         {!reports.length ? (

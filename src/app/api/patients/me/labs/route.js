@@ -7,9 +7,54 @@ import { ALLOWED_PDF_TYPES, MAX_PDF_BYTES } from "@/lib/constants";
 import { compressPdfBuffer } from "@/lib/media/compress-pdf";
 import { writeAuditLog, getClientIp } from "@/lib/audit";
 import { createStorageSignedUrl } from "@/lib/storage/signed-url";
+import { fulfillExamOrdersFromLabReport } from "@/lib/labs/fulfill-orders";
 
 function labsBucket() {
   return process.env.SUPABASE_STORAGE_BUCKET_LABS || "lab-reports";
+}
+
+async function loadPatientExamOrders(supabase, patientId) {
+  const { data: plans } = await supabase
+    .from("diet_plans")
+    .select("id, status, title, diet_exam_orders(*)")
+    .eq("patient_id", patientId)
+    .in("status", ["active", "archived"])
+    .order("created_at", { ascending: false });
+
+  const active = (plans || []).find((plan) => plan.status === "active") || (plans || [])[0] || null;
+  return (active?.diet_exam_orders || [])
+    .slice()
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+}
+
+async function runFulfillment({
+  supabase,
+  patientId,
+  reportId,
+  extraction,
+  pdfBuffer,
+  currentInterpretation
+}) {
+  const fulfillment = await fulfillExamOrdersFromLabReport({
+    patientId,
+    reportId,
+    labResults: extraction.results || [],
+    extractedText: extraction.extractedText || "",
+    pdfBuffer,
+    currentInterpretation
+  });
+
+  if (fulfillment.interpretationSummary) {
+    await supabase
+      .from("lab_reports")
+      .update({
+        ai_interpretation: fulfillment.interpretationSummary,
+        interpretation_summary: fulfillment.interpretationSummary
+      })
+      .eq("id", reportId);
+  }
+
+  return fulfillment;
 }
 
 function toPatientReport(report, fileUrl) {
@@ -100,7 +145,9 @@ export async function GET() {
     })
   );
 
-  return NextResponse.json({ reports });
+  const examOrders = await loadPatientExamOrders(supabase, auth.ctx.patient.id);
+
+  return NextResponse.json({ reports, examOrders });
 }
 
 export async function POST(request) {
@@ -159,6 +206,15 @@ export async function POST(request) {
     );
   }
 
+  const fulfillment = await runFulfillment({
+    supabase,
+    patientId,
+    reportId: report.id,
+    extraction,
+    pdfBuffer: parsed.buffer,
+    currentInterpretation: aiText
+  });
+
   await writeAuditLog({
     actorId: auth.ctx.user.id,
     action: "lab_upload_patient",
@@ -168,7 +224,15 @@ export async function POST(request) {
   });
 
   const fileUrl = await createStorageSignedUrl(bucket, path);
-  return NextResponse.json({ report: toPatientReport(report, fileUrl) });
+  const examOrders = await loadPatientExamOrders(supabase, patientId);
+  return NextResponse.json({
+    report: toPatientReport(report, fileUrl),
+    examOrders,
+    fulfillment: {
+      doneCount: fulfillment.doneCount,
+      method: fulfillment.method
+    }
+  });
 }
 
 /** Substitui o PDF de um envio ainda em rascunho. */
@@ -253,6 +317,15 @@ export async function PUT(request) {
     );
   }
 
+  const fulfillment = await runFulfillment({
+    supabase,
+    patientId,
+    reportId: report.id,
+    extraction,
+    pdfBuffer: parsed.buffer,
+    currentInterpretation: aiText
+  });
+
   if (existing.storage_path && existing.storage_path !== path) {
     await supabase.storage.from(bucket).remove([existing.storage_path]);
   }
@@ -266,7 +339,15 @@ export async function PUT(request) {
   });
 
   const fileUrl = await createStorageSignedUrl(bucket, path);
-  return NextResponse.json({ report: toPatientReport(report, fileUrl) });
+  const examOrders = await loadPatientExamOrders(supabase, patientId);
+  return NextResponse.json({
+    report: toPatientReport(report, fileUrl),
+    examOrders,
+    fulfillment: {
+      doneCount: fulfillment.doneCount,
+      method: fulfillment.method
+    }
+  });
 }
 
 export async function DELETE(request) {

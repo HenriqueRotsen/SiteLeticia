@@ -88,7 +88,9 @@ function mapExamOrders(plan) {
       clientId: crypto.randomUUID(),
       name: exam.name || "",
       category: exam.category === "complementary" ? "complementary" : "principal",
-      whenToRequest: exam.whenToRequest || exam.when_to_request || ""
+      whenToRequest: exam.whenToRequest || exam.when_to_request || "",
+      status: exam.status || "pending",
+      result: exam.result || null
     })),
     collectionNotes: item.collection_notes || item.collectionNotes || [],
     observations: item.observations || "",
@@ -441,7 +443,10 @@ export default function PacienteDietaPage() {
             .map((exam) => ({
               name: exam.name.trim(),
               category: exam.category === "complementary" ? "complementary" : "principal",
-              whenToRequest: exam.whenToRequest?.trim() || null
+              whenToRequest: exam.whenToRequest?.trim() || null,
+              ...(exam.status === "done" && exam.result
+                ? { status: "done", result: exam.result }
+                : { status: exam.status || "pending" })
             })),
           collectionNotes: order.collectionNotes || [],
           observations: order.observations?.trim() || null,

@@ -5,8 +5,10 @@ import { ExternalLink, Pencil, Trash2 } from "lucide-react";
 import PatientShell from "@/components/layout/PatientShell";
 import { Card, btnSecondary } from "@/components/layout/AppShell";
 import Badge, { labReportBadge } from "@/components/ui/Badge";
+import ExamOrderStatusList from "@/components/ui/ExamOrderStatusList";
 import HelpTooltip from "@/components/ui/HelpTooltip";
 import PdfUploadZone from "@/components/ui/PdfUploadZone";
+import { countExamProgress } from "@/lib/labs/exam-status";
 
 function flagLabel(flag) {
   if (flag === "high") return "Acima";
@@ -22,6 +24,7 @@ function statusLabel(report) {
 
 export default function ExamesPage() {
   const [reports, setReports] = useState([]);
+  const [examOrders, setExamOrders] = useState([]);
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -33,6 +36,7 @@ export default function ExamesPage() {
     const res = await fetch("/api/patients/me/labs");
     const data = await res.json();
     setReports(data.reports || []);
+    setExamOrders(data.examOrders || []);
   }
 
   useEffect(() => {
@@ -56,7 +60,13 @@ export default function ExamesPage() {
       return;
     }
 
-    setFeedback("PDF enviado. A Letícia vai revisar e publicar o parecer.");
+    if (data.examOrders) setExamOrders(data.examOrders);
+    const done = data.fulfillment?.doneCount || 0;
+    setFeedback(
+      done > 0
+        ? `PDF enviado. ${done} exame(s) do pedido foram identificados e marcados como feitos. A Letícia ainda revisa o parecer.`
+        : "PDF enviado. A Letícia vai revisar e publicar o parecer."
+    );
     await loadReports();
   }
 
@@ -86,7 +96,13 @@ export default function ExamesPage() {
       return;
     }
 
-    setFeedback("PDF atualizado. Continua aguardando a revisão da Letícia.");
+    if (data.examOrders) setExamOrders(data.examOrders);
+    const done = data.fulfillment?.doneCount || 0;
+    setFeedback(
+      done > 0
+        ? `PDF atualizado. ${done} exame(s) do pedido foram identificados.`
+        : "PDF atualizado. Continua aguardando a revisão da Letícia."
+    );
     await loadReports();
   }
 
@@ -113,11 +129,12 @@ export default function ExamesPage() {
 
   const pending = reports.filter((report) => report.status !== "published");
   const published = reports.filter((report) => report.status === "published");
+  const progress = countExamProgress(examOrders);
 
   return (
     <PatientShell
       title="Exames"
-      subtitle="Envie laudos em PDF. A análise e o parecer ficam com a Letícia."
+      subtitle="Envie o laudo: o sistema analisa o pedido e marca o que já foi feito."
       breadcrumbs={["Paciente", "Exames"]}
     >
       <input
@@ -132,10 +149,20 @@ export default function ExamesPage() {
         }}
       />
 
+      {examOrders.length ? (
+        <Card className="mb-6" title="Seu pedido de exames">
+          <p className="mb-4 text-sm text-graphite/55">
+            {progress.done} de {progress.total} feitos
+            {progress.pending ? ` · ${progress.pending} pendente(s)` : ""}
+          </p>
+          <ExamOrderStatusList orders={examOrders} />
+        </Card>
+      ) : null}
+
       <Card className="mb-6">
         <PdfUploadZone
           label="Enviar meu exame em PDF"
-          description="Você envia o laudo; a Letícia revisa a análise e publica o parecer no seu portal."
+          description="Ao enviar, o sistema analisa o laudo, marca os itens do pedido que aparecem no resultado e mostra o valor e se está normal ou alterado."
           uploading={uploading}
           onFileSelect={uploadPdf}
         />
@@ -151,7 +178,7 @@ export default function ExamesPage() {
         ) : null}
       </Card>
 
-      {!reports.length ? (
+      {!reports.length && !examOrders.length ? (
         <Card>
           <p className="text-graphite/70">Nenhum exame enviado ainda.</p>
         </Card>
