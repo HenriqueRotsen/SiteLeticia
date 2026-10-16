@@ -1,0 +1,2 @@
+-- Base completa: npm run import:foods:taco
+-- (substitui amostras antigas com --clear)

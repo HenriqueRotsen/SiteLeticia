@@ -1,0 +1,960 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import {
+  Activity,
+  ArrowLeft,
+  ArrowRight,
+  CheckCircle2,
+  FileUp,
+  Power,
+  RefreshCw,
+  Save,
+  Trash2,
+  UserRound
+} from "lucide-react";
+import AdminShell from "@/components/layout/AdminShell";
+import { Card, btnPrimary, btnSecondary, inputClassName } from "@/components/layout/AppShell";
+import Badge from "@/components/ui/Badge";
+import BmrPanel from "@/components/ui/BmrPanel";
+import DietNutrientAnalysis from "@/components/ui/DietNutrientAnalysis";
+import CsvUploadZone from "@/components/ui/CsvUploadZone";
+import MealDietAccordion from "@/components/ui/MealDietAccordion";
+import Modal from "@/components/ui/Modal";
+import PlanWizardStepper from "@/components/ui/PlanWizardStepper";
+import ExamOrderList from "@/components/ui/ExamOrderList";
+import ReferralList from "@/components/ui/ReferralList";
+import SupplementPrescriptionList from "@/components/ui/SupplementPrescriptionList";
+import { computePatientMetabolism } from "@/lib/metabolism/bmr";
+import { sanitizePer100g, sumNutrition, FATSECRET_REPORT_KEYS } from "@/lib/foods/nutrition";
+import {
+  buildNutritionSnapshot,
+  restoreMeasureFromStored,
+  toStoredPortion
+} from "@/lib/foods/measures";
+import { labelDietStatus } from "@/lib/labels";
+import { flattenSupplementEntries, groupSupplementRows } from "@/lib/diets/supplements";
+
+function formatPlanDate(date = new Date()) {
+  return date.toLocaleDateString("pt-BR");
+}
+
+function defaultPlanTitle(patientName, date = new Date()) {
+  const name = patientName?.trim() || "Paciente";
+  return `Plano Alimentar - ${name} - ${formatPlanDate(date)}`;
+}
+
+function emptyDraft(patientName) {
+  return {
+    id: null,
+    title: defaultPlanTitle(patientName),
+    notes: "",
+    status: "active",
+    source: "fatsecret_csv",
+    sourcePdfPath: null,
+    extractionSummary: null,
+    extractionMethod: null,
+    meals: [],
+    supplements: [],
+    referrals: [],
+    examOrders: []
+  };
+}
+
+function mapSupplements(plan) {
+  return groupSupplementRows(plan.diet_supplements || plan.supplements || []);
+}
+
+function mapReferrals(plan) {
+  return (plan.diet_referrals || plan.referrals || []).map((item, index) => ({
+    clientId: item.id || crypto.randomUUID(),
+    specialty: item.specialty || "",
+    professionalName: item.professional_name || item.professionalName || "",
+    reason: item.reason || "",
+    urgency: item.urgency || "routine",
+    bodyText: item.body_text || item.bodyText || "",
+    notes: item.notes || "",
+    sortOrder: item.sort_order ?? item.sortOrder ?? index
+  }));
+}
+
+function mapExamOrders(plan) {
+  return (plan.diet_exam_orders || plan.examOrders || []).map((item, index) => ({
+    clientId: item.id || crypto.randomUUID(),
+    title: item.title || "Pedido de exames",
+    meta: item.meta || null,
+    exams: (item.exams || []).map((exam) => ({
+      clientId: crypto.randomUUID(),
+      name: exam.name || "",
+      category: exam.category === "complementary" ? "complementary" : "principal",
+      whenToRequest: exam.whenToRequest || exam.when_to_request || ""
+    })),
+    collectionNotes: item.collection_notes || item.collectionNotes || [],
+    observations: item.observations || "",
+    sortOrder: item.sort_order ?? item.sortOrder ?? index
+  }));
+}
+
+function rebuildItemSnapshot(item, patch = {}) {
+  const next = { ...item, ...patch };
+  const measureUnit = next.measureUnit || "gramas";
+  const measureAmount = Number(next.measureAmount ?? next.portionG) || 100;
+  const isAbsoluteMeasure = ["gramas", "ml", "litros"].includes(measureUnit);
+  const gramsPerUnit = !isAbsoluteMeasure
+    ? Number(
+        next.gramsPerUnit ||
+          next.nutritionSnapshot?.gramsPerUnit ||
+          Number(item.portionG || 100)
+      )
+    : null;
+  const stored = toStoredPortion(measureUnit, measureAmount, gramsPerUnit);
+  const per100g = next.per100g ? sanitizePer100g(next.per100g) : null;
+  const baseSnapshot = buildNutritionSnapshot(per100g, stored.measureUnit, stored.measureAmount) || {};
+
+  const reportValues = {};
+  for (const key of FATSECRET_REPORT_KEYS) {
+    reportValues[key] =
+      per100g && Object.prototype.hasOwnProperty.call(per100g, key)
+        ? per100g[key]
+        : next.nutritionSnapshot?.[key] ?? null;
+  }
+
+  return {
+    ...next,
+    quantity: stored.quantity,
+    portionG: stored.portionG,
+    measureUnit: stored.measureUnit,
+    measureAmount: stored.measureAmount,
+    gramsPerUnit: stored.gramsPerUnit,
+    per100g: per100g ? { ...per100g, ...reportValues } : reportValues,
+    nutritionSnapshot: {
+      ...baseSnapshot,
+      ...reportValues,
+      amountLabel: next.nutritionSnapshot?.amountLabel,
+      portionEstimated: Boolean(next.nutritionSnapshot?.portionEstimated),
+      measureUnit: stored.measureUnit,
+      measureAmount: stored.measureAmount,
+      ...(stored.gramsPerUnit ? { gramsPerUnit: stored.gramsPerUnit } : {})
+    }
+  };
+}
+
+function mapApiPlanToDraft(plan) {
+  if (!plan) return null;
+
+  return {
+    id: plan.id || null,
+    title: plan.title || "Plano Alimentar",
+    notes: plan.notes || "",
+    status: plan.status || "active",
+    source: plan.source || "fatsecret_csv",
+    sourcePdfPath: plan.source_pdf_path || plan.sourcePdfPath || null,
+    extractionSummary: plan.extraction_summary || plan.extractionSummary || null,
+    extractionMethod: plan.extraction_method || plan.extractionMethod || null,
+    meals: (plan.diet_meals || plan.meals || []).map((meal, index) => ({
+      clientId: meal.id || crypto.randomUUID(),
+      name: meal.name,
+      sortOrder: meal.sort_order ?? meal.sortOrder ?? index,
+      items: (meal.diet_items || meal.items || []).map((item) => {
+        const restored = restoreMeasureFromStored(
+          item.quantity,
+          item.portion_g ?? item.portionG,
+          item.nutrition_snapshot || item.nutritionSnapshot
+        );
+
+        return rebuildItemSnapshot({
+          clientId: item.id || crypto.randomUUID(),
+          source: item.source || "fatsecret_csv",
+          externalId: item.external_id ?? item.externalId ?? null,
+          label: item.label,
+          quantity: restored.quantity,
+          portionG: restored.portionG,
+          measureUnit: restored.measureUnit,
+          measureAmount: restored.measureAmount,
+          per100g: restored.per100g ? sanitizePer100g(restored.per100g) : null,
+          nutritionSnapshot:
+            item.nutrition_snapshot ||
+            item.nutritionSnapshot ||
+            buildNutritionSnapshot(restored.per100g, restored.measureUnit, restored.measureAmount)
+        });
+      })
+    })),
+    supplements: mapSupplements(plan),
+    referrals: mapReferrals(plan),
+    examOrders: mapExamOrders(plan)
+  };
+}
+
+function draftItemsForAnalysis(meals) {
+  return (meals || []).flatMap((meal) =>
+    (meal.items || []).map((item) => ({
+      per100g: item.per100g,
+      quantity: item.quantity,
+      portionG: item.portionG,
+      portionEstimated: Boolean(item.nutritionSnapshot?.portionEstimated)
+    }))
+  );
+}
+
+function sanitizeListForSave(items, requiredKeys) {
+  return (items || [])
+    .map((item, index) => ({ ...item, sortOrder: index }))
+    .filter((item) => requiredKeys.every((key) => String(item[key] || "").trim()));
+}
+
+export default function PacienteDietaPage() {
+  const params = useParams();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const patientId = params.id;
+  const planIdParam = searchParams.get("planId");
+  const isNewPlan = searchParams.get("new") === "1" || (!planIdParam && searchParams.has("new"));
+  const readOnly = Boolean(planIdParam) && !isNewPlan;
+
+  const [patient, setPatient] = useState(null);
+  const [draft, setDraft] = useState(null);
+  const [pendingCsvFile, setPendingCsvFile] = useState(null);
+  const [extracting, setExtracting] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [feedback, setFeedback] = useState("");
+  const [feedbackTone, setFeedbackTone] = useState("neutral");
+  const [extractMeta, setExtractMeta] = useState(null);
+  const [metabolismOpen, setMetabolismOpen] = useState(false);
+  const [publishSuccessOpen, setPublishSuccessOpen] = useState(false);
+  const [confirmAction, setConfirmAction] = useState(null);
+  const [wizardStep, setWizardStep] = useState(1);
+  const [maxReached, setMaxReached] = useState(1);
+
+  useEffect(() => {
+    Promise.all([
+      fetch(`/api/admin/patients/${patientId}`).then((r) => r.json()),
+      fetch(`/api/patients/${patientId}/diet`).then((r) => r.json())
+    ])
+      .then(([patientData, dietData]) => {
+        const nextPatient = patientData.patient || null;
+        setPatient(nextPatient);
+
+        const plans = dietData.dietPlans || [];
+
+        if (isNewPlan) {
+          setDraft(emptyDraft(nextPatient?.full_name));
+          setWizardStep(1);
+          setMaxReached(1);
+          return;
+        }
+
+        if (planIdParam) {
+          const selected = plans.find((plan) => plan.id === planIdParam);
+          if (selected) {
+            setDraft(mapApiPlanToDraft(selected));
+            setMaxReached(4);
+            return;
+          }
+          setFeedbackTone("error");
+          setFeedback("Plano não encontrado.");
+          setDraft(emptyDraft(nextPatient?.full_name));
+          return;
+        }
+
+        // Sem query: abre criação de novo plano (não carrega o ativo para edição).
+        setDraft(emptyDraft(nextPatient?.full_name));
+        setWizardStep(1);
+        setMaxReached(1);
+      })
+      .catch(() => {
+        setFeedbackTone("error");
+        setFeedback("Não foi possível carregar o paciente/dieta.");
+      });
+  }, [patientId, planIdParam, isNewPlan]);
+
+  const planTotals = useMemo(() => sumNutrition(draftItemsForAnalysis(draft?.meals)), [draft]);
+
+  const metabolism = useMemo(
+    () =>
+      computePatientMetabolism({
+        sex: patient?.sex,
+        birthDate: patient?.birth_date,
+        heightCm: patient?.height_cm,
+        weightKg: patient?.latest_weight_kg,
+        bodyFatPercent: patient?.body_fat_percent,
+        activityLevel: patient?.activity_level,
+        primaryFormula: patient?.bmr_formula
+      }),
+    [patient]
+  );
+
+  function goToStep(nextStep) {
+    setWizardStep(nextStep);
+    setMaxReached((current) => Math.max(current, nextStep));
+    setFeedback("");
+  }
+
+  async function handleCsvUpload(file) {
+    setExtracting(true);
+    setFeedback("");
+    setExtractMeta(null);
+    setPendingCsvFile(file || null);
+
+    const planTitle = defaultPlanTitle(patient?.full_name);
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("title", planTitle);
+
+    const response = await fetch(`/api/patients/${patientId}/diet/extract`, {
+      method: "POST",
+      body: formData
+    });
+
+    const data = await response.json().catch(() => ({}));
+    setExtracting(false);
+
+    if (!response.ok) {
+      setPendingCsvFile(null);
+      setFeedbackTone("error");
+      setFeedback(data.message || "Falha ao extrair a dieta do CSV.");
+      return;
+    }
+
+    const nextDraft = mapApiPlanToDraft({
+      ...data.plan,
+      title: planTitle,
+      notes: "",
+      diet_meals: (data.plan?.meals || []).map((meal, index) => ({
+        ...meal,
+        sort_order: meal.sortOrder ?? index,
+        diet_items: (meal.items || []).map((item) => ({
+          ...item,
+          portion_g: item.portionG,
+          nutrition_snapshot: item.nutritionSnapshot
+        }))
+      })),
+      diet_supplements: draft?.supplements || [],
+      diet_referrals: draft?.referrals || [],
+      diet_exam_orders: draft?.examOrders || []
+    });
+
+    setDraft({
+      ...nextDraft,
+      supplements: draft?.supplements || [],
+      referrals: draft?.referrals || [],
+      examOrders: draft?.examOrders || []
+    });
+    setExtractMeta({
+      summary: data.summary,
+      method: data.method,
+      warning: data.warning
+    });
+
+    if (!nextDraft?.meals?.length) {
+      setFeedbackTone("error");
+      setFeedback("Nenhuma refeição encontrada no CSV.");
+    }
+  }
+
+  function updateDraftField(field, value) {
+    setDraft((current) => ({ ...current, [field]: value }));
+  }
+
+  function updateItem(mealClientId, itemClientId, patch) {
+    setDraft((current) => ({
+      ...current,
+      meals: current.meals.map((meal) => {
+        if (meal.clientId !== mealClientId) return meal;
+        return {
+          ...meal,
+          items: meal.items.map((item) =>
+            item.clientId === itemClientId ? rebuildItemSnapshot(item, patch) : item
+          )
+        };
+      })
+    }));
+  }
+
+  function removeItem(mealClientId, itemClientId) {
+    setDraft((current) => ({
+      ...current,
+      meals: current.meals
+        .map((meal) => {
+          if (meal.clientId !== mealClientId) return meal;
+          return {
+            ...meal,
+            items: meal.items.filter((item) => item.clientId !== itemClientId)
+          };
+        })
+        .filter((meal) => meal.items.length > 0)
+    }));
+  }
+
+  async function savePlan() {
+    if (!draft?.meals?.length) {
+      setFeedbackTone("error");
+      setFeedback("Importe um CSV com refeições antes de publicar.");
+      goToStep(1);
+      return;
+    }
+
+    setSaving(true);
+    setFeedback("");
+
+    const payload = {
+      title: draft.title,
+      notes: draft.notes || null,
+      status: "active",
+      source: "fatsecret_csv",
+      sourcePdfPath: draft.sourcePdfPath || null,
+      extractionSummary: draft.extractionSummary || extractMeta?.summary || null,
+      extractionMethod: draft.extractionMethod || extractMeta?.method || null,
+      meals: draft.meals.map((meal, index) => ({
+        name: meal.name,
+        sortOrder: index,
+        items: meal.items.map((item) => ({
+          source: item.source || "fatsecret_csv",
+          externalId: item.externalId,
+          label: item.label,
+          quantity: item.quantity,
+          portionG: item.portionG,
+          nutritionSnapshot:
+            item.nutritionSnapshot ||
+            buildNutritionSnapshot(
+              item.per100g,
+              item.measureUnit || "gramas",
+              item.measureAmount || item.portionG
+            )
+        }))
+      })),
+      supplements: flattenSupplementEntries(draft.supplements || []),
+      referrals: sanitizeListForSave(draft.referrals, ["specialty", "reason"]).map((item, index) => ({
+        specialty: item.specialty.trim(),
+        professionalName: item.professionalName?.trim() || null,
+        reason: item.reason.trim(),
+        urgency: item.urgency || "routine",
+        bodyText: item.bodyText?.trim() || null,
+        notes: item.notes?.trim() || null,
+        sortOrder: index
+      })),
+      examOrders: (draft.examOrders || [])
+        .map((order, index) => ({
+          title: String(order.title || "Pedido de exames").trim() || "Pedido de exames",
+          exams: (order.exams || [])
+            .filter((exam) => String(exam.name || "").trim())
+            .map((exam) => ({
+              name: exam.name.trim(),
+              category: exam.category === "complementary" ? "complementary" : "principal",
+              whenToRequest: exam.whenToRequest?.trim() || null
+            })),
+          collectionNotes: order.collectionNotes || [],
+          observations: order.observations?.trim() || null,
+          meta: order.meta || null,
+          sortOrder: index
+        }))
+        .filter((order) => order.exams.length > 0)
+    };
+
+    let response;
+    if (pendingCsvFile) {
+      const formData = new FormData();
+      formData.append("plan", JSON.stringify(payload));
+      formData.append("file", pendingCsvFile);
+      response = await fetch(`/api/patients/${patientId}/diet`, {
+        method: "POST",
+        body: formData
+      });
+    } else {
+      response = await fetch(`/api/patients/${patientId}/diet`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+    }
+
+    const data = await response.json().catch(() => ({}));
+    setSaving(false);
+
+    if (!response.ok) {
+      setFeedbackTone("error");
+      setFeedback(data.message || "Erro ao salvar plano.");
+      return;
+    }
+
+    setPendingCsvFile(null);
+    setFeedback("");
+    setPublishSuccessOpen(true);
+  }
+
+  async function deactivatePlan() {
+    if (!draft?.id) return;
+    setSaving(true);
+    setFeedback("");
+    const response = await fetch(`/api/patients/${patientId}/diet/${draft.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "archived" })
+    });
+    const data = await response.json().catch(() => ({}));
+    setSaving(false);
+    setConfirmAction(null);
+
+    if (!response.ok) {
+      setFeedbackTone("error");
+      setFeedback(data.message || "Erro ao desativar plano.");
+      return;
+    }
+
+    setDraft((current) => ({ ...current, status: "archived" }));
+    setFeedbackTone("success");
+    setFeedback("Plano desativado.");
+  }
+
+  async function deletePlan() {
+    if (!draft?.id) return;
+    setSaving(true);
+    setFeedback("");
+    const response = await fetch(`/api/patients/${patientId}/diet/${draft.id}`, {
+      method: "DELETE"
+    });
+    const data = await response.json().catch(() => ({}));
+    setSaving(false);
+    setConfirmAction(null);
+
+    if (!response.ok) {
+      setFeedbackTone("error");
+      setFeedback(data.message || "Erro ao excluir plano.");
+      return;
+    }
+
+    router.push(`/admin/pacientes/${patientId}`);
+  }
+
+  function goToPatient() {
+    setPublishSuccessOpen(false);
+    router.push(`/admin/pacientes/${patientId}`);
+  }
+
+  return (
+    <AdminShell
+      title="Prescrição"
+      breadcrumbs={[
+        "Admin",
+        "Pacientes",
+        {
+          label: patient?.full_name || "...",
+          href: `/admin/pacientes/${patientId}`
+        },
+        "Prescrição"
+      ]}
+    >
+      <div className="mb-5 rounded-2xl border border-olive-900/10 bg-porcelain/90 px-4 py-4 sm:px-5">
+        <PlanWizardStepper step={wizardStep} maxReached={maxReached} onStepChange={goToStep} />
+      </div>
+
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          {readOnly && draft?.status ? (
+            <Badge variant={draft.status === "active" ? "success" : "neutral"}>
+              {labelDietStatus(draft.status)}
+            </Badge>
+          ) : null}
+          {metabolism.ok ? (
+            <span className="rounded-full bg-olive-100 px-3 py-1.5 text-xs text-olive-900">
+              GET <strong className="font-semibold">{Math.round(metabolism.getKcal)} kcal</strong>
+            </span>
+          ) : null}
+          <button type="button" className={btnSecondary()} onClick={() => setMetabolismOpen(true)}>
+            <Activity className="h-4 w-4" strokeWidth={1.75} />
+            Metabolismo
+          </button>
+        </div>
+        {!readOnly && wizardStep === 1 ? (
+          <button
+            type="button"
+            className={btnSecondary()}
+            disabled={extracting}
+            onClick={() => {
+              setDraft(emptyDraft(patient?.full_name));
+              setPendingCsvFile(null);
+              setExtractMeta(null);
+              setFeedback("");
+              setWizardStep(1);
+              setMaxReached(1);
+            }}
+          >
+            <RefreshCw className="h-4 w-4" strokeWidth={1.75} />
+            Limpar
+          </button>
+        ) : null}
+        {readOnly ? (
+          <div className="flex flex-wrap gap-2">
+            {draft?.status === "active" ? (
+              <button
+                type="button"
+                className={btnSecondary()}
+                disabled={saving}
+                onClick={() => setConfirmAction("deactivate")}
+              >
+                <Power className="h-4 w-4" strokeWidth={1.75} />
+                Desativar plano
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:opacity-60"
+              disabled={saving}
+              onClick={() => setConfirmAction("delete")}
+            >
+              <Trash2 className="h-4 w-4" strokeWidth={1.75} />
+              Excluir plano
+            </button>
+          </div>
+        ) : null}
+      </div>
+
+      {wizardStep === 1 ? (
+        <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_280px] xl:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="min-w-0 space-y-4">
+            {readOnly ? (
+              <Card>
+                <div className="grid gap-3">
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-wide text-graphite/40">
+                      Título
+                    </p>
+                    <p className="mt-1 text-base font-semibold text-graphite">{draft?.title}</p>
+                  </div>
+                  {draft?.notes ? (
+                    <div>
+                      <p className="text-xs font-medium uppercase tracking-wide text-graphite/40">
+                        Observações
+                      </p>
+                      <p className="mt-1 text-sm text-graphite/70">{draft.notes}</p>
+                    </div>
+                  ) : null}
+                </div>
+              </Card>
+            ) : (
+              <Card>
+                <CsvUploadZone
+                  label="CSV FatSecret"
+                  hint="Detailed Report · até 2 MB"
+                  uploading={extracting}
+                  onFileSelect={handleCsvUpload}
+                />
+
+                <div className="mt-5 grid gap-3 border-t border-olive-900/10 pt-5">
+                  <label className="block text-sm text-graphite/70">
+                    Título
+                    <input
+                      className={`mt-1 ${inputClassName()}`}
+                      value={draft?.title || ""}
+                      onChange={(event) => updateDraftField("title", event.target.value)}
+                    />
+                  </label>
+                  <label className="block text-sm text-graphite/70">
+                    Observações
+                    <textarea
+                      rows={2}
+                      className={`mt-1 ${inputClassName()}`}
+                      value={draft?.notes || ""}
+                      onChange={(event) => updateDraftField("notes", event.target.value)}
+                      placeholder="Opcional"
+                    />
+                  </label>
+                </div>
+              </Card>
+            )}
+
+            {(draft?.meals || []).map((meal) => (
+              <MealDietAccordion
+                key={meal.clientId}
+                meal={meal}
+                readOnly={readOnly}
+                onUpdateItem={readOnly ? undefined : updateItem}
+                onRemoveItem={readOnly ? undefined : removeItem}
+              />
+            ))}
+
+            {!draft?.meals?.length ? (
+              <Card>
+                <div className="flex flex-col items-center py-10 text-center">
+                  <FileUp className="h-8 w-8 text-olive-700" strokeWidth={1.5} />
+                  <p className="mt-3 text-sm text-graphite/55">
+                    {readOnly ? "Este plano não tem refeições." : "Envie o CSV para montar o plano."}
+                  </p>
+                </div>
+              </Card>
+            ) : null}
+
+            {feedback && wizardStep === 1 ? (
+              <p
+                className={`text-sm ${
+                  feedbackTone === "error"
+                    ? "text-red-700"
+                    : feedbackTone === "success"
+                      ? "text-olive-800"
+                      : "text-graphite/60"
+                }`}
+              >
+                {feedback}
+              </p>
+            ) : null}
+          </div>
+
+          <div className="space-y-4 xl:sticky xl:top-5">
+            {draft?.meals?.length ? (
+              <DietNutrientAnalysis
+                totals={planTotals}
+                items={draftItemsForAnalysis(draft.meals)}
+                mealCount={draft.meals.length}
+                itemCount={draft.meals.reduce((sum, meal) => sum + meal.items.length, 0)}
+                targetKcal={metabolism.ok ? metabolism.getKcal : null}
+                patientGoal={patient?.goal}
+              />
+            ) : (
+              <Card title="Total do plano">
+                <p className="text-sm text-graphite/50">
+                  {readOnly ? "Sem dados nutricionais." : "A análise aparece após importar o CSV."}
+                </p>
+              </Card>
+            )}
+          </div>
+        </div>
+      ) : null}
+
+      {wizardStep === 2 ? (
+        <div className="mx-auto max-w-6xl space-y-5">
+          <SupplementPrescriptionList
+            items={draft?.supplements || []}
+            readOnly={readOnly}
+            patientName={patient?.full_name || ""}
+            onChange={
+              readOnly
+                ? undefined
+                : (supplements) => updateDraftField("supplements", supplements)
+            }
+          />
+        </div>
+      ) : null}
+
+      {wizardStep === 3 ? (
+        <div className="mx-auto max-w-6xl space-y-5">
+          <ReferralList
+            items={draft?.referrals || []}
+            readOnly={readOnly}
+            patientName={patient?.full_name || ""}
+            patientContext={{
+              patientName: patient?.full_name || "",
+              birthDate: patient?.birth_date,
+              sex: patient?.sex
+            }}
+            onChange={
+              readOnly ? undefined : (referrals) => updateDraftField("referrals", referrals)
+            }
+          />
+        </div>
+      ) : null}
+
+      {wizardStep === 4 ? (
+        <div className="mx-auto max-w-6xl space-y-5">
+          <ExamOrderList
+            orders={draft?.examOrders || []}
+            readOnly={readOnly}
+            patientName={patient?.full_name || ""}
+            patientContext={{
+              patientName: patient?.full_name || "",
+              birthDate: patient?.birth_date,
+              sex: patient?.sex
+            }}
+            onChange={
+              readOnly ? undefined : (examOrders) => updateDraftField("examOrders", examOrders)
+            }
+          />
+
+          {feedback ? (
+            <p
+              className={`text-sm ${
+                feedbackTone === "error"
+                  ? "text-red-700"
+                  : feedbackTone === "success"
+                    ? "text-olive-800"
+                    : "text-graphite/60"
+              }`}
+            >
+              {feedback}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
+      <div className="sticky bottom-4 z-20 mt-8">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-olive-900/10 bg-porcelain/95 px-4 py-3 shadow-lg backdrop-blur">
+          {readOnly ? (
+            <>
+              <button
+                type="button"
+                className={btnSecondary()}
+                onClick={() => router.push(`/admin/pacientes/${patientId}`)}
+              >
+                <ArrowLeft className="h-4 w-4" strokeWidth={1.75} />
+                Voltar ao paciente
+              </button>
+              <div className="flex flex-wrap gap-2">
+                {wizardStep > 1 ? (
+                  <button
+                    type="button"
+                    className={btnSecondary()}
+                    onClick={() => goToStep(wizardStep - 1)}
+                  >
+                    <ArrowLeft className="h-4 w-4" strokeWidth={1.75} />
+                    Voltar
+                  </button>
+                ) : null}
+                {wizardStep < 4 ? (
+                  <button
+                    type="button"
+                    className={btnPrimary()}
+                    onClick={() => goToStep(wizardStep + 1)}
+                  >
+                    Continuar
+                    <ArrowRight className="h-4 w-4" strokeWidth={1.75} />
+                  </button>
+                ) : null}
+              </div>
+            </>
+          ) : null}
+
+          {!readOnly && wizardStep === 1 ? (
+            <button
+              type="button"
+              className={btnPrimary()}
+              disabled={!draft?.meals?.length || extracting}
+              onClick={() => goToStep(2)}
+            >
+              Continuar
+              <ArrowRight className="h-4 w-4" strokeWidth={1.75} />
+            </button>
+          ) : null}
+
+          {!readOnly && wizardStep === 2 ? (
+            <>
+              <button type="button" className={btnSecondary()} onClick={() => goToStep(1)}>
+                <ArrowLeft className="h-4 w-4" strokeWidth={1.75} />
+                Voltar
+              </button>
+              <button type="button" className={btnPrimary()} onClick={() => goToStep(3)}>
+                Continuar
+                <ArrowRight className="h-4 w-4" strokeWidth={1.75} />
+              </button>
+            </>
+          ) : null}
+
+          {!readOnly && wizardStep === 3 ? (
+            <>
+              <button type="button" className={btnSecondary()} onClick={() => goToStep(2)}>
+                <ArrowLeft className="h-4 w-4" strokeWidth={1.75} />
+                Voltar
+              </button>
+              <button type="button" className={btnPrimary()} onClick={() => goToStep(4)}>
+                Continuar
+                <ArrowRight className="h-4 w-4" strokeWidth={1.75} />
+              </button>
+            </>
+          ) : null}
+
+          {!readOnly && wizardStep === 4 ? (
+            <>
+              <button type="button" className={btnSecondary()} onClick={() => goToStep(3)}>
+                <ArrowLeft className="h-4 w-4" strokeWidth={1.75} />
+                Voltar
+              </button>
+              <button
+                type="button"
+                className={btnPrimary()}
+                disabled={saving || extracting || !draft?.meals?.length}
+                onClick={savePlan}
+              >
+                <Save className="h-4 w-4" strokeWidth={1.75} />
+                {saving ? "Publicando..." : "Publicar plano"}
+              </button>
+            </>
+          ) : null}
+        </div>
+      </div>
+
+      <Modal
+        open={metabolismOpen}
+        onClose={() => setMetabolismOpen(false)}
+        title="Metabolismo (TMB / GET)"
+        size="lg"
+      >
+        <BmrPanel
+          patient={patient}
+          planKcal={planTotals.kcal || 0}
+          onSaved={(nextPatient) => setPatient(nextPatient)}
+        />
+      </Modal>
+
+      <Modal
+        open={publishSuccessOpen}
+        onClose={goToPatient}
+        size="sm"
+      >
+        <div className="flex flex-col items-center px-2 pb-2 pt-1 text-center">
+          <span className="flex h-16 w-16 items-center justify-center rounded-full bg-olive-100 text-olive-700">
+            <CheckCircle2 className="h-9 w-9" strokeWidth={1.75} />
+          </span>
+          <h3 className="mt-4 text-xl font-semibold text-graphite">Plano publicado</h3>
+          <p className="mt-2 max-w-sm text-sm text-graphite/60">
+            A prescrição de{" "}
+            <span className="font-medium text-graphite">
+              {patient?.full_name || "paciente"}
+            </span>{" "}
+            já está disponível. Planos anteriores ativos foram desativados.
+          </p>
+          <button type="button" className={`${btnPrimary()} mt-6 w-full sm:w-auto`} onClick={goToPatient}>
+            <UserRound className="h-4 w-4" strokeWidth={1.75} />
+            Ir para o paciente
+          </button>
+        </div>
+      </Modal>
+
+      <Modal
+        open={Boolean(confirmAction)}
+        onClose={() => setConfirmAction(null)}
+        title={confirmAction === "delete" ? "Excluir plano" : "Desativar plano"}
+        size="sm"
+      >
+        <p className="text-sm text-graphite/65">
+          {confirmAction === "delete"
+            ? "Esta ação remove o plano permanentemente. Não dá para desfazer."
+            : "O plano deixa de ficar ativo para o paciente. O histórico continua disponível."}
+        </p>
+        <div className="mt-5 flex flex-wrap justify-end gap-2">
+          <button
+            type="button"
+            className={btnSecondary()}
+            disabled={saving}
+            onClick={() => setConfirmAction(null)}
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            className={
+              confirmAction === "delete"
+                ? "inline-flex items-center justify-center gap-2 rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:opacity-60"
+                : btnPrimary()
+            }
+            disabled={saving}
+            onClick={() => (confirmAction === "delete" ? deletePlan() : deactivatePlan())}
+          >
+            {saving
+              ? "Aguarde..."
+              : confirmAction === "delete"
+                ? "Excluir"
+                : "Desativar"}
+          </button>
+        </div>
+      </Modal>
+    </AdminShell>
+  );
+}

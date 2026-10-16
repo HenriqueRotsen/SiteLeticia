@@ -1,18 +1,13 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdmin } from "@/lib/supabaseAdmin";
-
-const allowedGoals = [
-  "Emagrecimento",
-  "Cirurgia Bariátrica",
-  "Saúde intestinal",
-  "Medicina de precisão",
-  "Nutrição clínica",
-  "Hipertrofia"
-];
-
-function onlyNumbers(value = "") {
-  return value.replace(/\D/g, "");
-}
+import { GOALS } from "@/lib/constants";
+import {
+  computeWaitlistPosition,
+  getWaitlistEntryByPhone,
+  getWaitlistStatus,
+  normalizeWaitlistPhone,
+  syncWaitlistPatient
+} from "@/lib/waitlist/position";
 
 function isDuplicatePhone(error) {
   return error?.code === "23505" || error?.message?.toLowerCase().includes("duplicate");
@@ -22,10 +17,7 @@ async function verifyRecaptcha(token) {
   const secret = process.env.RECAPTCHA_SECRET_KEY;
 
   if (!secret) {
-    return {
-      ok: false,
-      message: "reCAPTCHA ainda não configurado no servidor."
-    };
+    return { ok: true };
   }
 
   if (!token) {
@@ -61,10 +53,10 @@ async function verifyRecaptcha(token) {
 
 export async function POST(request) {
   const { fullName, phone: rawPhone, goal, recaptchaToken } = await request.json();
-  const phone = onlyNumbers(rawPhone);
+  const phone = normalizeWaitlistPhone(rawPhone);
   const cleanName = fullName?.trim();
 
-  if (!cleanName || phone.length < 10 || !allowedGoals.includes(goal)) {
+  if (!cleanName || phone.length < 10 || !GOALS.includes(goal)) {
     return NextResponse.json(
       { message: "Preencha nome completo, WhatsApp com DDD e objetivo." },
       { status: 400 }
@@ -88,22 +80,70 @@ export async function POST(request) {
     );
   }
 
-  const { error } = await supabase.from("waitlist").insert({
-    full_name: cleanName,
-    phone,
-    goal
-  });
+  const existing = await getWaitlistEntryByPhone(supabase, phone);
 
-  if (error) {
+  if (existing) {
+    const status = await getWaitlistStatus(supabase, { waitlistId: existing.id });
+
     return NextResponse.json(
       {
-        message: isDuplicatePhone(error)
-          ? "Esse WhatsApp já está na lista. Use a aba de consulta para acompanhar sua posição."
-          : "Não foi possível concluir o cadastro agora. Tente novamente em alguns instantes."
+        message: "Esse WhatsApp já está na lista. Confira sua posição abaixo.",
+        ...status
       },
-      { status: isDuplicatePhone(error) ? 409 : 500 }
+      { status: 409 }
     );
   }
 
-  return NextResponse.json({ ok: true });
+  const { data: inserted, error } = await supabase
+    .from("waitlist")
+    .insert({
+      full_name: cleanName,
+      phone,
+      goal
+    })
+    .select("id, full_name, phone, goal, status, created_at")
+    .single();
+
+  if (error) {
+    if (isDuplicatePhone(error)) {
+      const duplicate = await getWaitlistEntryByPhone(supabase, phone);
+      const status = duplicate
+        ? await getWaitlistStatus(supabase, { waitlistId: duplicate.id })
+        : { found: false };
+
+      return NextResponse.json(
+        {
+          message: "Esse WhatsApp já está na lista. Confira sua posição abaixo.",
+          ...status
+        },
+        { status: 409 }
+      );
+    }
+
+    return NextResponse.json(
+      { message: "Não foi possível concluir o cadastro agora. Tente novamente em alguns instantes." },
+      { status: 500 }
+    );
+  }
+
+  try {
+    await syncWaitlistPatient(supabase, {
+      waitlistId: inserted.id,
+      fullName: cleanName,
+      phone,
+      goal
+    });
+  } catch (syncError) {
+    console.error("Waitlist patient sync failed:", syncError);
+  }
+
+  const position = await computeWaitlistPosition(supabase, inserted.id);
+
+  return NextResponse.json({
+    ok: true,
+    status: "waiting",
+    position,
+    waitlistId: inserted.id,
+    message: "Cadastro realizado com sucesso. Guarde sua posição na fila."
+  });
 }

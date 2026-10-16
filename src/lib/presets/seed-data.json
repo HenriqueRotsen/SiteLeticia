@@ -1,0 +1,1560 @@
+[
+  {
+    "type": "supplement_pack",
+    "title": "Cabelos e Unhas",
+    "slug": "suplemento-1-cabelos-e-unhas",
+    "sortOrder": 0,
+    "content": {
+      "items": [
+        {
+          "productName": "Nutricolin",
+          "dosage": "300 mg",
+          "posology": "1 dose no café da manhã",
+          "notes": ""
+        },
+        {
+          "productName": "Dimpless",
+          "dosage": "40 mg",
+          "posology": "1 dose no café da manhã",
+          "notes": ""
+        },
+        {
+          "productName": "Cisteína",
+          "dosage": "100 mg",
+          "posology": "1 dose no café da manhã",
+          "notes": ""
+        },
+        {
+          "productName": "Biotina",
+          "dosage": "5 mg",
+          "posology": "1 dose no café da manhã",
+          "notes": ""
+        },
+        {
+          "productName": "Piridoxal 5-fosfato",
+          "dosage": "20 mg",
+          "posology": "1 dose no café da manhã",
+          "notes": ""
+        },
+        {
+          "productName": "Cistina",
+          "dosage": "100 mg",
+          "posology": "1 dose no café da manhã",
+          "notes": ""
+        },
+        {
+          "productName": "Pantotenato de cálcio",
+          "dosage": "100 mg",
+          "posology": "1 dose no café da manhã",
+          "notes": ""
+        }
+      ],
+      "notes": "",
+      "packPosology": "1 dose no café da manhã"
+    }
+  },
+  {
+    "type": "supplement_pack",
+    "title": "Modulação de Inflamação",
+    "slug": "suplemento-2-modulacao-de-inflamacao",
+    "sortOrder": 1,
+    "content": {
+      "items": [
+        {
+          "productName": "Riagev (ou nicotinamida/niacinamida free flush)",
+          "dosage": "500 mg",
+          "posology": "1 dose, 1 vez ao dia",
+          "notes": ""
+        },
+        {
+          "productName": "Oliola",
+          "dosage": "150 mg",
+          "posology": "1 dose, 1 vez ao dia",
+          "notes": ""
+        },
+        {
+          "productName": "CavaQ10 (ou coenzima Q10)",
+          "dosage": "50 mg",
+          "posology": "1 dose, 1 vez ao dia",
+          "notes": ""
+        },
+        {
+          "productName": "Curcuvail (ou cúrcuma longa 95% curcuminóides)",
+          "dosage": "100 mg",
+          "posology": "1 dose, 1 vez ao dia",
+          "notes": ""
+        }
+      ],
+      "notes": "",
+      "packPosology": "1 dose, 1 vez ao dia"
+    }
+  },
+  {
+    "type": "supplement_pack",
+    "title": "Queixa Gástrica (dor de estômago)",
+    "slug": "suplemento-3-queixa-gastrica-dor-de-estomago",
+    "sortOrder": 2,
+    "content": {
+      "items": [
+        {
+          "productName": "Mucosave",
+          "dosage": "500 mg",
+          "posology": "1 dose ao acordar",
+          "notes": ""
+        }
+      ],
+      "notes": "",
+      "packPosology": "1 dose ao acordar"
+    }
+  },
+  {
+    "type": "supplement_pack",
+    "title": "Gastrite, Úlceras e Azia",
+    "slug": "suplemento-4-gastrite-ulceras-e-azia",
+    "sortOrder": 3,
+    "content": {
+      "items": [
+        {
+          "productName": "Zinco carnosina",
+          "dosage": "150 mg",
+          "posology": "1 dose no almoço",
+          "notes": ""
+        }
+      ],
+      "notes": "",
+      "packPosology": "1 dose no almoço"
+    }
+  },
+  {
+    "type": "supplement_pack",
+    "title": "Doenças Autoimunes",
+    "slug": "suplemento-5-doencas-autoimunes",
+    "sortOrder": 4,
+    "content": {
+      "items": [
+        {
+          "productName": "Wellmune",
+          "dosage": "250 mg",
+          "posology": "1 dose, 1 vez ao dia",
+          "notes": ""
+        }
+      ],
+      "notes": "",
+      "packPosology": "1 dose, 1 vez ao dia"
+    }
+  },
+  {
+    "type": "supplement_pack",
+    "title": "Sono e Ansiedade — Tintura Composta",
+    "slug": "suplemento-6-sono-e-ansiedade-tintura-composta",
+    "sortOrder": 5,
+    "content": {
+      "items": [
+        {
+          "productName": "Mulungu (Erythrina mulungu)",
+          "dosage": "25%",
+          "posology": "40 gotas diluídas em 100 ml de água, 2x ao dia",
+          "notes": ""
+        },
+        {
+          "productName": "Camomila (Matricaria camomila)",
+          "dosage": "25%",
+          "posology": "40 gotas diluídas em 100 ml de água, 2x ao dia",
+          "notes": ""
+        },
+        {
+          "productName": "Passiflora (Passiflora alata)",
+          "dosage": "25%",
+          "posology": "40 gotas diluídas em 100 ml de água, 2x ao dia",
+          "notes": ""
+        },
+        {
+          "productName": "Melissa (Melissa officinalis)",
+          "dosage": "25%",
+          "posology": "40 gotas diluídas em 100 ml de água, 2x ao dia",
+          "notes": ""
+        }
+      ],
+      "notes": "tintura composta. Diluir sempre em água antes de ingerir.",
+      "packPosology": "40 gotas diluídas em 100 ml de água, 2x ao dia"
+    }
+  },
+  {
+    "type": "supplement_pack",
+    "title": "Massa Óssea",
+    "slug": "suplemento-7-massa-ossea",
+    "sortOrder": 6,
+    "content": {
+      "items": [
+        {
+          "productName": "Mix de Cálcio (algas, citrato e quelado ou citrato malato)",
+          "dosage": "400–600 mg",
+          "posology": "1 dose fracionada em 2 ou 3x ao dia",
+          "notes": ""
+        },
+        {
+          "productName": "Magnésio quelado",
+          "dosage": "200–300 mg",
+          "posology": "1 dose fracionada em 2 ou 3x ao dia",
+          "notes": ""
+        },
+        {
+          "productName": "Boro",
+          "dosage": "1–2 mg",
+          "posology": "1 dose fracionada em 2 ou 3x ao dia",
+          "notes": ""
+        },
+        {
+          "productName": "K2MK7",
+          "dosage": "90–120 mcg",
+          "posology": "1 dose fracionada em 2 ou 3x ao dia",
+          "notes": ""
+        },
+        {
+          "productName": "Vitamina D (solução lipofílica — ajustar conforme exame)",
+          "dosage": "ajustar conforme exame",
+          "posology": "1 dose fracionada em 2 ou 3x ao dia",
+          "notes": ""
+        }
+      ],
+      "notes": "Vitamina D deve ser individualizada conforme resultado laboratorial.",
+      "packPosology": "1 dose fracionada em 2 ou 3x ao dia"
+    }
+  },
+  {
+    "type": "supplement_pack",
+    "title": "Proteção Antioxidante — Mulheres",
+    "slug": "suplemento-8-protecao-antioxidante-mulheres",
+    "sortOrder": 7,
+    "content": {
+      "items": [
+        {
+          "productName": "Astaxantina",
+          "dosage": "4–10 mg",
+          "posology": "1 dose ao dia",
+          "notes": ""
+        },
+        {
+          "productName": "Luteína",
+          "dosage": "10–20 mg",
+          "posology": "1 dose ao dia",
+          "notes": ""
+        },
+        {
+          "productName": "Zeaxantina",
+          "dosage": "1–5 mg",
+          "posology": "1 dose ao dia",
+          "notes": ""
+        }
+      ],
+      "notes": "",
+      "packPosology": "1 dose ao dia"
+    }
+  },
+  {
+    "type": "supplement_pack",
+    "title": "SOP, Lipedema e Envelhecimento Ovariano",
+    "slug": "suplemento-9-sop-lipedema-e-envelhecimento-ovariano",
+    "sortOrder": 8,
+    "content": {
+      "items": [
+        {
+          "productName": "Trans-resveratrol",
+          "dosage": "15–40 mg",
+          "posology": "1 dose fracionada em 2 vezes ao dia",
+          "notes": ""
+        },
+        {
+          "productName": "Quercetina",
+          "dosage": "150–300 mg",
+          "posology": "1 dose fracionada em 2 vezes ao dia",
+          "notes": ""
+        },
+        {
+          "productName": "Riagev ou nicotinamida free flush",
+          "dosage": "500 mg",
+          "posology": "1 dose fracionada em 2 vezes ao dia",
+          "notes": ""
+        }
+      ],
+      "notes": "",
+      "packPosology": "1 dose fracionada em 2 vezes ao dia"
+    }
+  },
+  {
+    "type": "supplement_pack",
+    "title": "Melhora da Sinalização de Insulina — SOP",
+    "slug": "suplemento-10-melhora-da-sinalizacao-de-insulina-sop",
+    "sortOrder": 9,
+    "content": {
+      "items": [
+        {
+          "productName": "MioInositol",
+          "dosage": "1–4 g",
+          "posology": "Conforme individualização clínica",
+          "notes": ""
+        }
+      ],
+      "notes": "Associar com: ALA 100–300 mg, cúrcuma, chá verde na dieta, zinco e metilfolato.",
+      "packPosology": "Conforme individualização clínica"
+    }
+  },
+  {
+    "type": "supplement_pack",
+    "title": "Reposição de Cobre",
+    "slug": "suplemento-11-reposicao-de-cobre",
+    "sortOrder": 10,
+    "content": {
+      "items": [
+        {
+          "productName": "Cobre quelado",
+          "dosage": "900 mcg",
+          "posology": "Cápsulas vegetais | após o almoço | 30 dias",
+          "notes": ""
+        }
+      ],
+      "notes": "",
+      "packPosology": "Cápsulas vegetais | após o almoço | 30 dias"
+    }
+  },
+  {
+    "type": "supplement_pack",
+    "title": "Reposição de Vitamina C",
+    "slug": "suplemento-12-reposicao-de-vitamina-c",
+    "sortOrder": 11,
+    "content": {
+      "items": [
+        {
+          "productName": "Vitamina C Lipossomal",
+          "dosage": "250 mg",
+          "posology": "Forma: sachê",
+          "notes": ""
+        }
+      ],
+      "notes": "",
+      "packPosology": "Forma: sachê"
+    }
+  },
+  {
+    "type": "supplement_pack",
+    "title": "Reposição de Zinco e Selênio",
+    "slug": "suplemento-13-reposicao-de-zinco-e-selenio",
+    "sortOrder": 12,
+    "content": {
+      "items": [
+        {
+          "productName": "Zinco bisglicinato",
+          "dosage": "8 mg",
+          "posology": "Cápsulas vegetais | 30 dias",
+          "notes": ""
+        },
+        {
+          "productName": "Seleniometionina",
+          "dosage": "20 mcg",
+          "posology": "Cápsulas vegetais | 30 dias",
+          "notes": ""
+        }
+      ],
+      "notes": "Em sachê ficam intragáveis e causam muito sintoma GI — preferir cápsulas.",
+      "packPosology": "Cápsulas vegetais | 30 dias"
+    }
+  },
+  {
+    "type": "supplement_pack",
+    "title": "Reposição de Magnésio",
+    "slug": "suplemento-14-reposicao-de-magnesio",
+    "sortOrder": 13,
+    "content": {
+      "items": [
+        {
+          "productName": "Magnésio Treonato ou Magnésio Dimalato",
+          "dosage": "1 dose/dia",
+          "posology": "Sachê diluído em 100 ml de água | 1x ao dia | 30 dias",
+          "notes": ""
+        },
+        {
+          "productName": "Inositol",
+          "dosage": "100 mg",
+          "posology": "Sachê diluído em 100 ml de água | 1x ao dia | 30 dias",
+          "notes": ""
+        },
+        {
+          "productName": "Vitamina C Lipossomal",
+          "dosage": "250 mg",
+          "posology": "Sachê diluído em 100 ml de água | 1x ao dia | 30 dias",
+          "notes": ""
+        }
+      ],
+      "notes": "",
+      "packPosology": "Sachê diluído em 100 ml de água | 1x ao dia | 30 dias"
+    }
+  },
+  {
+    "type": "supplement_pack",
+    "title": "Reposição de Cálcio",
+    "slug": "suplemento-15-reposicao-de-calcio",
+    "sortOrder": 14,
+    "content": {
+      "items": [
+        {
+          "productName": "Citrato malato de cálcio",
+          "dosage": "500 mg",
+          "posology": "Cápsulas vegetais ou sachê ou goma ou bombom | 1 dose/dia | 30 dias",
+          "notes": ""
+        },
+        {
+          "productName": "Magnésio glicina",
+          "dosage": "250 mg",
+          "posology": "Cápsulas vegetais ou sachê ou goma ou bombom | 1 dose/dia | 30 dias",
+          "notes": ""
+        }
+      ],
+      "notes": "Atenção: altas doses de magnésio em pacientes renais podem piorar muito a função renal.",
+      "packPosology": "Cápsulas vegetais ou sachê ou goma ou bombom | 1 dose/dia | 30 dias"
+    }
+  },
+  {
+    "type": "supplement_pack",
+    "title": "Reposição de Vitamina D",
+    "slug": "suplemento-16-reposicao-de-vitamina-d",
+    "sortOrder": 15,
+    "content": {
+      "items": [
+        {
+          "productName": "Vitamina D3",
+          "dosage": "4.000 UI",
+          "posology": "Solução lipofílica com TCM | 1 dose ao dia",
+          "notes": ""
+        },
+        {
+          "productName": "Vitamina A",
+          "dosage": "400 UI",
+          "posology": "Solução lipofílica com TCM | 1 dose ao dia",
+          "notes": ""
+        },
+        {
+          "productName": "Vitamina E (mix de tocoferóis)",
+          "dosage": "500 UI",
+          "posology": "Solução lipofílica com TCM | 1 dose ao dia",
+          "notes": ""
+        },
+        {
+          "productName": "Vitamina K2MK7",
+          "dosage": "90 mcg",
+          "posology": "Solução lipofílica com TCM | 1 dose ao dia",
+          "notes": ""
+        }
+      ],
+      "notes": "Lembrar o paciente que a farmácia indicará quantas gotas correspondem à dose prescrita.",
+      "packPosology": "Solução lipofílica com TCM | 1 dose ao dia"
+    }
+  },
+  {
+    "type": "supplement_pack",
+    "title": "Reposição de Complexo B",
+    "slug": "suplemento-17-reposicao-de-complexo-b",
+    "sortOrder": 16,
+    "content": {
+      "items": [
+        {
+          "productName": "Piridoxal 5-fosfato",
+          "dosage": "20 mg",
+          "posology": "1 dose após o café da manhã | 30 dias",
+          "notes": ""
+        },
+        {
+          "productName": "Biotina",
+          "dosage": "1 mg",
+          "posology": "1 dose após o café da manhã | 30 dias",
+          "notes": ""
+        },
+        {
+          "productName": "Nicotinamida (free flush)",
+          "dosage": "10 mg",
+          "posology": "1 dose após o café da manhã | 30 dias",
+          "notes": ""
+        },
+        {
+          "productName": "Metilfolato",
+          "dosage": "100 mcg",
+          "posology": "1 dose após o café da manhã | 30 dias",
+          "notes": ""
+        }
+      ],
+      "notes": "",
+      "packPosology": "1 dose após o café da manhã | 30 dias"
+    }
+  },
+  {
+    "type": "supplement_pack",
+    "title": "Metilfolato Sublingual",
+    "slug": "suplemento-18-metilfolato-sublingual",
+    "sortOrder": 17,
+    "content": {
+      "items": [
+        {
+          "productName": "Metilfolato",
+          "dosage": "50 mcg",
+          "posology": "Filme sublingual | 1 dose após o café da manhã | 30 dias",
+          "notes": ""
+        }
+      ],
+      "notes": "",
+      "packPosology": "Filme sublingual | 1 dose após o café da manhã | 30 dias"
+    }
+  },
+  {
+    "type": "supplement_pack",
+    "title": "Metilcobalamina Sublingual",
+    "slug": "suplemento-19-metilcobalamina-sublingual",
+    "sortOrder": 18,
+    "content": {
+      "items": [
+        {
+          "productName": "Metilcobalamina",
+          "dosage": "1.200 mcg",
+          "posology": "Filme sublingual (ou sachê orodispersível) | 1 dose após o café da manhã | 30 dias",
+          "notes": ""
+        }
+      ],
+      "notes": "",
+      "packPosology": "Filme sublingual (ou sachê orodispersível) | 1 dose após o café da manhã | 30 dias"
+    }
+  },
+  {
+    "type": "supplement_pack",
+    "title": "Reposição de Ferro",
+    "slug": "suplemento-20-reposicao-de-ferro",
+    "sortOrder": 19,
+    "content": {
+      "items": [
+        {
+          "productName": "Lipofer",
+          "dosage": "40 mg",
+          "posology": "Cápsulas gastrorresistentes (ou goma de colágeno ou calda de cacau) | 1 dose em jejum",
+          "notes": ""
+        }
+      ],
+      "notes": "Se não tolerar em jejum, administrar 15 min antes de uma refeição. Rever dose e sintomas a cada 30 dias.",
+      "packPosology": "Cápsulas gastrorresistentes (ou goma de colágeno ou calda de cacau) | 1 dose em jejum"
+    }
+  },
+  {
+    "type": "supplement_pack",
+    "title": "Reposição em Uso de Estatinas",
+    "slug": "suplemento-21-reposicao-em-uso-de-estatinas",
+    "sortOrder": 20,
+    "content": {
+      "items": [
+        {
+          "productName": "Coenzima Q10 — ubiquinona",
+          "dosage": "conforme escolha clínica",
+          "posology": "1x ao dia em cápsulas vegetais — escolher uma das formas de CoQ10 conforme",
+          "notes": ""
+        },
+        {
+          "productName": "Coenzima Q10 — ubiquinol (forma ativa)",
+          "dosage": "conforme escolha clínica",
+          "posology": "1x ao dia em cápsulas vegetais — escolher uma das formas de CoQ10 conforme",
+          "notes": ""
+        },
+        {
+          "productName": "CavaQ10 (18x mais potente que ubiquinona)",
+          "dosage": "50–100 mg/dia",
+          "posology": "1x ao dia em cápsulas vegetais — escolher uma das formas de CoQ10 conforme",
+          "notes": ""
+        },
+        {
+          "productName": "Fitoesteróis",
+          "dosage": "650 mg/dia",
+          "posology": "1x ao dia em cápsulas vegetais — escolher uma das formas de CoQ10 conforme",
+          "notes": ""
+        },
+        {
+          "productName": "Beta Glucana de levedura",
+          "dosage": "250 mg",
+          "posology": "1x ao dia em cápsulas vegetais — escolher uma das formas de CoQ10 conforme",
+          "notes": ""
+        }
+      ],
+      "notes": "CavaQ10 é 18x mais potente que a ubiquinona convencional.",
+      "packPosology": "1x ao dia em cápsulas vegetais — escolher uma das formas de CoQ10 conforme"
+    }
+  },
+  {
+    "type": "supplement_pack",
+    "title": "Melhora da Sensibilidade à Insulina",
+    "slug": "suplemento-22-melhora-da-sensibilidade-a-insulina",
+    "sortOrder": 21,
+    "content": {
+      "items": [
+        {
+          "productName": "Glucovantage (dihidroberberina)",
+          "dosage": "30 min antes da refeição principal",
+          "posology": "Glucovantage: 30 min antes da refeição principal | R-ALA: à noite, em jejum",
+          "notes": ""
+        },
+        {
+          "productName": "OU R-ALA (R-Alfa Lipoico)",
+          "dosage": "100 mg",
+          "posology": "Glucovantage: 30 min antes da refeição principal | R-ALA: à noite, em jejum",
+          "notes": ""
+        }
+      ],
+      "notes": "Escolher uma das opções conforme perfil da paciente.",
+      "packPosology": "Glucovantage: 30 min antes da refeição principal | R-ALA: à noite, em jejum"
+    }
+  },
+  {
+    "type": "exam_order",
+    "title": "Emagrecimento",
+    "slug": "exame-emagrecimento",
+    "sortOrder": 0,
+    "content": {
+      "exams": [
+        {
+          "name": "Glicemia de jejum",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "Insulina de jejum",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "HbA1c (Hemoglobina glicada)",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "HOMA-IR",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "TSH ultrassensível",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "T4 livre",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "Perfil lipídico completo",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "Homocisteína",
+          "category": "complementary",
+          "whenToRequest": "Histórico familiar de infarto, uso de medicamentos que alterem a homocisteína ou alto consumo de carne vermelha"
+        },
+        {
+          "name": "Insulina pós-prandial (1 ou 2h)",
+          "category": "complementary",
+          "whenToRequest": "Para confirmar pós-prandial"
+        },
+        {
+          "name": "Curva glicêmica e insulinêmica",
+          "category": "complementary",
+          "whenToRequest": "Se glicemia e insulina inconclusivas"
+        },
+        {
+          "name": "Ferritina",
+          "category": "complementary",
+          "whenToRequest": "Avaliar inflamação e estoque de ferro"
+        },
+        {
+          "name": "Lipoproteína A",
+          "category": "complementary",
+          "whenToRequest": "Para risco cardiovascular, ao menos 1x na vida"
+        }
+      ],
+      "collectionNotes": [
+        "Jejum de 8 a 10 horas para glicemia, insulina e perfil lipídico.",
+        "Jantar leve na noite anterior (evitar excesso de carboidratos e álcool).",
+        "Não consumir carne vermelha no dia anterior à coleta.",
+        "Manter alimentação habitual nos 3 dias anteriores (não iniciar dieta restritiva).",
+        "Suspender suplementos com biotina pelo menos 3 dias antes da coleta.",
+        "Coletar sempre no mesmo laboratório para fins comparativos.",
+        "Pode tomar água normalmente."
+      ],
+      "observations": "Paciente: {{paciente}}. Solicito envio dos resultados para análise e ajuste do plano alimentar."
+    }
+  },
+  {
+    "type": "exam_order",
+    "title": "Saúde da Mulher",
+    "slug": "exame-saude-da-mulher",
+    "sortOrder": 1,
+    "content": {
+      "exams": [
+        {
+          "name": "Hemograma completo",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "Ferritina",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "Ferro sérico",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "Saturação de transferrina",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "Vitamina B12",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "Insulina de jejum",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "Glicemia de jejum",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "TSH ultrassensível",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "T4 livre",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "25-OH Vitamina D",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "Hormônios sexuais (Estradiol, Progesterona, Testosterona total e livre)",
+          "category": "complementary",
+          "whenToRequest": "Se alterações do ciclo ou SOP, à pedido médico"
+        },
+        {
+          "name": "SHBG",
+          "category": "complementary",
+          "whenToRequest": "Complementa análise androgênica, à pedido médico"
+        },
+        {
+          "name": "Perfil hepático completo (TGO, TGP, GGT)",
+          "category": "complementary",
+          "whenToRequest": "—"
+        },
+        {
+          "name": "T3 livre",
+          "category": "complementary",
+          "whenToRequest": "Se suspeita de hipoconversão, avaliar em conjunto com endocrinologista"
+        },
+        {
+          "name": "Anti-TPO e Anti-TG",
+          "category": "complementary",
+          "whenToRequest": "Histórico autoimune"
+        }
+      ],
+      "collectionNotes": [
+        "Jejum de 8 a 10 horas.",
+        "Hormônios não exigem jejum obrigatório, mas devem ser coletados sempre no mesmo horário.",
+        "Suspender suplementos com biotina pelo menos 3 dias antes da coleta.",
+        "Se em uso de medicação tireoidiana: coletar ANTES de tomar a medicação do dia.",
+        "Pode tomar água normalmente."
+      ],
+      "observations": "Paciente: {{paciente}}. Data da solicitação: {{data_solicitacao}}. Solicito envio dos resultados para análise e ajuste do plano alimentar."
+    }
+  },
+  {
+    "type": "exam_order",
+    "title": "Gordura no fígado (esteatose)",
+    "slug": "exame-gordura-no-figado-esteatose",
+    "sortOrder": 2,
+    "content": {
+      "exams": [
+        {
+          "name": "TGO (AST)",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "TGP (ALT)",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "Gama-GT (GGT)",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "Fosfatase alcalina",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "Bilirrubinas (total e frações)",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "Albumina",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "Perfil lipídico completo",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "Glicemia de jejum",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "Insulina de jejum",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "HbA1c",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "HOMA-IR",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "Ferritina",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "CPK",
+          "category": "complementary",
+          "whenToRequest": "Descartar origem muscular das transaminases"
+        },
+        {
+          "name": "Ultrassonografia de abdome total",
+          "category": "complementary",
+          "whenToRequest": "Apenas sob pedido médico"
+        },
+        {
+          "name": "APO-B",
+          "category": "complementary",
+          "whenToRequest": "Avaliar risco cardiometabólico"
+        },
+        {
+          "name": "Índice TyG",
+          "category": "complementary",
+          "whenToRequest": "Cálculo: (TGL × glicose / 2)"
+        }
+      ],
+      "collectionNotes": [
+        "Jejum de 8 a 10 horas.",
+        "Não treinar no dia anterior à coleta do exame.",
+        "Evitar atividade física intensa 48h antes da coleta (altera TGO e CPK).",
+        "Não consumir álcool nas 72h anteriores.",
+        "Manter medicações de uso contínuo.",
+        "Coletar sempre no mesmo laboratório."
+      ],
+      "observations": "Paciente: {{paciente}}. Data da solicitação: {{data_solicitacao}}. Solicito envio dos resultados para análise e ajuste do plano alimentar."
+    }
+  },
+  {
+    "type": "exam_order",
+    "title": "Diabetes / Suspeita de Disglicemia",
+    "slug": "exame-diabetes-suspeita-de-disglicemia",
+    "sortOrder": 3,
+    "content": {
+      "exams": [
+        {
+          "name": "Glicemia de jejum",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "Insulina de jejum",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "HbA1c (Hemoglobina glicada)",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "HOMA-IR",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "HOMA-Beta",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "Curva glicêmica (TTGO 75g)",
+          "category": "complementary",
+          "whenToRequest": "Se glicemia/HbA1c inconclusivas"
+        },
+        {
+          "name": "Curva insulinêmica",
+          "category": "complementary",
+          "whenToRequest": "Junto com a curva glicêmica para ver hiperinsulinemia compensatória"
+        },
+        {
+          "name": "Peptídeo C",
+          "category": "complementary",
+          "whenToRequest": "Se diferenciação entre DM1 e DM2"
+        },
+        {
+          "name": "Frutosamina ou Albumina glicada",
+          "category": "complementary",
+          "whenToRequest": "Avaliação de estratégias recentes (2–3 semanas)"
+        },
+        {
+          "name": "TGP (ALT) e GGT",
+          "category": "complementary",
+          "whenToRequest": "Avaliar esteatose associada"
+        },
+        {
+          "name": "Perfil lipídico completo",
+          "category": "complementary",
+          "whenToRequest": "Cruzamento de risco metabólico"
+        }
+      ],
+      "collectionNotes": [
+        "Jejum de 8 a 10 horas para glicemia de jejum, insulina e HbA1c.",
+        "Para curva glicêmica/insulinêmica: jejum de 10–12h, seguir rigorosamente orientações do",
+        "Nos 3 dias anteriores à curva: consumir dieta normal.",
+        "Não fazer exercício físico intenso 24h antes.",
+        "Manter medicações de uso contínuo, exceto orientação médica em contrário."
+      ],
+      "observations": "Paciente: {{paciente}}. Data da solicitação: {{data_solicitacao}}. Solicito envio dos resultados para análise e ajuste do plano alimentar."
+    }
+  },
+  {
+    "type": "exam_order",
+    "title": "Problemas Tireoidianos",
+    "slug": "exame-problemas-tireoidianos",
+    "sortOrder": 4,
+    "content": {
+      "exams": [
+        {
+          "name": "TSH ultrassensível",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "T4 livre",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "T3 livre",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "Anti-TPO (Antitireoperoxidase)",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "Anti-TG (Antitireoglobulina)",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "T3 reverso",
+          "category": "complementary",
+          "whenToRequest": "Se suspeita de hipoconversão (estresse, inflamação, restrição)"
+        },
+        {
+          "name": "TRAB (anticorpo do receptor de TSH)",
+          "category": "complementary",
+          "whenToRequest": "Se suspeita de"
+        },
+        {
+          "name": "Graves/hipertireoidismo",
+          "category": "complementary",
+          "whenToRequest": "TSI (imunoglobulina estimulante) Se suspeita de Graves"
+        },
+        {
+          "name": "Tireoglobulina",
+          "category": "complementary",
+          "whenToRequest": "—"
+        },
+        {
+          "name": "Selênio",
+          "category": "complementary",
+          "whenToRequest": "Cofator essencial da conversão"
+        },
+        {
+          "name": "T4→T3",
+          "category": "complementary",
+          "whenToRequest": "Zinco sérico ou eritrocitário —"
+        },
+        {
+          "name": "Ferritina",
+          "category": "complementary",
+          "whenToRequest": "Ferritina < 70 compromete conversão"
+        },
+        {
+          "name": "25-OH Vitamina D",
+          "category": "complementary",
+          "whenToRequest": "Especialmente tireoidiana"
+        },
+        {
+          "name": "Iodo urinário 24h",
+          "category": "complementary",
+          "whenToRequest": "Apenas após discussão com a equipe, ou grande hipótese de deficiência de iodo (preparo exige do paciente)"
+        },
+        {
+          "name": "Ultrassonografia de tireoide",
+          "category": "complementary",
+          "whenToRequest": "Apenas sob pedido médico em autoimunidade"
+        }
+      ],
+      "collectionNotes": [
+        "Jejum não é obrigatório para TSH e hormônios tireoidianos, mas recomendável.",
+        "Coletar sempre no mesmo horário do dia (preferencialmente antes das 10h).",
+        "Se em uso de levotiroxina ou outra medicação tireoidiana: NÃO tomar a medicação antes da coleta",
+        "Suspender suplementos com biotina pelo menos 3 dias antes (interfere em TSH, T3 e T4).",
+        "Coletar sempre no mesmo laboratório para fins comparativos."
+      ],
+      "observations": "Paciente: {{paciente}}. Data da solicitação: {{data_solicitacao}}. Solicito envio dos resultados para análise e ajuste do plano alimentar."
+    }
+  },
+  {
+    "type": "exam_order",
+    "title": "Problemas Renais",
+    "slug": "exame-problemas-renais",
+    "sortOrder": 5,
+    "content": {
+      "exams": [
+        {
+          "name": "Creatinina",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "Ureia",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "TFG (Taxa de Filtração Glomerular)",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "Ácido úrico",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "EAS (Urina tipo I - pedido médico)",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "Sódio, Potássio",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "Fósforo e Cálcio iônico",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "Microalbuminúria (urina 24h ou spot)",
+          "category": "complementary",
+          "whenToRequest": "Fator de risco de nefropatia"
+        },
+        {
+          "name": "Proteinúria de 24 horas",
+          "category": "complementary",
+          "whenToRequest": "Apenas sob pedido médico"
+        },
+        {
+          "name": "Cistatina C",
+          "category": "complementary",
+          "whenToRequest": "avaliar consenso do time de especialistas"
+        },
+        {
+          "name": "Relação albumina/creatinina urinária",
+          "category": "complementary",
+          "whenToRequest": "—"
+        },
+        {
+          "name": "PTH",
+          "category": "complementary",
+          "whenToRequest": "Se TFG reduzida, com pedido médico"
+        },
+        {
+          "name": "Hemograma completo",
+          "category": "complementary",
+          "whenToRequest": "Avaliar anemia da doença renal"
+        }
+      ],
+      "collectionNotes": [
+        "Jejum de 8 horas.",
+        "Não consumir carne vermelha nas 24 horas anteriores (eleva ureia e creatinina).",
+        "Não consumir castanhas e alimentos muito proteicos na véspera.",
+        "Hidratação normal, sem forçar.",
+        "Evitar exercício intenso 48h antes.",
+        "Para urina 24h: seguir rigorosamente as instruções do laboratório para coleta e armazenamento."
+      ],
+      "observations": "Paciente: {{paciente}}. Creatinina isoladamente alta em paciente com hipertrofia muscular pode não indicar comprometimento renal — sempre interpretar em conjunto com TFG, contexto clínico e solicitar avaliar do nefrologista."
+    }
+  },
+  {
+    "type": "exam_order",
+    "title": "Cabelo, Pele e Unhas",
+    "slug": "exame-cabelo-pele-e-unhas",
+    "sortOrder": 6,
+    "content": {
+      "exams": [
+        {
+          "name": "Hemograma completo",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "Ferritina",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "Ferro sérico e saturação de transferrina",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "Vitamina B12",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "Zinco sérico ou eritrocitário",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "25-OH Vitamina D",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "Homocisteína",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "TSH ultrassensível",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "Anti-TPO",
+          "category": "complementary",
+          "whenToRequest": "Histórico autoimune ou familiar de"
+        },
+        {
+          "name": "Hashimoto",
+          "category": "complementary",
+          "whenToRequest": "Ácido fólico (B9)"
+        },
+        {
+          "name": "Sempre analisar com B12",
+          "category": "complementary",
+          "whenToRequest": "Homocisteína, além de MTHRF e"
+        }
+      ],
+      "collectionNotes": [
+        "Jejum de 8 a 10 horas.",
+        "IMPORTANTE: suspender suplementos com biotina pelo menos 3 dias antes (de preferência 7 dias se",
+        "Suspender temporariamente polivitamínicos 3 dias antes da coleta (orientação do nutricionista).",
+        "Coletar sempre no mesmo laboratório."
+      ],
+      "observations": "Paciente: {{paciente}}. Valores de ferritina 'dentro da referência' (ex: 30–40) podem ser insuficientes para crescimento capilar saudável. O valor ideal funcional é 70–150 ng/mL."
+    }
+  },
+  {
+    "type": "exam_order",
+    "title": "Doenças Autoimunes",
+    "slug": "exame-doencas-autoimunes",
+    "sortOrder": 7,
+    "content": {
+      "exams": [
+        {
+          "name": "PCR ultrassensível",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "Hemograma completo",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "Ferritina",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "Homocisteína",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "Insulina de jejum",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "Glicemia de jejum",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "25-OH Vitamina D",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "Vitamina B12",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "Zinco e Selênio",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "Anti-TPO",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "Genética e imunidade de glúten (Anti-transglutaminase IgA,",
+          "category": "complementary",
+          "whenToRequest": "Anti-gliadina, HLA DQ2/DQ8) Se suspeita de doença celíaca"
+        },
+        {
+          "name": "FAN (Fator Antinuclear)",
+          "category": "complementary",
+          "whenToRequest": "Apenas sob pedido médico. Pode positivar no Hashimoto."
+        },
+        {
+          "name": "Biópsia de intestino/estômago/tireoide",
+          "category": "complementary",
+          "whenToRequest": "Apenas sob pedido médico"
+        },
+        {
+          "name": "TNF-alfa e IL-6",
+          "category": "complementary",
+          "whenToRequest": "Apenas sob pedido médico"
+        },
+        {
+          "name": "MDA (Malondialdeído)",
+          "category": "complementary",
+          "whenToRequest": "Para aferição de peroxidação lipídica"
+        },
+        {
+          "name": "Ácido MetilMalônico",
+          "category": "complementary",
+          "whenToRequest": "Para aferição de B12 funcional"
+        }
+      ],
+      "collectionNotes": [
+        "Jejum de 8 a 10 horas.",
+        "Manter medicações de uso contínuo.",
+        "Informar ao laboratório todos os medicamentos imunossupressores em uso, se houver.",
+        "Suspender suplementos com biotina pelo menos 3 dias antes.",
+        "Evitar exercício intenso 48h antes (pode elevar PCR e VHS).",
+        "Não coletar durante quadro infeccioso agudo (prejudica interpretação)."
+      ],
+      "observations": "Paciente: {{paciente}}. Data da solicitação: {{data_solicitacao}}. Solicito envio dos resultados para análise e ajuste do plano alimentar."
+    }
+  },
+  {
+    "type": "exam_order",
+    "title": "Queixas Digestivas",
+    "slug": "exame-queixas-digestivas",
+    "sortOrder": 8,
+    "content": {
+      "exams": [
+        {
+          "name": "Hemograma completo",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "Vitamina B12",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "Ácido fólico (B9 - sérico ou intraeritrocitário)",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "Ferritina",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "Zinco sérico (ou intraeritrocitário)",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "25-OH Vitamina D",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "Eletrólitos (Sódio, Potássio, Cloreto)",
+          "category": "complementary",
+          "whenToRequest": "Se diarreia ou vômitos Coprológico funcional / Parasitológico de fezes (3 amostras) Se suspeita de parasitose"
+        },
+        {
+          "name": "Calprotectina fecal",
+          "category": "complementary",
+          "whenToRequest": "Se suspeita de doença inflamatória intestinal"
+        },
+        {
+          "name": "Gordura fecal",
+          "category": "complementary",
+          "whenToRequest": "Se suspeita de má absorção"
+        },
+        {
+          "name": "TSH",
+          "category": "complementary",
+          "whenToRequest": "Tireoide afeta motilidade intestinal"
+        },
+        {
+          "name": "Anticorpos Anti Fator Intrínseco, Gliadina, Endomísio",
+          "category": "complementary",
+          "whenToRequest": "Se suspeita de sintomas associados ao glúten"
+        },
+        {
+          "name": "Teste de Tolerância à lactose",
+          "category": "complementary",
+          "whenToRequest": "Se suspeita de sintomas associados à lactose"
+        }
+      ],
+      "collectionNotes": [
+        "Jejum de 8 horas para exames de sangue.",
+        "Para coprológico/parasitológico: seguir rigorosamente as instruções do laboratório (geralmente 3",
+        "Não usar laxantes nos 3 dias anteriores ao exame de fezes.",
+        "Para calprotectina fecal: não coletar durante uso de AINEs (falso positivo).",
+        "Informar uso de antibióticos recentes."
+      ],
+      "observations": "Paciente: {{paciente}}. Data da solicitação: {{data_solicitacao}}. Solicito envio dos resultados para análise e ajuste do plano alimentar."
+    }
+  },
+  {
+    "type": "exam_order",
+    "title": "Cansaço e Fadiga",
+    "slug": "exame-cansaco-e-fadiga",
+    "sortOrder": 9,
+    "content": {
+      "exams": [
+        {
+          "name": "Hemograma completo",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "Ferritina",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "Ferro sérico e saturação de transferrina",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "Vitamina B12",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "Ácido fólico (B9)",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "25-OH Vitamina D",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "TSH ultrassensível",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "T4 livre",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "Insulina de jejum",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "Glicemia de jejum",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "Magnésio eritrocitário (ou sérico)",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "Hba1c",
+          "category": "principal",
+          "whenToRequest": null
+        },
+        {
+          "name": "Anti-TPO",
+          "category": "complementary",
+          "whenToRequest": "Autoimunidade tireoidiana"
+        },
+        {
+          "name": "Cortisol matinal (8h)",
+          "category": "complementary",
+          "whenToRequest": "Se suspeita de alteração adrenal, à pedido médico"
+        },
+        {
+          "name": "Homocisteína",
+          "category": "complementary",
+          "whenToRequest": "Avaliar metilação ruim"
+        },
+        {
+          "name": "Testosterona total (homens)",
+          "category": "complementary",
+          "whenToRequest": "Se queda de libido associada, à pedido médico"
+        },
+        {
+          "name": "TGO, TGP, GGT",
+          "category": "complementary",
+          "whenToRequest": "Sobrecarga hepática"
+        }
+      ],
+      "collectionNotes": [
+        "Jejum de 8 a 10 horas.",
+        "Para cortisol: coletar entre 7h e 9h da manhã.",
+        "Se em uso de medicação tireoidiana: não tomar antes da coleta.",
+        "Suspender suplementos com biotina pelo menos 3 dias antes.",
+        "Coletar sempre no mesmo laboratório."
+      ],
+      "observations": "Paciente: {{paciente}}. Data da solicitação: {{data_solicitacao}}. Solicito envio dos resultados para análise e ajuste do plano alimentar."
+    }
+  },
+  {
+    "type": "referral_letter",
+    "title": "Ferro endovenoso",
+    "slug": "encaminhamento-ferro-endovenoso",
+    "sortOrder": 0,
+    "content": {
+      "specialty": "Hematologia",
+      "reason": "Solicitação de parecer médico",
+      "urgency": "routine",
+      "bodyText": "Ao médico (a),\n\nSolicito avaliação da {{paciente}}, para avaliação da necessidade e possibilidade de reposição endovenosa de ferro, visto que a paciente se encontra com exame laboratorial de ferritina em {{valor}} (exame de {{data}}), hemoglobina em {{valor_2}} e sintomas relacionados à depleção de ferro. No caso da paciente, apenas a reposição via oral não será suficiente para elevar a ferritina e o hemograma a níveis aceitáveis destes marcadores, pois a mesma demonstra sinais de intolerância para reposição via oral, e presença de sintomas, extrapolando assim os limites de prescrição dietoterápica.\n\nA paciente encontra-se sob meus cuidados nutricionais, com dieta e suplementação específicas, sob supervisão.\n\nColoco-me à disposição para discussão do caso.",
+      "notes": ""
+    }
+  },
+  {
+    "type": "referral_letter",
+    "title": "Hematologia — Anemia",
+    "slug": "encaminhamento-hematologia-anemia",
+    "sortOrder": 1,
+    "content": {
+      "specialty": "Hematologia",
+      "reason": "Solicitação de parecer médico",
+      "urgency": "routine",
+      "bodyText": "Ao médico (a) hematologista, Solicito avaliação do(a) {{paciente}}, que apresenta quadro de anemia. Nos exames laboratoriais de {{data}}, o(a) paciente apresentou: Hemoglobina {{valor}} g/dL, VCM {{valor_2}} fL, Ferritina {{valor_3}} ng/mL, Saturação de transferrina {{valor_4}}%, Vitamina B12 {{valor_5}} pg/mL. O padrão laboratorial e a ausência de resposta adequada após {{tempo_tratamento}} de intervenção nutricional e suplementação oral sugerem a necessidade de avaliação hematológica especializada para investigação das causas e definição de conduta terapêutica complementar. O(A) paciente encontra-se sob meus cuidados nutricionais, com dieta e suplementação específicas, sob supervisão.\n\nColoco-me à disposição para discussão do caso.",
+      "notes": ""
+    }
+  },
+  {
+    "type": "referral_letter",
+    "title": "Gastroenterologia",
+    "slug": "encaminhamento-gastroenterologia",
+    "sortOrder": 2,
+    "content": {
+      "specialty": "Gastroenterologia",
+      "reason": "Solicitação de parecer médico",
+      "urgency": "routine",
+      "bodyText": "Ao médico (a) gastroenterologista, Solicito avaliação do(a) {{paciente}}, que apresenta {{queixa_principal}}, sem resposta adequada à intervenção dietoterápica após {{tempo_acompanhamento}}. Nos exames laboratoriais de {{data}}, observam-se os seguintes achados relevantes: {{achados_exames}}. O(A) paciente encontra-se sob meus cuidados nutricionais, com dieta e suplementação específicas, sob supervisão.\n\nColoco-me à disposição para discussão do caso.",
+      "notes": ""
+    }
+  },
+  {
+    "type": "referral_letter",
+    "title": "Endocrinologia — Disglicemia",
+    "slug": "encaminhamento-endocrinologia-disglicemia",
+    "sortOrder": 3,
+    "content": {
+      "specialty": "Endocrinologia",
+      "reason": "Solicitação de parecer médico",
+      "urgency": "routine",
+      "bodyText": "Ao médico (a) endocrinologista, Solicito avaliação do(a) {{paciente}}, que apresenta quadro de disglicemia sem controle adequado após intervenção nutricional. Nos exames laboratoriais de {{data}}, o(a) paciente apresentou: Glicemia de jejum {{valor}} mg/dL, Insulina de jejum {{valor_2}} µUI/mL, HOMA-IR {{valor_3}}, HbA1c {{valor_4}}%. {{observacao_clinica}} Apesar do acompanhamento nutricional por {{tempo_tratamento}} e da aderência do(a) paciente ao plano alimentar e orientações de estilo de vida, os marcadores permanecem {{observacao_clinica}}, indicando necessidade de avaliação especializada para definição de conduta médica. O(A) paciente encontra-se sob meus cuidados nutricionais, com dieta e suplementação específicas, sob supervisão. O caso extrapola os limites da prescrição dietoterápica.\n\nColoco-me à disposição para discussão do caso.",
+      "notes": ""
+    }
+  },
+  {
+    "type": "referral_letter",
+    "title": "Nefrologia",
+    "slug": "encaminhamento-nefrologia",
+    "sortOrder": 4,
+    "content": {
+      "specialty": "Nefrologia",
+      "reason": "Solicitação de parecer médico",
+      "urgency": "routine",
+      "bodyText": "Ao médico (a) nefrologista, Solicito avaliação do(a) {{paciente}}, que apresenta alteração da função renal identificada em exames laboratoriais. Nos exames de {{data}}, o(a) paciente apresentou: Creatinina {{valor}} mg/dL, Ureia {{valor_2}} mg/dL, Taxa de Filtração Glomerular (TFG) {{valor_3}} mL/min/1,73m², Ácido úrico {{valor_4}} mg/dL. {{observacao_clinica}}. Considerando o grau de comprometimento da filtração glomerular e a necessidade de avaliação etiológica, solicito avaliação especializada para definição de conduta clínica e estadiamento. O(A) paciente encontra-se sob meus cuidados nutricionais, com plano alimentar adequado ao estágio de função renal, sob supervisão.\n\nColoco-me à disposição para discussão do caso.",
+      "notes": ""
+    }
+  },
+  {
+    "type": "referral_letter",
+    "title": "Ginecologia — SOP",
+    "slug": "encaminhamento-ginecologia-sop",
+    "sortOrder": 5,
+    "content": {
+      "specialty": "Ginecologia",
+      "reason": "Solicitação de parecer médico",
+      "urgency": "routine",
+      "bodyText": "Ao médico (a) ginecologista, Solicito avaliação do(a) {{paciente}}, que apresenta {{queixa_principal}}. Nos exames laboratoriais de {{data}}, observam-se os seguintes achados relevantes: {{achados_exames}}. {{observacao_clinica}} O quadro sugere a necessidade de avaliação ginecológica especializada.\n\nA paciente encontra-se sob meus cuidados nutricionais, com dieta e suplementação específicas, sob supervisão.\n\nColoco-me à disposição para discussão do caso.",
+      "notes": ""
+    }
+  }
+]

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import PasswordInput from "@/components/ui/PasswordInput";
 
 const initialLogin = {
   username: "",
@@ -186,14 +187,13 @@ export default function AdminDashboard() {
               <label className="mb-2 block text-sm font-semibold text-graphite" htmlFor="password">
                 Senha
               </label>
-              <input
+              <PasswordInput
                 id="password"
-                type="password"
                 value={login.password}
                 onChange={(event) =>
                   setLogin((current) => ({ ...current, password: event.target.value }))
                 }
-                className="w-full rounded-2xl border border-olive-900/10 bg-white px-4 py-3 text-graphite outline-none transition focus:border-olive-600 focus:ring-4 focus:ring-olive-200"
+                className="w-full rounded-2xl border border-olive-900/10 bg-white px-4 py-3 pr-11 text-graphite outline-none transition focus:border-olive-600 focus:ring-4 focus:ring-olive-200"
                 autoComplete="current-password"
               />
             </div>

@@ -1,0 +1,3 @@
+-- Após criar usuário Letícia no Supabase Auth Dashboard:
+-- update public.profiles set role = 'nutritionist', full_name = 'Letícia Cunha'
+-- where email = 'seu-email@dominio.com';

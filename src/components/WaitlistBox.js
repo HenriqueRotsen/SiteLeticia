@@ -1,22 +1,14 @@
 "use client";
 
 import Script from "next/script";
+import Link from "next/link";
 import { useMemo, useState } from "react";
-import { supabase } from "@/lib/supabase";
-
-const goals = [
-  "Emagrecimento",
-  "Cirurgia Bariátrica",
-  "Saúde intestinal",
-  "Medicina de precisão",
-  "Nutrição clínica",
-  "Hipertrofia"
-];
+import { GOALS } from "@/lib/constants";
 
 const initialSignup = {
   fullName: "",
   phone: "",
-  goal: goals[0]
+  goal: GOALS[0]
 };
 
 const initialLookup = {
@@ -62,12 +54,36 @@ function Feedback({ feedback }) {
   );
 }
 
+function applyWaitlistStatus(result, type = "info") {
+  if (result.status === "called") {
+    return {
+      type: "success",
+      message: result.message
+    };
+  }
+
+  if (result.position) {
+    return {
+      type,
+      position: result.position,
+      message: result.message
+    };
+  }
+
+  return {
+    type: "error",
+    message: result.message || "Não foi possível obter sua posição."
+  };
+}
+
 export default function WaitlistBox() {
   const [activeTab, setActiveTab] = useState("signup");
   const [signup, setSignup] = useState(initialSignup);
   const [lookup, setLookup] = useState(initialLookup);
   const [feedback, setFeedback] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  const recaptchaSiteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
 
   const tabs = useMemo(
     () => [
@@ -83,10 +99,8 @@ export default function WaitlistBox() {
   }
 
   async function getRecaptchaToken() {
-    const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
-
-    if (!siteKey) {
-      throw new Error("Proteção anti-spam ainda não configurada.");
+    if (!recaptchaSiteKey) {
+      return null;
     }
 
     if (!window.grecaptcha) {
@@ -96,7 +110,7 @@ export default function WaitlistBox() {
     return new Promise((resolve, reject) => {
       window.grecaptcha.ready(() => {
         window.grecaptcha
-          .execute(siteKey, { action: "waitlist_signup" })
+          .execute(recaptchaSiteKey, { action: "waitlist_signup" })
           .then(resolve)
           .catch(() => reject(new Error("Não foi possível validar o reCAPTCHA.")));
       });
@@ -120,7 +134,7 @@ export default function WaitlistBox() {
 
     setLoading(true);
 
-    let recaptchaToken;
+    let recaptchaToken = null;
 
     try {
       recaptchaToken = await getRecaptchaToken();
@@ -147,19 +161,20 @@ export default function WaitlistBox() {
 
     setLoading(false);
 
-    if (!response.ok) {
-      setFeedback({
-        type: "error",
-        message: result.message || "Não foi possível concluir o cadastro agora."
-      });
+    if (response.ok) {
+      setSignup(initialSignup);
+      setFeedback(applyWaitlistStatus(result, "success"));
       return;
     }
 
-    setSignup(initialSignup);
+    if (response.status === 409 && result.position) {
+      setFeedback(applyWaitlistStatus(result, "info"));
+      return;
+    }
+
     setFeedback({
-      type: "success",
-      message:
-        "Cadastro realizado com sucesso. Seu lugar na lista de prioridade foi reservado."
+      type: "error",
+      message: result.message || "Não foi possível concluir o cadastro agora."
     });
   }
 
@@ -179,68 +194,27 @@ export default function WaitlistBox() {
 
     setLoading(true);
 
-    const { data: patient, error: patientError } = await supabase
-      .from("waitlist")
-      .select("id, status")
-      .eq("phone", phone)
-      .maybeSingle();
-
-    if (patientError) {
-      setLoading(false);
-      setFeedback({
-        type: "error",
-        message: "Não foi possível consultar sua posição agora. Tente novamente."
-      });
-      return;
-    }
-
-    if (!patient) {
-      setLoading(false);
-      setFeedback({
-        type: "error",
-        message: "Não encontramos cadastro com esse WhatsApp."
-      });
-      return;
-    }
-
-    if (patient.status === "called") {
-      setLoading(false);
-      setFeedback({
-        type: "success",
-        message:
-          "Sua vaga foi liberada. Em breve a equipe entrará em contato pelo WhatsApp cadastrado."
-      });
-      return;
-    }
-
-    const { count, error: countError } = await supabase
-      .from("waitlist")
-      .select("id", { count: "exact", head: true })
-      .eq("status", "waiting")
-      .lte("id", patient.id);
+    const response = await fetch(`/api/waitlist/position?phone=${encodeURIComponent(phone)}`);
+    const result = await response.json();
 
     setLoading(false);
 
-    if (countError) {
+    if (!response.ok) {
       setFeedback({
         type: "error",
-        message: "Encontramos seu cadastro, mas não conseguimos calcular a posição."
+        message: result.message || "Não foi possível consultar sua posição agora."
       });
       return;
     }
 
-    setFeedback({
-      type: "info",
-      position: count || 1,
-      message: "Essa posição considera apenas pacientes ainda aguardando atendimento."
-    });
+    setFeedback(applyWaitlistStatus(result, "info"));
   }
 
   return (
     <section className="rounded-[1.75rem] border border-white/80 bg-porcelain/95 p-4 shadow-soft sm:p-6">
-      {process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY ? (
+      {recaptchaSiteKey ? (
         <Script
-          src={`https://www.google.com/recaptcha/api.js?render=${process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY}`}
+          src={`https://www.google.com/recaptcha/api.js?render=${recaptchaSiteKey}`}
           strategy="afterInteractive"
         />
       ) : null}
@@ -313,7 +287,7 @@ export default function WaitlistBox() {
               }
               className="w-full rounded-2xl border border-olive-900/10 bg-white px-4 py-3 text-graphite outline-none transition focus:border-olive-600 focus:ring-4 focus:ring-olive-200"
             >
-              {goals.map((goal) => (
+              {GOALS.map((goal) => (
                 <option key={goal} value={goal}>
                   {goal}
                 </option>
@@ -328,6 +302,17 @@ export default function WaitlistBox() {
           >
             {loading ? "Enviando..." : "Reservar prioridade"}
           </button>
+
+          <p className="text-center text-sm text-graphite/55">
+            Já está na fila?{" "}
+            <button
+              type="button"
+              onClick={() => handleTabChange("lookup")}
+              className="font-semibold text-olive-700 hover:text-olive-800"
+            >
+              Consultar posição
+            </button>
+          </p>
         </form>
       ) : (
         <form className="mt-6 space-y-4" onSubmit={handleLookup}>
@@ -358,6 +343,21 @@ export default function WaitlistBox() {
           >
             {loading ? "Consultando..." : "Ver minha posição"}
           </button>
+
+          <p className="text-center text-sm text-graphite/55">
+            Ainda não entrou na fila?{" "}
+            <button
+              type="button"
+              onClick={() => handleTabChange("signup")}
+              className="font-semibold text-olive-700 hover:text-olive-800"
+            >
+              Fazer cadastro
+            </button>
+            {" · "}
+            <Link href="/criar-conta" className="font-semibold text-olive-700 hover:text-olive-800">
+              Criar conta
+            </Link>
+          </p>
         </form>
       )}
 
