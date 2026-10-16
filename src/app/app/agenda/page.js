@@ -5,9 +5,12 @@ import { CalendarDays, Check, Clock } from "lucide-react";
 import PatientShell from "@/components/layout/PatientShell";
 import { Card } from "@/components/layout/AppShell";
 import BookingPaymentPanel from "@/components/ui/BookingPaymentPanel";
+import { TIMEZONE } from "@/lib/constants";
+import { zonedDateKey } from "@/lib/scheduling/timezone";
 
 function formatSlotTime(iso) {
   return new Date(iso).toLocaleTimeString("pt-BR", {
+    timeZone: TIMEZONE,
     hour: "2-digit",
     minute: "2-digit"
   });
@@ -15,6 +18,7 @@ function formatSlotTime(iso) {
 
 function formatDayHeading(iso) {
   const label = new Date(iso).toLocaleDateString("pt-BR", {
+    timeZone: TIMEZONE,
     weekday: "long",
     day: "numeric",
     month: "long"
@@ -27,7 +31,7 @@ function groupSlotsByDay(slots) {
   const groups = new Map();
 
   for (const slot of slots) {
-    const key = new Date(slot.startsAt).toISOString().slice(0, 10);
+    const key = zonedDateKey(new Date(slot.startsAt), TIMEZONE);
     if (!groups.has(key)) {
       groups.set(key, { key, startsAt: slot.startsAt, slots: [] });
     }
@@ -93,7 +97,7 @@ export default function AgendaPage() {
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h2 className="font-semibold text-graphite">Horários disponíveis</h2>
-              <p className="mt-1 text-sm text-graphite/60">Consulta de 60 min · intervalo de 15 min entre sessões</p>
+              <p className="mt-1 text-sm text-graphite/60">Sessões de 60 minutos</p>
             </div>
             {selectedDate ? (
               <div className="inline-flex items-center gap-2 rounded-xl bg-olive-100 px-3 py-2 text-sm font-medium text-olive-800">
