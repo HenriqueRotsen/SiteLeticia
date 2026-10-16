@@ -55,6 +55,6 @@ export async function POST(request, { params }) {
     .select("*")
     .single();
 
-  if (error) return NextResponse.json({ message: "Erro ao salvar insight." }, { status: 500 });
+  if (error) return NextResponse.json({ message: "Erro ao salvar o destaque." }, { status: 500 });
   return NextResponse.json({ insight: data });
 }

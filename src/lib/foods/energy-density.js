@@ -147,7 +147,7 @@ export function getClinicalDensityInsight({ density, goal = null, scope = "plano
   }
 
   return {
-    eyebrow: "Insight clínico",
+    eyebrow: "Análise clínica",
     headline,
     body,
     scope,

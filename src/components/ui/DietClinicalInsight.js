@@ -42,7 +42,7 @@ export default function DietClinicalInsight({ insight, compact = false }) {
       className={`relative overflow-hidden rounded-2xl border ${styles.panel} ${
         compact ? "px-3.5 py-3" : "px-4 py-4"
       }`}
-      aria-label="Insight clínico da dieta"
+      aria-label="Análise clínica da dieta"
     >
       <div
         className={`pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full opacity-25 ${styles.accent} blur-2xl`}
