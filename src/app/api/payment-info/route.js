@@ -12,8 +12,11 @@ export async function GET() {
     supabase.from("payment_methods").select("id, type, label, details, sort_order").eq("active", true).order("sort_order")
   ]);
 
+  const resolved = settings || { consultation_price_cents: 0, currency: "BRL" };
+
   return NextResponse.json({
-    settings: settings || { consultation_price_cents: 0, currency: "BRL" },
+    settings: resolved,
+    bookingEnabled: resolved.booking_enabled !== false,
     methods: methods || []
   });
 }

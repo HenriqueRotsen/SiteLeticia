@@ -125,6 +125,15 @@ export async function handleDemoApi(request) {
   }
 
   if (path === "/api/appointments" && method === "POST") {
+    if (state.paymentSettings.booking_enabled === false) {
+      return json(
+        {
+          message:
+            "A marcação de consultas está temporariamente desativada. Tente novamente mais tarde ou fale com a Letícia."
+        },
+        403
+      );
+    }
     const body = await request.json();
     const startsAt = new Date(body.startsAt);
     const endsAt = new Date(startsAt.getTime() + 60 * 60 * 1000);
@@ -166,17 +175,41 @@ export async function handleDemoApi(request) {
   }
 
   if (path === "/api/appointments/slots" && method === "GET") {
+    if (state.paymentSettings.booking_enabled === false) {
+      return json({
+        slots: [],
+        bookingEnabled: false,
+        durationMin: 60,
+        bufferMin: 15,
+        message: "A marcação de consultas está temporariamente desativada."
+      });
+    }
     const from = url.searchParams.get("from");
     const to = url.searchParams.get("to");
     return json({
       slots: generateDemoSlots(from, to),
+      bookingEnabled: true,
       durationMin: 60,
       bufferMin: 15
     });
   }
 
   if (path === "/api/payment-info" && method === "GET") {
-    return json({ settings: state.paymentSettings, methods: state.paymentMethods.filter((m) => m.active !== false) });
+    return json({
+      settings: state.paymentSettings,
+      bookingEnabled: state.paymentSettings.booking_enabled !== false,
+      methods: state.paymentMethods.filter((m) => m.active !== false)
+    });
+  }
+
+  if (path === "/api/admin/booking-settings" && method === "GET") {
+    return json({ bookingEnabled: state.paymentSettings.booking_enabled !== false });
+  }
+
+  if (path === "/api/admin/booking-settings" && method === "PUT") {
+    const body = await request.json().catch(() => ({}));
+    state.paymentSettings.booking_enabled = body.bookingEnabled !== false;
+    return json({ bookingEnabled: state.paymentSettings.booking_enabled !== false });
   }
 
   if (path === "/api/notifications" && method === "GET") {

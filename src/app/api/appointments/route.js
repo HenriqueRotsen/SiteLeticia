@@ -34,6 +34,17 @@ export async function POST(request) {
   const supabase = createSupabaseAdmin();
 
   const { data: settings } = await supabase.from("payment_settings").select("*").limit(1).maybeSingle();
+
+  if (settings && settings.booking_enabled === false) {
+    return NextResponse.json(
+      {
+        message:
+          "A marcação de consultas está temporariamente desativada. Tente novamente mais tarde ou fale com a Letícia."
+      },
+      { status: 403 }
+    );
+  }
+
   const priceCents =
     body.type === "return" && settings?.return_price_cents != null
       ? settings.return_price_cents
