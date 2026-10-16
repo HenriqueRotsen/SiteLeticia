@@ -145,6 +145,26 @@ export async function handleDemoApi(request) {
     return json({ appointment: appt, calendarWarning: state.googleConnected ? null : "Modo demo: Meet simulado se Google conectado." });
   }
 
+  const patientCancelMatch = path.match(/^\/api\/appointments\/([^/]+)$/);
+  if (patientCancelMatch && method === "PATCH") {
+    const body = await request.json().catch(() => ({}));
+    if (body.status !== "cancelled") return json({ message: "Ação inválida." }, 400);
+    const appt = state.appointments.find((a) => a.id === patientCancelMatch[1]);
+    if (!appt) return json({ message: "Consulta não encontrada." }, 404);
+    appt.status = "cancelled";
+    return json({ appointment: appt });
+  }
+
+  const adminCancelMatch = path.match(/^\/api\/admin\/appointments\/([^/]+)$/);
+  if (adminCancelMatch && method === "PATCH") {
+    const body = await request.json().catch(() => ({}));
+    if (body.status !== "cancelled") return json({ message: "Ação inválida." }, 400);
+    const appt = state.appointments.find((a) => a.id === adminCancelMatch[1]);
+    if (!appt) return json({ message: "Consulta não encontrada." }, 404);
+    appt.status = "cancelled";
+    return json({ appointment: appt });
+  }
+
   if (path === "/api/appointments/slots" && method === "GET") {
     const from = url.searchParams.get("from");
     const to = url.searchParams.get("to");

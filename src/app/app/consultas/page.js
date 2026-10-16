@@ -70,6 +70,24 @@ export default function ConsultasPage() {
     await load();
   }
 
+  async function cancelAppointment(appointmentId) {
+    if (!window.confirm("Deseja cancelar esta consulta?")) return;
+    setError("");
+    setFeedback("");
+    const res = await fetch(`/api/appointments/${appointmentId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "cancelled" })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setError(data.message || "Não foi possível cancelar a consulta.");
+      return;
+    }
+    setFeedback("Consulta cancelada.");
+    await load();
+  }
+
   return (
     <PatientShell title="Minhas consultas" breadcrumbs={["Paciente", "Consultas"]}>
       {error ? (
@@ -110,16 +128,27 @@ export default function ConsultasPage() {
                   </div>
                   <p className="mt-2 text-sm">{formatCurrency(appt.amount_cents)}</p>
                 </div>
-                {appt.meet_link ? (
-                  <a
-                    href={appt.meet_link}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="rounded-xl bg-olive-700 px-4 py-2 text-sm font-semibold text-white"
-                  >
-                    Entrar no Meet
-                  </a>
-                ) : null}
+                <div className="flex flex-wrap items-center gap-2">
+                  {appt.meet_link && appt.status === "scheduled" ? (
+                    <a
+                      href={appt.meet_link}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="rounded-xl bg-olive-700 px-4 py-2 text-sm font-semibold text-white"
+                    >
+                      Entrar no Meet
+                    </a>
+                  ) : null}
+                  {appt.status === "scheduled" ? (
+                    <button
+                      type="button"
+                      onClick={() => cancelAppointment(appt.id)}
+                      className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-800 hover:bg-rose-100"
+                    >
+                      Cancelar
+                    </button>
+                  ) : null}
+                </div>
               </div>
 
               {documents.length ? (
