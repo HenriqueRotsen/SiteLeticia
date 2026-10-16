@@ -57,7 +57,6 @@ describe("timezone-aware slots", () => {
       })
     );
     expect(times[0]).toBe("09:00");
-    expect(times).toContain("16:00");
-    expect(times.at(-1)).toBe("16:00");
+    expect(times).toEqual(["09:00", "10:15", "11:30", "12:45", "14:00", "15:15"]);
   });
 });

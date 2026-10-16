@@ -64,8 +64,7 @@ export function generateSlotsFromRules({
       let slotStart = parseTimeOnZonedDay(cursor, rule.start_time, TIMEZONE);
       const dayEnd = parseTimeOnZonedDay(cursor, rule.end_time, TIMEZONE);
 
-      // Grade de início a cada 60 min (ex.: 9–17 → último às 16:00).
-      // O buffer de 15 min só entra na checagem de conflito entre consultas.
+      // Grade com 60 min de consulta + 15 min de intervalo entre inícios.
       while (appointmentEnd(slotStart) <= dayEnd) {
         if (slotStart >= from && slotStart <= to && !isSlotBlocked(slotStart, busyRanges)) {
           slots.push({
@@ -73,7 +72,7 @@ export function generateSlotsFromRules({
             endsAt: appointmentEnd(slotStart).toISOString()
           });
         }
-        slotStart = new Date(slotStart.getTime() + CONSULTATION_DURATION_MIN * 60 * 1000);
+        slotStart = new Date(slotStart.getTime() + SLOT_INTERVAL_MIN * 60 * 1000);
       }
     }
 
