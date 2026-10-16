@@ -11,39 +11,44 @@ const PERIOD_OPTIONS = [
 ];
 
 const STATUS_OPTIONS = [
-  { value: "all", label: "Todos" },
+  { value: "all", label: "Status" },
   ...Object.entries(APPOINTMENT_STATUS_LABELS).map(([value, label]) => ({ value, label }))
 ];
 
 const PAYMENT_OPTIONS = [
-  { value: "all", label: "Todos" },
+  { value: "all", label: "Pagamento" },
   ...Object.entries(PAYMENT_STATUS_LABELS).map(([value, label]) => ({ value, label }))
 ];
 
-function FilterChips({ label, options, value, onChange }) {
+function Chip({ active, children, onClick }) {
   return (
-    <div>
-      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-graphite/45">{label}</p>
-      <div className="flex flex-wrap gap-2">
-        {options.map((option) => {
-          const active = value === option.value;
-          return (
-            <button
-              key={option.value}
-              type="button"
-              onClick={() => onChange(option.value)}
-              aria-pressed={active}
-              className={`rounded-xl border px-3 py-1.5 text-sm font-semibold transition ${
-                active
-                  ? "border-olive-700 bg-olive-700 text-white shadow-sm"
-                  : "border-olive-900/10 bg-white text-graphite/70 hover:border-olive-400 hover:bg-olive-50/70"
-              }`}
-            >
-              {option.label}
-            </button>
-          );
-        })}
-      </div>
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`shrink-0 rounded-lg border px-2.5 py-1 text-xs font-semibold transition ${
+        active
+          ? "border-olive-700 bg-olive-700 text-white"
+          : "border-olive-900/10 bg-white text-graphite/65 hover:border-olive-400 hover:bg-olive-50/70"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function ChipRow({ options, value, onChange }) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {options.map((option) => (
+        <Chip
+          key={option.value}
+          active={value === option.value}
+          onClick={() => onChange(option.value)}
+        >
+          {option.label}
+        </Chip>
+      ))}
     </div>
   );
 }
@@ -60,45 +65,43 @@ export default function AppointmentsToolbar({
   }
 
   return (
-    <div className="space-y-4">
-      <div className="relative">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-graphite/35" />
-        <input
-          value={filters.query}
-          onChange={(event) => update("query", event.target.value)}
-          className={inputClassName("pl-10")}
-          placeholder={
-            showPatientHint
-              ? "Buscar por paciente, status, telefone..."
-              : "Buscar por status, tipo, observações..."
-          }
-        />
+    <div className="space-y-2.5">
+      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
+        <div className="relative min-w-0 flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-graphite/35" />
+          <input
+            value={filters.query}
+            onChange={(event) => update("query", event.target.value)}
+            className={inputClassName("!py-2 pl-9 text-sm")}
+            placeholder={
+              showPatientHint
+                ? "Buscar paciente, telefone..."
+                : "Buscar status, tipo..."
+            }
+          />
+        </div>
+        <p className="shrink-0 text-xs text-graphite/45 sm:text-right">
+          {filteredTotal}/{total}
+        </p>
       </div>
 
-      <div className="space-y-4">
-        <FilterChips
-          label="Período"
+      <div className="flex flex-col gap-2 border-t border-olive-900/5 pt-2.5">
+        <ChipRow
           options={PERIOD_OPTIONS}
           value={filters.period}
           onChange={(value) => update("period", value)}
         />
-        <FilterChips
-          label="Status"
+        <ChipRow
           options={STATUS_OPTIONS}
           value={filters.status}
           onChange={(value) => update("status", value)}
         />
-        <FilterChips
-          label="Pagamento"
+        <ChipRow
           options={PAYMENT_OPTIONS}
           value={filters.paymentStatus}
           onChange={(value) => update("paymentStatus", value)}
         />
       </div>
-
-      <p className="text-xs text-graphite/45">
-        Mostrando {filteredTotal} de {total} consulta{total === 1 ? "" : "s"}
-      </p>
     </div>
   );
 }
