@@ -10,6 +10,7 @@ export default function PdfUploadZone({
   accept = "application/pdf",
   dropLabel = "Clique ou arraste o PDF",
   uploading = false,
+  statusText = "",
   disabled = false,
   onFileSelect
 }) {
@@ -66,9 +67,15 @@ export default function PdfUploadZone({
             )}
           </div>
           <p className="mt-5 text-sm font-semibold text-graphite">
-            {uploading ? "Enviando..." : dragging ? "Solte o arquivo" : dropLabel}
+            {uploading
+              ? statusText || "Enviando..."
+              : dragging
+                ? "Solte o arquivo"
+                : dropLabel}
           </p>
-          <p className="mt-2 text-sm text-graphite/55">{hint}</p>
+          <p className="mt-2 text-sm text-graphite/55">
+            {uploading && statusText ? "Isso pode levar até 1 minuto." : hint}
+          </p>
         </label>
         <input
           id={inputId}

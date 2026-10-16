@@ -2,11 +2,11 @@ import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { requirePatient } from "@/lib/auth";
 import { createSupabaseAdmin } from "@/lib/supabaseAdmin";
-import { extractLabReportFromPdfBuffer } from "@/lib/labs/extract";
 import { ALLOWED_PDF_TYPES, MAX_PDF_BYTES } from "@/lib/constants";
 import { writeAuditLog, getClientIp } from "@/lib/audit";
 import { createStorageSignedUrl } from "@/lib/storage/signed-url";
-import { fulfillExamOrdersFromLabReport } from "@/lib/labs/fulfill-orders";
+
+const PENDING_ANALYSIS = "Analisando automaticamente…";
 
 function labsBucket() {
   return process.env.SUPABASE_STORAGE_BUCKET_LABS || "lab-reports";
@@ -26,37 +26,12 @@ async function loadPatientExamOrders(supabase, patientId) {
     .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
 }
 
-async function runFulfillment({
-  supabase,
-  patientId,
-  reportId,
-  extraction,
-  pdfBuffer,
-  currentInterpretation
-}) {
-  const fulfillment = await fulfillExamOrdersFromLabReport({
-    patientId,
-    reportId,
-    labResults: extraction.results || [],
-    extractedText: extraction.extractedText || "",
-    pdfBuffer,
-    currentInterpretation
-  });
-
-  if (fulfillment.interpretationSummary) {
-    await supabase
-      .from("lab_reports")
-      .update({
-        ai_interpretation: fulfillment.interpretationSummary,
-        interpretation_summary: fulfillment.interpretationSummary
-      })
-      .eq("id", reportId);
-  }
-
-  return fulfillment;
-}
-
 function toPatientReport(report, fileUrl) {
+  const analyzing =
+    !report.ai_interpretation ||
+    report.interpretation_summary === PENDING_ANALYSIS ||
+    String(report.interpretation_summary || "").startsWith("Analisando automaticamente");
+
   const base = {
     id: report.id,
     status: report.status,
@@ -64,7 +39,7 @@ function toPatientReport(report, fileUrl) {
     uploaded_by: report.uploaded_by,
     published_by: report.published_by,
     reviewed_at: report.reviewed_at,
-    // Proxy interno evita PDF quebrado/CORS na URL assinada do Storage
+    analyzing: report.status === "draft" && analyzing,
     file_url: `/api/patients/me/labs/file?id=${encodeURIComponent(report.id)}`,
     signed_url: fileUrl
   };
@@ -78,23 +53,6 @@ function toPatientReport(report, fileUrl) {
     interpretation_summary: report.interpretation_summary,
     lab_results: report.lab_results || []
   };
-}
-
-async function extractAndStorePdf(originalBuffer) {
-  let extraction;
-  try {
-    extraction = await extractLabReportFromPdfBuffer(originalBuffer);
-  } catch {
-    extraction = {
-      extractedText: "",
-      results: [],
-      interpretationSummary:
-        "Não foi possível extrair automaticamente. Revise o PDF manualmente."
-    };
-  }
-
-  // Guarda o original: compressão (Ghostscript/pdf-lib) vinha corrompendo laudos escaneados.
-  return { extraction, storedBuffer: originalBuffer };
 }
 
 async function readPdfFromForm(formData) {
@@ -119,7 +77,6 @@ export async function GET() {
   const auth = await requirePatient();
   if (auth.error) return auth.error;
 
-  // Usa admin: RLS do paciente só liberava status=published e escondia os próprios envios em draft.
   const supabase = createSupabaseAdmin();
   const bucket = labsBucket();
   const { data } = await supabase
@@ -156,9 +113,8 @@ export async function POST(request) {
   const patientId = auth.ctx.patient.id;
   const bucket = labsBucket();
   const path = `${patientId}/${randomUUID()}.pdf`;
-  const { extraction, storedBuffer } = await extractAndStorePdf(parsed.buffer);
 
-  const { error: uploadError } = await supabase.storage.from(bucket).upload(path, storedBuffer, {
+  const { error: uploadError } = await supabase.storage.from(bucket).upload(path, parsed.buffer, {
     contentType: "application/pdf"
   });
 
@@ -166,16 +122,14 @@ export async function POST(request) {
     return NextResponse.json({ message: "Falha no upload." }, { status: 500 });
   }
 
-  const aiText = extraction.interpretationSummary;
-
   const { data: report, error } = await supabase
     .from("lab_reports")
     .insert({
       patient_id: patientId,
       storage_path: path,
-      extracted_text: extraction.extractedText,
-      ai_interpretation: aiText,
-      interpretation_summary: aiText,
+      extracted_text: "",
+      ai_interpretation: null,
+      interpretation_summary: PENDING_ANALYSIS,
       uploaded_by: "patient",
       status: "draft"
     })
@@ -183,31 +137,6 @@ export async function POST(request) {
     .single();
 
   if (error) return NextResponse.json({ message: "Erro ao salvar laudo." }, { status: 500 });
-
-  if (extraction.results?.length) {
-    await supabase.from("lab_results").insert(
-      extraction.results.map((r) => ({
-        report_id: report.id,
-        marker_key: r.marker_key,
-        marker_name: r.marker_name,
-        value: r.value,
-        value_text: r.value_text,
-        unit: r.unit,
-        ref_min: r.ref_min,
-        ref_max: r.ref_max,
-        flag: r.flag
-      }))
-    );
-  }
-
-  const fulfillment = await runFulfillment({
-    supabase,
-    patientId,
-    reportId: report.id,
-    extraction,
-    pdfBuffer: parsed.buffer,
-    currentInterpretation: aiText
-  });
 
   await writeAuditLog({
     actorId: auth.ctx.user.id,
@@ -222,10 +151,7 @@ export async function POST(request) {
   return NextResponse.json({
     report: toPatientReport(report, fileUrl),
     examOrders,
-    fulfillment: {
-      doneCount: fulfillment.doneCount,
-      method: fulfillment.method
-    }
+    needsAnalysis: true
   });
 }
 
@@ -266,9 +192,8 @@ export async function PUT(request) {
   }
 
   const path = `${patientId}/${randomUUID()}.pdf`;
-  const { extraction, storedBuffer } = await extractAndStorePdf(parsed.buffer);
 
-  const { error: uploadError } = await supabase.storage.from(bucket).upload(path, storedBuffer, {
+  const { error: uploadError } = await supabase.storage.from(bucket).upload(path, parsed.buffer, {
     contentType: "application/pdf"
   });
 
@@ -276,15 +201,15 @@ export async function PUT(request) {
     return NextResponse.json({ message: "Falha no upload." }, { status: 500 });
   }
 
-  const aiText = extraction.interpretationSummary;
+  await supabase.from("lab_results").delete().eq("report_id", reportId);
 
   const { data: report, error } = await supabase
     .from("lab_reports")
     .update({
       storage_path: path,
-      extracted_text: extraction.extractedText,
-      ai_interpretation: aiText,
-      interpretation_summary: aiText
+      extracted_text: "",
+      ai_interpretation: null,
+      interpretation_summary: PENDING_ANALYSIS
     })
     .eq("id", reportId)
     .eq("patient_id", patientId)
@@ -292,33 +217,6 @@ export async function PUT(request) {
     .single();
 
   if (error) return NextResponse.json({ message: "Erro ao atualizar laudo." }, { status: 500 });
-
-  await supabase.from("lab_results").delete().eq("report_id", reportId);
-
-  if (extraction.results?.length) {
-    await supabase.from("lab_results").insert(
-      extraction.results.map((r) => ({
-        report_id: report.id,
-        marker_key: r.marker_key,
-        marker_name: r.marker_name,
-        value: r.value,
-        value_text: r.value_text,
-        unit: r.unit,
-        ref_min: r.ref_min,
-        ref_max: r.ref_max,
-        flag: r.flag
-      }))
-    );
-  }
-
-  const fulfillment = await runFulfillment({
-    supabase,
-    patientId,
-    reportId: report.id,
-    extraction,
-    pdfBuffer: parsed.buffer,
-    currentInterpretation: aiText
-  });
 
   if (existing.storage_path && existing.storage_path !== path) {
     await supabase.storage.from(bucket).remove([existing.storage_path]);
@@ -337,10 +235,7 @@ export async function PUT(request) {
   return NextResponse.json({
     report: toPatientReport(report, fileUrl),
     examOrders,
-    fulfillment: {
-      doneCount: fulfillment.doneCount,
-      method: fulfillment.method
-    }
+    needsAnalysis: true
   });
 }
 

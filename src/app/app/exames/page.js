@@ -28,6 +28,7 @@ export default function ExamesPage() {
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState("");
   const [busyId, setBusyId] = useState("");
   const replaceInputRef = useRef(null);
   const [replaceTargetId, setReplaceTargetId] = useState("");
@@ -43,31 +44,60 @@ export default function ExamesPage() {
     loadReports();
   }, []);
 
+  async function runAnalysis(reportId) {
+    setUploadStatus("Analisando com IA...");
+    const res = await fetch("/api/patients/me/labs/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reportId })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.message || "Falha na análise automática.");
+    }
+    return data;
+  }
+
   async function uploadPdf(file) {
     setUploading(true);
+    setUploadStatus("Enviando PDF...");
     setFeedback("");
     setError("");
 
-    const formData = new FormData();
-    formData.append("file", file);
-    const res = await fetch("/api/patients/me/labs", { method: "POST", body: formData });
-    const data = await res.json();
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/patients/me/labs", { method: "POST", body: formData });
+      const data = await res.json();
 
-    setUploading(false);
+      if (!res.ok) {
+        setError(data.message || "Erro no upload.");
+        return;
+      }
 
-    if (!res.ok) {
-      setError(data.message || "Erro no upload.");
-      return;
+      if (data.examOrders) setExamOrders(data.examOrders);
+      await loadReports();
+
+      let done = 0;
+      if (data.needsAnalysis && data.report?.id) {
+        const analyzed = await runAnalysis(data.report.id);
+        if (analyzed.examOrders) setExamOrders(analyzed.examOrders);
+        done = analyzed.fulfillment?.doneCount || 0;
+      }
+
+      setFeedback(
+        done > 0
+          ? `PDF enviado. ${done} exame(s) do pedido foram identificados e marcados como feitos. A Letícia ainda revisa o parecer.`
+          : "PDF enviado. A Letícia vai revisar e publicar o parecer."
+      );
+      await loadReports();
+    } catch (err) {
+      setError(err.message || "Erro no envio.");
+      await loadReports();
+    } finally {
+      setUploading(false);
+      setUploadStatus("");
     }
-
-    if (data.examOrders) setExamOrders(data.examOrders);
-    const done = data.fulfillment?.doneCount || 0;
-    setFeedback(
-      done > 0
-        ? `PDF enviado. ${done} exame(s) do pedido foram identificados e marcados como feitos. A Letícia ainda revisa o parecer.`
-        : "PDF enviado. A Letícia vai revisar e publicar o parecer."
-    );
-    await loadReports();
   }
 
   function startReplace(reportId) {
@@ -82,28 +112,48 @@ export default function ExamesPage() {
     const reportId = replaceTargetId;
     setReplaceTargetId("");
     setBusyId(reportId);
+    setUploading(true);
+    setUploadStatus("Enviando PDF...");
+    setError("");
+    setFeedback("");
 
-    const formData = new FormData();
-    formData.append("reportId", reportId);
-    formData.append("file", file);
+    try {
+      const formData = new FormData();
+      formData.append("reportId", reportId);
+      formData.append("file", file);
 
-    const res = await fetch("/api/patients/me/labs", { method: "PUT", body: formData });
-    const data = await res.json().catch(() => ({}));
-    setBusyId("");
+      const res = await fetch("/api/patients/me/labs", { method: "PUT", body: formData });
+      const data = await res.json().catch(() => ({}));
 
-    if (!res.ok) {
-      setError(data.message || "Não foi possível substituir o PDF.");
-      return;
+      if (!res.ok) {
+        setError(data.message || "Não foi possível substituir o PDF.");
+        return;
+      }
+
+      if (data.examOrders) setExamOrders(data.examOrders);
+      await loadReports();
+
+      let done = 0;
+      if (data.needsAnalysis && data.report?.id) {
+        const analyzed = await runAnalysis(data.report.id);
+        if (analyzed.examOrders) setExamOrders(analyzed.examOrders);
+        done = analyzed.fulfillment?.doneCount || 0;
+      }
+
+      setFeedback(
+        done > 0
+          ? `PDF atualizado. ${done} exame(s) do pedido foram identificados.`
+          : "PDF atualizado. Continua aguardando a revisão da Letícia."
+      );
+      await loadReports();
+    } catch (err) {
+      setError(err.message || "Não foi possível substituir o PDF.");
+      await loadReports();
+    } finally {
+      setBusyId("");
+      setUploading(false);
+      setUploadStatus("");
     }
-
-    if (data.examOrders) setExamOrders(data.examOrders);
-    const done = data.fulfillment?.doneCount || 0;
-    setFeedback(
-      done > 0
-        ? `PDF atualizado. ${done} exame(s) do pedido foram identificados.`
-        : "PDF atualizado. Continua aguardando a revisão da Letícia."
-    );
-    await loadReports();
   }
 
   async function deleteReport(reportId) {
@@ -164,6 +214,7 @@ export default function ExamesPage() {
           label="Enviar meu exame em PDF"
           description="Ao enviar, o sistema analisa o laudo, marca os itens do pedido que aparecem no resultado e mostra o valor e se está normal ou alterado."
           uploading={uploading}
+          statusText={uploadStatus}
           onFileSelect={uploadPdf}
         />
         {error ? (
