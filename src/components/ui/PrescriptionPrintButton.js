@@ -24,11 +24,10 @@ function printViaIframe(html) {
     return false;
   }
 
-  doc.open();
-  doc.write(html);
-  doc.close();
-
+  let printed = false;
   const runPrint = () => {
+    if (printed) return;
+    printed = true;
     try {
       win.focus();
       win.print();
@@ -39,24 +38,32 @@ function printViaIframe(html) {
     setTimeout(cleanup, 120000);
   };
 
+  doc.open();
+  doc.write(html);
+  doc.close();
+
+  // Dispara print uma única vez (sem script autoPrint no HTML do iframe).
+  const schedule = () => setTimeout(runPrint, 300);
   if (doc.readyState === "complete") {
-    setTimeout(runPrint, 250);
+    schedule();
   } else {
-    win.addEventListener("load", () => setTimeout(runPrint, 250), { once: true });
+    win.addEventListener("load", schedule, { once: true });
+    // Fallback caso o load não dispare após doc.write
+    setTimeout(runPrint, 800);
   }
 
   return true;
 }
 
 export function openPrescriptionPrint(options) {
-  const html = wrapPrintDocument(options);
+  // Iframe: host controla o print (autoPrint false).
+  const iframeHtml = wrapPrintDocument({ ...options, autoPrint: false });
+  if (printViaIframe(iframeHtml)) return true;
 
-  // 1) Iframe same-origin: não depende de pop-up e evita aba about:blank vazia.
-  if (printViaIframe(html)) return true;
-
-  // 2) Fallback: abrir Blob em nova aba (útil se o iframe for bloqueado).
+  // Fallback popup: o documento dispara o print sozinho.
   try {
-    const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+    const popupHtml = wrapPrintDocument({ ...options, autoPrint: true });
+    const blob = new Blob([popupHtml], { type: "text/html;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     // Não usar noopener no features string: o open retorna null.
     const popup = window.open(url, "_blank", "width=900,height=1000");
