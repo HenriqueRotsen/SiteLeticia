@@ -1,0 +1,32 @@
+# Exceções temporárias até migração Next >=15.5.24 e Tailwind 4.
+# Remova/ajuste conforme os pacotes forem atualizados.
+
+[[PackageOverrides]]
+name = "next"
+ecosystem = "npm"
+vulnerability.ignore = true
+reason = "Next 14.x sem patch completo; upgrade planejado para >=15.5.24 (breaking)."
+
+[[PackageOverrides]]
+name = "postcss"
+ecosystem = "npm"
+vulnerability.ignore = true
+reason = "Transitivo via next@14; sobe com o upgrade do Next."
+
+[[PackageOverrides]]
+name = "postcss-selector-parser"
+ecosystem = "npm"
+vulnerability.ignore = true
+reason = "Dev dependency via Tailwind 3."
+
+[[PackageOverrides]]
+name = "braces"
+ecosystem = "npm"
+vulnerability.ignore = true
+reason = "Transitivo Tailwind 3; sobe com Tailwind 4."
+
+[[PackageOverrides]]
+name = "glob"
+ecosystem = "npm"
+vulnerability.ignore = true
+reason = "Transitivo eslint-config-next@14."

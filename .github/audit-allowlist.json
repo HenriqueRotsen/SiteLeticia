@@ -1,0 +1,15 @@
+{
+  "$comment": "Exceções temporárias de npm audit (high/critical). Remover ao migrar Next 15+ / Tailwind 4.",
+  "packages": {
+    "next": "Next 14.x sem patch para GHSA críticos; upgrade planejado para >=15.5.24 (breaking: params/cookies async).",
+    "postcss": "Transitivo via next@14; sobe com o upgrade do Next.",
+    "eslint-config-next": "Alinhado à major do Next 14; sobe junto na migração.",
+    "@next/eslint-plugin-next": "Transitivo de eslint-config-next@14.",
+    "tailwindcss": "v3.4; braces/chokidar exigem Tailwind 4 (breaking).",
+    "braces": "Transitivo Tailwind 3 / micromatch; fix via Tailwind 4.",
+    "chokidar": "Transitivo Tailwind 3.",
+    "micromatch": "Transitivo Tailwind 3 / fast-glob.",
+    "fast-glob": "Transitivo Tailwind 3.",
+    "glob": "Transitivo eslint-config-next@14."
+  }
+}
