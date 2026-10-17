@@ -334,12 +334,13 @@ export async function handleDemoApi(request) {
     const submit = body.submit !== false;
     const existing = (state.preconsultForms || []).find((item) => item.patient_id === patientId);
     const now = new Date().toISOString();
+    const alreadySubmitted = existing?.status === "submitted";
     const next = {
       id: existing?.id || `preconsult-${Date.now()}`,
       patient_id: patientId,
       answers: body.answers || {},
-      status: submit ? "submitted" : "draft",
-      submitted_at: submit ? now : null,
+      status: submit || alreadySubmitted ? "submitted" : "draft",
+      submitted_at: submit ? now : existing?.submitted_at || null,
       created_at: existing?.created_at || now,
       updated_at: now
     };

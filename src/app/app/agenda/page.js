@@ -113,6 +113,20 @@ export default function AgendaPage() {
       });
   }, []);
 
+  async function savePreconsultProgress(answers) {
+    const res = await fetch("/api/patients/me/preconsulta", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ answers, submit: false })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.message || "Não foi possível salvar o progresso.");
+    }
+    setPreconsultForm(data.form);
+    return data.form;
+  }
+
   async function submitPreconsult(answers) {
     setPreconsultSaving(true);
     setFeedback("");
@@ -191,6 +205,7 @@ export default function AgendaPage() {
             patientProfile={preconsultPatient}
             submitting={preconsultSaving}
             onSubmit={submitPreconsult}
+            onSaveProgress={savePreconsultProgress}
           />
         </div>
       ) : (

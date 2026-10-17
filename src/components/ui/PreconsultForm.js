@@ -42,6 +42,7 @@ export default function PreconsultForm({
   initialStatus = "draft",
   patientProfile = null,
   onSubmit,
+  onSaveProgress = null,
   submitting = false,
   compact = false
 }) {
@@ -50,6 +51,8 @@ export default function PreconsultForm({
   );
   const [sectionIndex, setSectionIndex] = useState(0);
   const [error, setError] = useState("");
+  const [saveState, setSaveState] = useState("idle");
+  const [savingProgress, setSavingProgress] = useState(false);
 
   const section = PRECONSULT_SECTIONS[sectionIndex];
   const editableFields = section.fields.filter(
@@ -104,8 +107,26 @@ export default function PreconsultForm({
     return false;
   }
 
-  function goToSection(nextIndex) {
-    if (nextIndex === sectionIndex) return;
+  async function persistProgress() {
+    if (!onSaveProgress) return true;
+    const withProfile = mergePrefillAnswers(answers, patientProfile || {});
+    setSavingProgress(true);
+    setSaveState("saving");
+    try {
+      await onSaveProgress(withProfile);
+      setSaveState("saved");
+      return true;
+    } catch (err) {
+      setSaveState("error");
+      setError(err?.message || "Não foi possível salvar o progresso. Tente novamente.");
+      return false;
+    } finally {
+      setSavingProgress(false);
+    }
+  }
+
+  async function goToSection(nextIndex) {
+    if (nextIndex === sectionIndex || savingProgress || submitting) return;
     if (nextIndex < sectionIndex) {
       setError("");
       setSectionIndex(nextIndex);
@@ -117,6 +138,8 @@ export default function PreconsultForm({
         return;
       }
     }
+    const saved = await persistProgress();
+    if (!saved) return;
     setSectionIndex(nextIndex);
   }
 
@@ -301,6 +324,15 @@ export default function PreconsultForm({
             <p className="text-sm text-graphite/50">
               {filled}/{total} campos · {initialStatus === "submitted" ? "enviada" : "rascunho"}
             </p>
+            <p className="mt-1 text-xs text-graphite/45">
+              {saveState === "saving"
+                ? "Salvando progresso…"
+                : saveState === "saved"
+                  ? "Progresso salvo"
+                  : saveState === "error"
+                    ? "Falha ao salvar"
+                    : "Salva ao avançar de seção"}
+            </p>
           </div>
         </div>
         <div className="h-1.5 bg-olive-100">
@@ -380,15 +412,16 @@ export default function PreconsultForm({
               <button
                 type="button"
                 className={btnPrimary()}
+                disabled={savingProgress || submitting}
                 onClick={() => goToSection(sectionIndex + 1)}
               >
-                Próxima seção
+                {savingProgress ? "Salvando…" : "Próxima seção"}
               </button>
             ) : (
               <button
                 type="button"
                 className={btnPrimary()}
-                disabled={submitting}
+                disabled={submitting || savingProgress}
                 onClick={handleSubmit}
               >
                 <CheckCircle2 className="h-4 w-4" strokeWidth={1.75} />

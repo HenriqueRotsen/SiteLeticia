@@ -101,11 +101,18 @@ export async function PUT(request) {
   const patientId = auth.ctx.patient.id;
   const now = new Date().toISOString();
 
+  const { data: existing } = await supabase
+    .from("patient_preconsult_forms")
+    .select("status, submitted_at")
+    .eq("patient_id", patientId)
+    .maybeSingle();
+
+  const alreadySubmitted = existing?.status === "submitted";
   const payload = {
     patient_id: patientId,
     answers,
-    status: submit ? "submitted" : "draft",
-    submitted_at: submit ? now : null,
+    status: submit || alreadySubmitted ? "submitted" : "draft",
+    submitted_at: submit ? now : existing?.submitted_at || null,
     updated_at: now
   };
 
