@@ -149,6 +149,18 @@ export async function handleDemoApi(request) {
       redirectTo: isNutritionist ? "/admin" : "/app"
     });
   }
+  if (path === "/api/auth/session" && method === "GET") {
+    const role = request.cookies.get(DEMO_ROLE_COOKIE)?.value || null;
+    if (!role) {
+      return json({ authenticated: false, role: null, homePath: null, label: null });
+    }
+    return json({
+      authenticated: true,
+      role,
+      homePath: role === "nutritionist" ? "/admin" : "/app",
+      label: role === "nutritionist" ? "Área da nutricionista" : "Minha área"
+    });
+  }
   if (path === "/api/auth/logout" && method === "POST") return json({ ok: true });
   if (path === "/api/auth/signup" && method === "POST") return json({ ok: true, patientId });
   if (path === "/api/auth/forgot-password" && method === "POST") {

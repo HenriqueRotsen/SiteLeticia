@@ -5,6 +5,13 @@ export function flagLabelPt(flag) {
   return "Sem classificação";
 }
 
+export function idealFlagLabelPt(idealFlag) {
+  if (idealFlag === "optimal") return "Ideal";
+  if (idealFlag === "suboptimal") return "Fora do ideal";
+  if (idealFlag === "out_of_range") return "Fora do ideal";
+  return null;
+}
+
 export function isExamDone(exam) {
   return exam?.status === "done" && Boolean(exam?.result);
 }

@@ -1,21 +1,13 @@
 import { createSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { canSendPdfInline, generateGeminiContent, hasGeminiConfigured } from "@/lib/ai/gemini";
 import { resolveAiProvider } from "@/lib/ai/provider";
-
-const KNOWN_MARKER_KEYS = [
-  "glucose_fasting",
-  "hba1c",
-  "total_cholesterol",
-  "ldl",
-  "hdl",
-  "triglycerides",
-  "ferritin",
-  "vitamin_d",
-  "vitamin_b12",
-  "tsh",
-  "tgo",
-  "tgp"
-];
+import {
+  KNOWN_MARKER_KEYS,
+  MARKER_PATTERNS,
+  buildClinicalGuidePromptContext,
+  buildClinicalInterpretationSummary,
+  enrichResultsWithClinicalGuide
+} from "@/lib/labs/clinical-guide";
 
 function parseNumeric(value) {
   if (value == null) return null;
@@ -29,21 +21,6 @@ function inferFlag(value, refMin, refMax) {
   if (refMax != null && value > refMax) return "high";
   return "normal";
 }
-
-const MARKER_PATTERNS = [
-  { key: "glucose_fasting", regex: /glicemia|glucose|glicose/i },
-  { key: "hba1c", regex: /hemoglobina glicada|hba1c|a1c/i },
-  { key: "total_cholesterol", regex: /colesterol total/i },
-  { key: "ldl", regex: /\bldl\b/i },
-  { key: "hdl", regex: /\bhdl\b/i },
-  { key: "triglycerides", regex: /triglicer/i },
-  { key: "ferritin", regex: /ferritina/i },
-  { key: "vitamin_d", regex: /vitamina d|25.?oh/i },
-  { key: "vitamin_b12", regex: /vitamina b12|b12/i },
-  { key: "tsh", regex: /\btsh\b/i },
-  { key: "tgo", regex: /\btgo\b|\bast\b/i },
-  { key: "tgp", regex: /\btgp\b|\balt\b/i }
-];
 
 export function extractMarkersFromText(text) {
   const lines = text.split(/\n+/);
@@ -60,52 +37,66 @@ export function extractMarkersFromText(text) {
         marker_name: line.slice(0, 80).trim(),
         value,
         value_text: numbers[0],
-        unit: line.match(/mg\/dL|ng\/mL|pg\/mL|mUI\/L|g\/dL|U\/L|%/i)?.[0] || null
+        unit: line.match(/mg\/dL|ng\/mL|pg\/mL|mUI\/L|µUI\/mL|uUI\/mL|g\/dL|U\/L|mL\/min|%/i)?.[0] || null
       });
       break;
     }
   }
 
-  return results;
+  return enrichResultsWithClinicalGuide(results);
 }
 
 export async function enrichResultsWithReferences(results) {
+  const withGuide = enrichResultsWithClinicalGuide(results);
   const supabase = createSupabaseAdmin();
-  const keys = [...new Set(results.map((r) => r.marker_key).filter(Boolean))];
-  if (!keys.length) return results.map((result) => ({ ...result, flag: result.flag || "unknown" }));
+  const keys = [...new Set(withGuide.map((r) => r.marker_key).filter(Boolean))];
+  if (!keys.length) {
+    return withGuide.map((result) => ({ ...result, flag: result.flag || "unknown" }));
+  }
 
-  const { data: refs } = await supabase.from("lab_reference_ranges").select("*").in("marker_key", keys);
+  let refs = [];
+  try {
+    const { data } = await supabase.from("lab_reference_ranges").select("*").in("marker_key", keys);
+    refs = data || [];
+  } catch {
+    refs = [];
+  }
 
-  const refMap = Object.fromEntries((refs || []).map((r) => [r.marker_key, r]));
+  const refMap = Object.fromEntries(refs.map((r) => [r.marker_key, r]));
 
-  return results.map((result) => {
-    const ref = refMap[result.marker_key];
-    const refMin = result.ref_min ?? ref?.ref_min ?? null;
-    const refMax = result.ref_max ?? ref?.ref_max ?? null;
-    const value = result.value ?? parseNumeric(result.value_text);
-    return {
-      ...result,
-      value,
-      marker_name: result.marker_name || ref?.name || result.marker_key,
-      unit: result.unit || ref?.unit || null,
-      ref_min: refMin,
-      ref_max: refMax,
-      flag: result.flag && result.flag !== "unknown" ? result.flag : inferFlag(value, refMin, refMax)
-    };
-  });
+  return enrichResultsWithClinicalGuide(
+    withGuide.map((result) => {
+      const ref = refMap[result.marker_key];
+      const refMin = result.ref_min ?? ref?.ref_min ?? null;
+      const refMax = result.ref_max ?? ref?.ref_max ?? null;
+      const value = result.value ?? parseNumeric(result.value_text);
+      return {
+        ...result,
+        value,
+        marker_name: result.marker_name || ref?.name || result.marker_key,
+        unit: result.unit || ref?.unit || null,
+        ref_min: refMin,
+        ref_max: refMax,
+        flag: result.flag && result.flag !== "unknown" ? result.flag : inferFlag(value, refMin, refMax)
+      };
+    })
+  );
 }
 
 export function buildInterpretationSummary(results, refs) {
+  const clinical = buildClinicalInterpretationSummary(results);
+  if (clinical && results?.length) return clinical;
+
   const refMap = Object.fromEntries((refs || []).map((r) => [r.marker_key, r]));
-  const altered = results.filter((r) => r.flag === "low" || r.flag === "high");
+  const altered = (results || []).filter((r) => r.flag === "low" || r.flag === "high");
 
   if (!altered.length) {
-    return "Nenhum marcador identificado fora da faixa de referência cadastrada. A interpretação clínica integrada é responsabilidade da nutricionista.";
+    return "Nenhum marcador identificado fora da faixa de referência. A interpretação clínica integrada é responsabilidade da nutricionista.";
   }
 
   return altered
     .map((r) => {
-      const note = refMap[r.marker_key]?.interpretation_notes || "";
+      const note = r.clinical_note || refMap[r.marker_key]?.interpretation_notes || "";
       const status = r.flag === "high" ? "acima" : "abaixo";
       return `${r.marker_name}: valor ${status} da referência. ${note}`.trim();
     })
@@ -117,7 +108,8 @@ function normalizeGeminiLabResults(rawResults = []) {
     .map((item) => {
       const markerKey = String(item.marker_key || item.markerKey || "")
         .trim()
-        .toLowerCase();
+        .toLowerCase()
+        .replace(/[^a-z0-9_]/g, "_");
       const value = parseNumeric(item.value ?? item.value_text);
       const flag = ["low", "high", "normal", "unknown"].includes(item.flag) ? item.flag : "unknown";
 
@@ -143,6 +135,8 @@ async function extractLabWithGemini(buffer, text) {
 
   if (!hasText && !canPdf) return null;
 
+  const guideContext = buildClinicalGuidePromptContext();
+
   const system =
     "Você analisa laudos laboratoriais brasileiros para nutricionistas. " +
     "Responda somente JSON válido. Não invente valores. " +
@@ -150,13 +144,18 @@ async function extractLabWithGemini(buffer, text) {
     KNOWN_MARKER_KEYS.join(", ") +
     " quando possível. " +
     'Formato: {"interpretationSummary":"string","results":[{"marker_key":"string","marker_name":"string","value":number|null,"value_text":"string|null","unit":"string|null","ref_min":number|null,"ref_max":number|null,"flag":"low|high|normal|unknown"}]}. ' +
-    "interpretationSummary deve ser um parecer inicial objetivo em português, destacando alterações; a nutricionista revisará antes de publicar.";
+    "flag compara com a referência impressa no laudo (ou com o guia se o laudo não trouxer faixa). " +
+    "interpretationSummary: parecer inicial em português usando o guia clínico (referência lab + ideal preventivo + prazo de reavaliação). " +
+    "Não feche diagnóstico; linguagem de apoio à nutricionista.";
 
-  const prompt = hasText
-    ? `Extraia marcadores e um parecer inicial deste laudo.\n\nTexto do PDF:\n${text.slice(0, 30000)}`
-    : "Extraia marcadores e um parecer inicial deste laudo em PDF (pode ser escaneado). Se não conseguir ler, retorne results:[ ] e explique em interpretationSummary.";
+  const prompt = [
+    guideContext,
+    "",
+    hasText
+      ? `Extraia marcadores e um parecer inicial deste laudo.\n\nTexto do PDF:\n${text.slice(0, 28000)}`
+      : "Extraia marcadores e um parecer inicial deste laudo em PDF (pode ser escaneado). Se não conseguir ler, retorne results:[ ] e explique em interpretationSummary."
+  ].join("\n");
 
-  // Sem texto: envia o PDF. Com texto curto/pobre, também anexa o PDF se couber.
   const shouldAttachPdf = !hasText || (canPdf && text.trim().length < 400);
 
   const response = await generateGeminiContent({
@@ -171,9 +170,11 @@ async function extractLabWithGemini(buffer, text) {
 
   const rawResults = normalizeGeminiLabResults(response.data.results || response.data.markers || []);
   const results = await enrichResultsWithReferences(rawResults);
-  const summary =
-    String(response.data.interpretationSummary || response.data.interpretation_summary || "").trim() ||
-    buildInterpretationSummary(results, []);
+  const aiSummary = String(
+    response.data.interpretationSummary || response.data.interpretation_summary || ""
+  ).trim();
+  const guideSummary = buildClinicalInterpretationSummary(results);
+  const summary = [aiSummary, guideSummary].filter(Boolean).join("\n\n") || buildInterpretationSummary(results, []);
 
   return {
     results,
@@ -229,12 +230,18 @@ export async function extractLabReportFromPdfBuffer(buffer) {
   const rawResults = extractMarkersFromText(text);
   const results = await enrichResultsWithReferences(rawResults);
 
-  const supabase = createSupabaseAdmin();
-  const { data: refs } = await supabase.from("lab_reference_ranges").select("*");
+  let refs = [];
+  try {
+    const supabase = createSupabaseAdmin();
+    const { data } = await supabase.from("lab_reference_ranges").select("*");
+    refs = data || [];
+  } catch {
+    refs = [];
+  }
 
   const interpretationSummary = results.length
-    ? buildInterpretationSummary(results, refs || [])
-    : "O PDF tem texto, mas nenhum marcador cadastrado foi identificado automaticamente. Revise o laudo manualmente.";
+    ? buildInterpretationSummary(results, refs)
+    : "O PDF tem texto, mas nenhum marcador do guia clínico foi identificado automaticamente. Revise o laudo manualmente.";
 
   return {
     extractedText: text.slice(0, 50000),
