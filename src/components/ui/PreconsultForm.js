@@ -6,11 +6,35 @@ import { Card, btnPrimary, btnSecondary, inputClassName } from "@/components/lay
 import {
   PRECONSULT_SECTIONS,
   emptyPreconsultAnswers,
-  normalizePreconsultAnswers,
   validatePreconsultAnswers,
   countFilledAnswers,
-  mergePrefillAnswers
+  mergePrefillAnswers,
+  isFieldVisible,
+  parseMultiValues,
+  serializeMultiValues
 } from "@/lib/preconsult/schema";
+
+const EXCLUSIVE_NONE = new Set(["nao", "nenhum", "nao_sei"]);
+
+function OptionButton({ selected, label, onClick, multi = false }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      className={`rounded-xl border px-3.5 py-2.5 text-left text-sm font-medium transition sm:text-base ${
+        selected
+          ? "border-olive-700 bg-olive-700 text-white shadow-sm"
+          : "border-olive-900/10 bg-white text-graphite/75 hover:border-olive-400 hover:bg-olive-50/70"
+      }`}
+    >
+      <span className="mr-2 inline-flex h-4 w-4 items-center justify-center rounded-full border border-current/40 text-[10px]">
+        {selected ? (multi ? "✓" : "●") : ""}
+      </span>
+      {label}
+    </button>
+  );
+}
 
 export default function PreconsultForm({
   initialAnswers = null,
@@ -27,7 +51,9 @@ export default function PreconsultForm({
   const [error, setError] = useState("");
 
   const section = PRECONSULT_SECTIONS[sectionIndex];
-  const editableFields = section.fields.filter((field) => !field.fromProfile);
+  const editableFields = section.fields.filter(
+    (field) => !field.fromProfile && isFieldVisible(field, answers)
+  );
   const profileSummary = useMemo(() => {
     const items = [];
     if (answers.fullName) items.push({ label: "Nome", value: answers.fullName });
@@ -45,6 +71,21 @@ export default function PreconsultForm({
     setAnswers((prev) => ({ ...prev, [key]: value }));
   }
 
+  function toggleMulti(key, optionValue) {
+    setAnswers((prev) => {
+      let selected = parseMultiValues(prev[key]);
+      const isExclusive = EXCLUSIVE_NONE.has(optionValue);
+      if (selected.includes(optionValue)) {
+        selected = selected.filter((item) => item !== optionValue);
+      } else if (isExclusive) {
+        selected = [optionValue];
+      } else {
+        selected = [...selected.filter((item) => !EXCLUSIVE_NONE.has(item)), optionValue];
+      }
+      return { ...prev, [key]: serializeMultiValues(selected) };
+    });
+  }
+
   async function handleSubmit() {
     setError("");
     const withProfile = mergePrefillAnswers(answers, patientProfile || {});
@@ -59,6 +100,7 @@ export default function PreconsultForm({
         sec.fields.some(
           (field) =>
             !field.fromProfile &&
+            isFieldVisible(field, withProfile) &&
             field.required &&
             !String(withProfile[field.key] || "").trim()
         )
@@ -67,6 +109,82 @@ export default function PreconsultForm({
       return;
     }
     await onSubmit?.(validation.answers);
+  }
+
+  function renderField(field) {
+    const cols = field.cols || 3;
+    const span = cols === 1 ? "sm:col-span-1" : cols === 2 ? "sm:col-span-2" : "sm:col-span-3";
+    const value = answers[field.key] || "";
+
+    if (field.type === "choice") {
+      return (
+        <fieldset key={field.key} className={`${span}`}>
+          <legend className="text-sm font-medium leading-6 text-graphite/75 sm:text-base">
+            {field.label}
+            {field.required ? <span className="text-rose-500"> *</span> : null}
+          </legend>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {(field.options || []).map((option) => (
+              <OptionButton
+                key={option.value}
+                selected={value === option.value}
+                label={option.label}
+                onClick={() => updateField(field.key, option.value)}
+              />
+            ))}
+          </div>
+        </fieldset>
+      );
+    }
+
+    if (field.type === "multichoice") {
+      const selected = parseMultiValues(value);
+      return (
+        <fieldset key={field.key} className={`${span}`}>
+          <legend className="text-sm font-medium leading-6 text-graphite/75 sm:text-base">
+            {field.label}
+            {field.required ? <span className="text-rose-500"> *</span> : null}
+            <span className="ml-2 text-xs font-normal text-graphite/45">(pode marcar mais de uma)</span>
+          </legend>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {(field.options || []).map((option) => (
+              <OptionButton
+                key={option.value}
+                multi
+                selected={selected.includes(option.value)}
+                label={option.label}
+                onClick={() => toggleMulti(field.key, option.value)}
+              />
+            ))}
+          </div>
+        </fieldset>
+      );
+    }
+
+    return (
+      <label
+        key={field.key}
+        className={`block text-sm font-medium leading-6 text-graphite/75 sm:text-base ${span}`}
+      >
+        {field.label}
+        {field.required ? <span className="text-rose-500"> *</span> : null}
+        {field.type === "textarea" ? (
+          <textarea
+            className={`mt-2 min-h-[120px] text-base leading-7 ${inputClassName()}`}
+            value={value}
+            onChange={(e) => updateField(field.key, e.target.value)}
+            placeholder="Escreva aqui…"
+          />
+        ) : (
+          <input
+            className={`mt-2 text-base ${inputClassName()}`}
+            value={value}
+            onChange={(e) => updateField(field.key, e.target.value)}
+            placeholder="…"
+          />
+        )}
+      </label>
+    );
   }
 
   return (
@@ -83,8 +201,8 @@ export default function PreconsultForm({
               </p>
               <h2 className="mt-1 font-display text-3xl text-graphite">Ficha pré-consulta</h2>
               <p className="mt-2 max-w-xl text-base leading-7 text-graphite/70">
-                Preencha com o máximo de detalhes possível. Nome e objetivo já vêm do seu cadastro —
-                as respostas ficam disponíveis para a nutricionista.
+                Responda tocando nas opções. Nome e objetivo já vêm do cadastro; detalhes livres só
+                quando necessário.
               </p>
             </div>
           </div>
@@ -153,37 +271,7 @@ export default function PreconsultForm({
           ) : null}
         </div>
 
-        <div className="grid gap-5 sm:grid-cols-3">
-          {editableFields.map((field) => {
-            const cols = field.cols || 3;
-            const span =
-              cols === 1 ? "sm:col-span-1" : cols === 2 ? "sm:col-span-2" : "sm:col-span-3";
-            return (
-              <label
-                key={field.key}
-                className={`block text-sm font-medium leading-6 text-graphite/75 ${span}`}
-              >
-                {field.label}
-                {field.required ? <span className="text-rose-500"> *</span> : null}
-                {field.type === "textarea" ? (
-                  <textarea
-                    className={`mt-2 min-h-[120px] text-base leading-7 ${inputClassName()}`}
-                    value={answers[field.key] || ""}
-                    onChange={(e) => updateField(field.key, e.target.value)}
-                    placeholder="Escreva aqui…"
-                  />
-                ) : (
-                  <input
-                    className={`mt-2 text-base ${inputClassName()}`}
-                    value={answers[field.key] || ""}
-                    onChange={(e) => updateField(field.key, e.target.value)}
-                    placeholder="…"
-                  />
-                )}
-              </label>
-            );
-          })}
-        </div>
+        <div className="grid gap-6 sm:grid-cols-3">{editableFields.map(renderField)}</div>
 
         {error ? (
           <p className="mt-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-base text-rose-800">
