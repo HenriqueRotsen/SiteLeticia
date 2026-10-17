@@ -3,7 +3,6 @@ import { requireNutritionist } from "@/lib/auth";
 import { createSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { maskCpf } from "@/lib/cpf";
 import { writeAuditLog, getClientIp } from "@/lib/audit";
-import { syncAllWaitlistToPatients } from "@/lib/waitlist/position";
 
 export async function GET(request) {
   const auth = await requireNutritionist();
@@ -11,20 +10,20 @@ export async function GET(request) {
 
   const url = new URL(request.url);
   const q = url.searchParams.get("q")?.trim();
-  const shouldSync = url.searchParams.get("sync") === "1";
 
-  let sync = null;
-  if (shouldSync) {
-    try {
-      const admin = createSupabaseAdmin();
-      sync = await syncAllWaitlistToPatients(admin);
-    } catch (error) {
-      console.error("Auto waitlist sync failed:", error);
-      sync = { failed: 1, message: error.message || "Falha na sincronização" };
-    }
+  let admin;
+  try {
+    admin = createSupabaseAdmin();
+  } catch (error) {
+    console.error("Admin patients list: supabase admin unavailable", error);
+    return NextResponse.json(
+      { message: "Serviço de pacientes indisponível no momento." },
+      { status: 500 }
+    );
   }
 
-  let query = auth.ctx.supabase
+  // Lista via service role para não depender de RLS/sessão e evitar timeout de sync.
+  let query = admin
     .from("patients")
     .select("id, full_name, phone, goal, cpf, user_id, source, waitlist_id, created_at")
     .order("created_at", { ascending: false });
@@ -34,11 +33,13 @@ export async function GET(request) {
   }
 
   const { data, error } = await query;
-  if (error) return NextResponse.json({ message: "Erro ao listar." }, { status: 500 });
+  if (error) {
+    console.error("Admin patients list failed:", error);
+    return NextResponse.json({ message: "Erro ao listar." }, { status: 500 });
+  }
 
   let waitlistStats = null;
   try {
-    const admin = createSupabaseAdmin();
     const [{ count: waitlistTotal }, { count: waitlistUnlinked }] = await Promise.all([
       admin.from("waitlist").select("id", { count: "exact", head: true }),
       admin
@@ -77,8 +78,7 @@ export async function GET(request) {
 
   return NextResponse.json({
     patients,
-    waitlistStats,
-    sync
+    waitlistStats
   });
 }
 
@@ -104,7 +104,14 @@ export async function POST(request) {
     cpfHash = hashCpf(cpf);
   }
 
-  const { data, error } = await auth.ctx.supabase
+  let admin;
+  try {
+    admin = createSupabaseAdmin();
+  } catch {
+    return NextResponse.json({ message: "Erro ao criar paciente." }, { status: 500 });
+  }
+
+  const { data, error } = await admin
     .from("patients")
     .insert({
       cpf,

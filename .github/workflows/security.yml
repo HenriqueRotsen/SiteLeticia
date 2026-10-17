@@ -1,0 +1,92 @@
+name: Security
+
+on:
+  push:
+    branches: [main, atualizacao-v2]
+  pull_request:
+  schedule:
+    # Quarta 12:00 UTC
+    - cron: "0 12 * * 3"
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  semgrep:
+    name: Semgrep SAST
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      security-events: write
+    container:
+      image: semgrep/semgrep
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Scan
+        run: |
+          semgrep scan \
+            --config p/javascript \
+            --config p/typescript \
+            --config p/react \
+            --config p/nextjs \
+            --config p/nodejs \
+            --config p/owasp-top-ten \
+            --config p/secrets \
+            --error \
+            --metrics=off \
+            --sarif \
+            --output=semgrep.sarif \
+            .
+
+      - name: Upload SARIF
+        if: always() && hashFiles('semgrep.sarif') != ''
+        uses: github/codeql-action/upload-sarif@v4
+        continue-on-error: true
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep
+
+  gitleaks:
+    name: Secret scanning (Gitleaks)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Gitleaks
+        run: |
+          docker run --rm \
+            -v "$PWD:/repo" \
+            zricethezav/gitleaks:v8.21.2 \
+            detect \
+            --source=/repo \
+            --config=/repo/.gitleaks.toml \
+            --verbose \
+            --redact \
+            --no-git \
+            --exit-code=1
+
+  osv:
+    name: OSV dependency scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Scan package-lock.json
+        run: |
+          docker run --rm \
+            -v "$PWD:/src" \
+            ghcr.io/google/osv-scanner:v2.0.1 \
+            --lockfile=/src/package-lock.json

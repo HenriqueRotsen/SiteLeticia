@@ -26,26 +26,40 @@ export default function AdminPatientsPage() {
   const [q, setQ] = useState("");
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState("");
+  const [loadError, setLoadError] = useState("");
+  const [loading, setLoading] = useState(true);
 
-  const loadPatients = useCallback(async ({ sync = false } = {}) => {
-    const params = new URLSearchParams();
-    if (q) params.set("q", q);
-    if (sync) params.set("sync", "1");
-    const res = await fetch(`/api/admin/patients?${params.toString()}`);
-    const data = await res.json().catch(() => ({}));
-    setPatients(data.patients || []);
-    setWaitlistStats(data.waitlistStats || null);
-    if (data.sync?.message || (sync && data.sync)) {
-      setSyncMessage(
-        data.sync?.message ||
-          `Sincronizado: ${data.sync?.created || 0} novos, ${data.sync?.linked || 0} vinculados.`
-      );
+  const loadPatients = useCallback(async () => {
+    setLoading(true);
+    setLoadError("");
+    try {
+      const params = new URLSearchParams();
+      if (q) params.set("q", q);
+      const res = await fetch(`/api/admin/patients?${params.toString()}`);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setPatients([]);
+        setWaitlistStats(null);
+        setLoadError(data.message || "Não foi possível carregar os pacientes.");
+        return;
+      }
+      setPatients(data.patients || []);
+      setWaitlistStats(data.waitlistStats || null);
+    } catch {
+      setPatients([]);
+      setWaitlistStats(null);
+      setLoadError("Falha de rede ao carregar pacientes.");
+    } finally {
+      setLoading(false);
     }
   }, [q]);
 
   useEffect(() => {
-    loadPatients({ sync: true });
-  }, [loadPatients]);
+    const timer = setTimeout(() => {
+      loadPatients();
+    }, q ? 250 : 0);
+    return () => clearTimeout(timer);
+  }, [loadPatients, q]);
 
   async function handleSync() {
     setSyncing(true);
@@ -54,7 +68,7 @@ export default function AdminPatientsPage() {
       const res = await fetch("/api/admin/waitlist/sync", { method: "POST" });
       const data = await res.json().catch(() => ({}));
       setSyncMessage(data.message || (res.ok ? "Fila sincronizada." : "Falha ao sincronizar."));
-      await loadPatients({ sync: false });
+      await loadPatients();
     } catch {
       setSyncMessage("Não foi possível sincronizar agora.");
     } finally {
@@ -138,9 +152,21 @@ export default function AdminPatientsPage() {
           />
         </label>
       </Card>
+      {loadError ? (
+        <Card className="mb-4 border-rose-200 bg-rose-50/80">
+          <p className="text-sm text-rose-900">{loadError}</p>
+        </Card>
+      ) : null}
+
       <Card title="Lista de pacientes">
         <DataTable
-          emptyMessage="Nenhum paciente encontrado."
+          emptyMessage={
+            loading
+              ? "Carregando pacientes..."
+              : loadError
+                ? "Não foi possível carregar a lista."
+                : "Nenhum paciente encontrado."
+          }
           columns={[
             {
               key: "name",
