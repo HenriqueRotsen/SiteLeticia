@@ -10,7 +10,7 @@ function getKey() {
 
 export function encryptText(plainText) {
   const iv = crypto.randomBytes(12);
-  const cipher = crypto.createCipheriv(ALGO, getKey(), iv);
+  const cipher = crypto.createCipheriv(ALGO, getKey(), iv, { authTagLength: 16 });
   const encrypted = Buffer.concat([cipher.update(plainText, "utf8"), cipher.final()]);
   const tag = cipher.getAuthTag();
   return Buffer.concat([iv, tag, encrypted]).toString("base64url");
@@ -21,7 +21,7 @@ export function decryptText(payload) {
   const iv = buffer.subarray(0, 12);
   const tag = buffer.subarray(12, 28);
   const encrypted = buffer.subarray(28);
-  const decipher = crypto.createDecipheriv(ALGO, getKey(), iv);
+  const decipher = crypto.createDecipheriv(ALGO, getKey(), iv, { authTagLength: 16 });
   decipher.setAuthTag(tag);
   return Buffer.concat([decipher.update(encrypted), decipher.final()]).toString("utf8");
 }
