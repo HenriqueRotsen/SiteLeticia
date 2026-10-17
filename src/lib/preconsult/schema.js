@@ -584,14 +584,29 @@ export const PRECONSULT_SECTIONS = [
     description:
       "Descreva tudo o que comeu e bebeu no dia de ontem, com quantidades e modo de preparo.",
     fields: [
-      { key: "wakeTime", label: "Horário que acordou", type: "text", cols: 1, required: true },
-      { key: "sleepTime", label: "Horário que foi dormir", type: "text", cols: 1, required: true },
+      {
+        key: "wakeTime",
+        label: "Horário que acordou",
+        type: "time",
+        cols: 1,
+        required: true
+      },
+      {
+        key: "sleepTime",
+        label: "Horário que foi dormir",
+        type: "time",
+        cols: 1,
+        required: true
+      },
       {
         key: "waterLiters",
         label: "Consumo total de água (litros)",
-        type: "text",
+        type: "number",
         cols: 1,
-        required: true
+        required: true,
+        min: 0,
+        max: 8,
+        step: 0.1
       },
       {
         key: "breakfast",
@@ -713,6 +728,28 @@ export function formatAnswerLabel(field, rawValue) {
   return String(rawValue);
 }
 
+export function getFieldValidationError(field, rawValue) {
+  const value = String(rawValue ?? "").trim();
+  if (field.required && !value) return field.label;
+
+  if (field.type === "number" && value) {
+    const number = Number(value.replace(",", "."));
+    if (Number.isNaN(number)) return `${field.label} (informe um número válido)`;
+    if (field.min != null && number < field.min) {
+      return `${field.label} (mínimo ${field.min})`;
+    }
+    if (field.max != null && number > field.max) {
+      return `${field.label} (máximo ${field.max} L)`;
+    }
+  }
+
+  if (field.type === "time" && value && !/^\d{2}:\d{2}$/.test(value)) {
+    return `${field.label} (horário inválido)`;
+  }
+
+  return null;
+}
+
 export function getMissingRequiredInSection(section, answers = {}) {
   const normalized = normalizePreconsultAnswers(answers);
   const missing = [];
@@ -720,13 +757,16 @@ export function getMissingRequiredInSection(section, answers = {}) {
   for (const field of section.fields || []) {
     if (field.fromProfile) continue;
     if (!isFieldVisible(field, normalized)) continue;
-    if (field.required === false) continue;
-    // Campos sem `required` explícito não são exigidos; `required: true` ou ausente em
-    // campos clínicos novos já vêm como true. Só exige quando required !== false e type
-    // de pergunta (já marcamos required no schema).
-    if (field.required && !String(normalized[field.key] || "").trim()) {
-      missing.push(field.label);
+    if (field.required === false && field.type !== "number" && field.type !== "time") {
+      const optionalError = getFieldValidationError(
+        { ...field, required: false },
+        normalized[field.key]
+      );
+      if (optionalError && optionalError !== field.label) missing.push(optionalError);
+      continue;
     }
+    const error = getFieldValidationError(field, normalized[field.key]);
+    if (error) missing.push(error);
   }
 
   return missing;

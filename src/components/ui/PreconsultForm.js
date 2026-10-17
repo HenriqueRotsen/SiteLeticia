@@ -205,6 +205,49 @@ export default function PreconsultForm({
       );
     }
 
+    if (field.type === "time") {
+      return (
+        <label
+          key={field.key}
+          className={`block text-sm font-medium leading-6 text-graphite/75 sm:text-base ${span}`}
+        >
+          {field.label}
+          {field.required ? <span className="text-rose-500"> *</span> : null}
+          <input
+            type="time"
+            className={`mt-2 text-base ${inputClassName()}`}
+            value={value}
+            onChange={(e) => updateField(field.key, e.target.value)}
+            required={Boolean(field.required)}
+          />
+        </label>
+      );
+    }
+
+    if (field.type === "number") {
+      return (
+        <label
+          key={field.key}
+          className={`block text-sm font-medium leading-6 text-graphite/75 sm:text-base ${span}`}
+        >
+          {field.label}
+          {field.required ? <span className="text-rose-500"> *</span> : null}
+          <input
+            type="number"
+            inputMode="decimal"
+            className={`mt-2 text-base ${inputClassName()}`}
+            value={value}
+            min={field.min ?? undefined}
+            max={field.max ?? undefined}
+            step={field.step ?? "any"}
+            onChange={(e) => updateField(field.key, e.target.value)}
+            placeholder={field.max != null ? `0 a ${field.max}` : "0"}
+            required={Boolean(field.required)}
+          />
+        </label>
+      );
+    }
+
     return (
       <label
         key={field.key}
