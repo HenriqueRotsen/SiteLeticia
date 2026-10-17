@@ -9,6 +9,7 @@ import {
   FileSpreadsheet,
   FileText,
   FlaskConical,
+  NotebookPen,
   Phone,
   Scale,
   Target,
@@ -83,6 +84,7 @@ export default function AdminPatientDetailPage() {
   const [appointments, setAppointments] = useState([]);
   const [dietPlans, setDietPlans] = useState([]);
   const [clinicalRecords, setClinicalRecords] = useState([]);
+  const [preconsult, setPreconsult] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -91,13 +93,15 @@ export default function AdminPatientDetailPage() {
       fetch(`/api/admin/patients/${params.id}`).then((r) => r.json()),
       fetch(`/api/admin/appointments?patientId=${params.id}`).then((r) => r.json()),
       fetch(`/api/patients/${params.id}/diet`).then((r) => r.json()),
-      fetch(`/api/patients/${params.id}/prontuario`).then((r) => r.json())
+      fetch(`/api/patients/${params.id}/prontuario`).then((r) => r.json()),
+      fetch(`/api/patients/${params.id}/preconsulta`).then((r) => r.json())
     ])
-      .then(([patientData, appointmentsData, dietData, clinicalData]) => {
+      .then(([patientData, appointmentsData, dietData, clinicalData, preconsultData]) => {
         setPatient(patientData.patient || null);
         setAppointments(appointmentsData.appointments || []);
         setDietPlans(dietData.dietPlans || []);
         setClinicalRecords(clinicalData.records || []);
+        setPreconsult(preconsultData.form || null);
       })
       .finally(() => setLoading(false));
   }, [params.id]);
@@ -161,6 +165,9 @@ export default function AdminPatientDetailPage() {
                     <Badge variant="success">Conta ativa</Badge>
                   )}
                   {activePlan ? <Badge variant="info">Plano ativo</Badge> : null}
+                  {preconsult?.status === "submitted" ? (
+                    <Badge variant="success">Ficha pré-consulta</Badge>
+                  ) : null}
                 </div>
               </div>
             </div>
@@ -209,6 +216,10 @@ export default function AdminPatientDetailPage() {
               <ClipboardList className="h-4 w-4" strokeWidth={1.75} />
               Nova prescrição
             </Link>
+            <Link href={`/admin/pacientes/${params.id}/preconsulta`} className={btnSecondary()}>
+              <NotebookPen className="h-4 w-4" strokeWidth={1.75} />
+              Pré-consulta
+            </Link>
             <Link href={`/admin/pacientes/${params.id}/prontuario`} className={btnSecondary()}>
               <FileText className="h-4 w-4" strokeWidth={1.75} />
               Prontuário
@@ -220,6 +231,27 @@ export default function AdminPatientDetailPage() {
           </div>
         </div>
       </section>
+
+      <Card className="mt-5 overflow-hidden border-olive-200/70 bg-gradient-to-r from-olive-50/80 to-porcelain p-0 sm:p-0">
+        <div className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-olive-100 text-olive-800">
+              <NotebookPen className="h-5 w-5" strokeWidth={1.75} />
+            </span>
+            <div>
+              <h2 className="font-semibold text-graphite">Ficha pré-consulta</h2>
+              <p className="mt-1 text-sm text-graphite/55">
+                {preconsult?.status === "submitted"
+                  ? `Enviada em ${formatDateTime(preconsult.submitted_at)} — respostas disponíveis para a consulta.`
+                  : "Paciente ainda não enviou a ficha da primeira consulta."}
+              </p>
+            </div>
+          </div>
+          <Link href={`/admin/pacientes/${params.id}/preconsulta`} className={btnSecondary()}>
+            {preconsult?.status === "submitted" ? "Ver respostas" : "Abrir ficha"}
+          </Link>
+        </div>
+      </Card>
 
       <div className="mt-5 grid items-start gap-5 xl:grid-cols-2">
         <Card className="overflow-hidden p-0 sm:p-0">
