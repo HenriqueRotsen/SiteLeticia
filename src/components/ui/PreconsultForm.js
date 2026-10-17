@@ -51,7 +51,6 @@ export default function PreconsultForm({
   );
   const [sectionIndex, setSectionIndex] = useState(0);
   const [error, setError] = useState("");
-  const [saveState, setSaveState] = useState("idle");
   const [savingProgress, setSavingProgress] = useState(false);
 
   const section = PRECONSULT_SECTIONS[sectionIndex];
@@ -111,13 +110,10 @@ export default function PreconsultForm({
     if (!onSaveProgress) return true;
     const withProfile = mergePrefillAnswers(answers, patientProfile || {});
     setSavingProgress(true);
-    setSaveState("saving");
     try {
       await onSaveProgress(withProfile);
-      setSaveState("saved");
       return true;
     } catch (err) {
-      setSaveState("error");
       setError(err?.message || "Não foi possível salvar o progresso. Tente novamente.");
       return false;
     } finally {
@@ -310,10 +306,6 @@ export default function PreconsultForm({
                 Antes da 1ª consulta
               </p>
               <h2 className="mt-1 font-display text-3xl text-graphite">Ficha pré-consulta</h2>
-              <p className="mt-2 max-w-xl text-base leading-7 text-graphite/70">
-                Quase todas as perguntas são obrigatórias. Se alguma não fizer sentido para você
-                (ex.: ciclo menstrual), use “Não se aplica”.
-              </p>
             </div>
           </div>
           <div className="rounded-2xl bg-white/80 px-4 py-3 ring-1 ring-olive-900/8">
@@ -323,15 +315,6 @@ export default function PreconsultForm({
             <p className="mt-1 text-2xl font-semibold tabular-nums text-olive-800">{progress}%</p>
             <p className="text-sm text-graphite/50">
               {filled}/{total} campos · {initialStatus === "submitted" ? "enviada" : "rascunho"}
-            </p>
-            <p className="mt-1 text-xs text-graphite/45">
-              {saveState === "saving"
-                ? "Salvando progresso…"
-                : saveState === "saved"
-                  ? "Progresso salvo"
-                  : saveState === "error"
-                    ? "Falha ao salvar"
-                    : "Salva ao avançar de seção"}
             </p>
           </div>
         </div>
