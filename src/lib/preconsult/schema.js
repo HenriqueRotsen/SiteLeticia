@@ -713,17 +713,31 @@ export function formatAnswerLabel(field, rawValue) {
   return String(rawValue);
 }
 
+export function getMissingRequiredInSection(section, answers = {}) {
+  const normalized = normalizePreconsultAnswers(answers);
+  const missing = [];
+
+  for (const field of section.fields || []) {
+    if (field.fromProfile) continue;
+    if (!isFieldVisible(field, normalized)) continue;
+    if (field.required === false) continue;
+    // Campos sem `required` explícito não são exigidos; `required: true` ou ausente em
+    // campos clínicos novos já vêm como true. Só exige quando required !== false e type
+    // de pergunta (já marcamos required no schema).
+    if (field.required && !String(normalized[field.key] || "").trim()) {
+      missing.push(field.label);
+    }
+  }
+
+  return missing;
+}
+
 export function validatePreconsultAnswers(answers) {
   const normalized = normalizePreconsultAnswers(answers);
   const missing = [];
 
   for (const section of PRECONSULT_SECTIONS) {
-    for (const field of section.fields) {
-      if (!isFieldVisible(field, normalized)) continue;
-      if (field.required && !String(normalized[field.key] || "").trim()) {
-        missing.push(field.label);
-      }
-    }
+    missing.push(...getMissingRequiredInSection(section, normalized));
   }
 
   return { ok: missing.length === 0, missing, answers: normalized };
