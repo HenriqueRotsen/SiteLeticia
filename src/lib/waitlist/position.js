@@ -23,11 +23,10 @@ export async function getWaitlistEntryByPhone(supabase, phone) {
     .select("id, full_name, phone, goal, status, created_at")
     .in("phone", variants)
     .order("id", { ascending: true })
-    .limit(1)
-    .maybeSingle();
+    .limit(1);
 
   if (error) throw error;
-  return data;
+  return data?.[0] || null;
 }
 
 async function findPatientByPhone(supabase, phone) {
@@ -39,11 +38,10 @@ async function findPatientByPhone(supabase, phone) {
     .select("id, waitlist_id, user_id, phone, source")
     .in("phone", variants)
     .order("created_at", { ascending: true })
-    .limit(1)
-    .maybeSingle();
+    .limit(1);
 
   if (error) throw error;
-  return data;
+  return data?.[0] || null;
 }
 
 export async function computeWaitlistPosition(supabase, waitlistId) {

@@ -11,6 +11,8 @@
     "test": "vitest",
     "test:run": "vitest run",
     "test:e2e": "playwright test",
+    "audit": "npm audit --audit-level=high",
+    "security:audit": "npm audit --audit-level=high",
     "import:foods": "node scripts/import-foods.mjs",
     "import:foods:taco": "node scripts/import-foods.mjs --table=taco --download --push --clear",
     "import:foods:tbca": "node scripts/import-foods.mjs --table=tbca --download --push --clear"

@@ -1,0 +1,10 @@
+title = "Gitleaks"
+
+[allowlist]
+description = "False positives / local fixtures"
+paths = [
+  '''package-lock\.json''',
+  '''\.next/''',
+  '''node_modules/''',
+  '''data/'''
+]
