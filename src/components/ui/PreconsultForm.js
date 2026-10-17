@@ -7,6 +7,7 @@ import {
   PRECONSULT_SECTIONS,
   emptyPreconsultAnswers,
   validatePreconsultAnswers,
+  getMissingRequiredInSection,
   countFilledAnswers,
   mergePrefillAnswers,
   isFieldVisible,
@@ -68,10 +69,12 @@ export default function PreconsultForm({
   const isLast = sectionIndex === PRECONSULT_SECTIONS.length - 1;
 
   function updateField(key, value) {
+    setError("");
     setAnswers((prev) => ({ ...prev, [key]: value }));
   }
 
   function toggleMulti(key, optionValue) {
+    setError("");
     setAnswers((prev) => {
       let selected = parseMultiValues(prev[key]);
       const isExclusive = EXCLUSIVE_NONE.has(optionValue);
@@ -86,9 +89,52 @@ export default function PreconsultForm({
     });
   }
 
+  function assertSectionComplete(index) {
+    const withProfile = mergePrefillAnswers(answers, patientProfile || {});
+    const missing = getMissingRequiredInSection(PRECONSULT_SECTIONS[index], withProfile);
+    if (!missing.length) {
+      setError("");
+      return true;
+    }
+    setError(
+      `Responda as perguntas obrigatórias desta seção antes de continuar: ${missing
+        .slice(0, 3)
+        .join("; ")}${missing.length > 3 ? "…" : ""}`
+    );
+    return false;
+  }
+
+  function goToSection(nextIndex) {
+    if (nextIndex === sectionIndex) return;
+    if (nextIndex < sectionIndex) {
+      setError("");
+      setSectionIndex(nextIndex);
+      return;
+    }
+    for (let index = sectionIndex; index < nextIndex; index += 1) {
+      if (!assertSectionComplete(index)) {
+        setSectionIndex(index);
+        return;
+      }
+    }
+    setSectionIndex(nextIndex);
+  }
+
   async function handleSubmit() {
     setError("");
     const withProfile = mergePrefillAnswers(answers, patientProfile || {});
+    for (let index = 0; index < PRECONSULT_SECTIONS.length; index += 1) {
+      const missing = getMissingRequiredInSection(PRECONSULT_SECTIONS[index], withProfile);
+      if (missing.length) {
+        setSectionIndex(index);
+        setError(
+          `Responda as perguntas obrigatórias desta seção: ${missing.slice(0, 3).join("; ")}${
+            missing.length > 3 ? "…" : ""
+          }`
+        );
+        return;
+      }
+    }
     const validation = validatePreconsultAnswers(withProfile);
     if (!validation.ok) {
       setError(
@@ -96,16 +142,6 @@ export default function PreconsultForm({
           validation.missing.length > 3 ? "…" : ""
         }`
       );
-      const firstMissingSection = PRECONSULT_SECTIONS.findIndex((sec) =>
-        sec.fields.some(
-          (field) =>
-            !field.fromProfile &&
-            isFieldVisible(field, withProfile) &&
-            field.required &&
-            !String(withProfile[field.key] || "").trim()
-        )
-      );
-      if (firstMissingSection >= 0) setSectionIndex(firstMissingSection);
       return;
     }
     await onSubmit?.(validation.answers);
@@ -258,7 +294,7 @@ export default function PreconsultForm({
             <button
               key={item.id}
               type="button"
-              onClick={() => setSectionIndex(index)}
+              onClick={() => goToSection(index)}
               className={`shrink-0 rounded-full px-4 py-2.5 text-sm font-semibold transition ${
                 active
                   ? "bg-olive-700 text-white"
@@ -301,9 +337,7 @@ export default function PreconsultForm({
               <button
                 type="button"
                 className={btnPrimary()}
-                onClick={() =>
-                  setSectionIndex((value) => Math.min(PRECONSULT_SECTIONS.length - 1, value + 1))
-                }
+                onClick={() => goToSection(sectionIndex + 1)}
               >
                 Próxima seção
               </button>
