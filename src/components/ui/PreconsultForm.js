@@ -14,7 +14,7 @@ import {
   serializeMultiValues
 } from "@/lib/preconsult/schema";
 
-const EXCLUSIVE_NONE = new Set(["nao", "nenhum", "nao_sei"]);
+const EXCLUSIVE_NONE = new Set(["nao", "nenhum", "nao_sei", "nao_se_aplica"]);
 
 function OptionButton({ selected, label, onClick, multi = false }) {
   return (
@@ -122,6 +122,11 @@ export default function PreconsultForm({
           <legend className="text-sm font-medium leading-6 text-graphite/75 sm:text-base">
             {field.label}
             {field.required ? <span className="text-rose-500"> *</span> : null}
+            {field.womenOnly ? (
+              <span className="ml-2 text-xs font-normal text-graphite/45">
+                (se não se aplica a você, marque “Não se aplica”)
+              </span>
+            ) : null}
           </legend>
           <div className="mt-3 flex flex-wrap gap-2">
             {(field.options || []).map((option) => (
@@ -144,7 +149,10 @@ export default function PreconsultForm({
           <legend className="text-sm font-medium leading-6 text-graphite/75 sm:text-base">
             {field.label}
             {field.required ? <span className="text-rose-500"> *</span> : null}
-            <span className="ml-2 text-xs font-normal text-graphite/45">(pode marcar mais de uma)</span>
+            <span className="ml-2 text-xs font-normal text-graphite/45">
+              (pode marcar mais de uma
+              {field.womenOnly ? "; use “Não se aplica” se não for o seu caso" : ""})
+            </span>
           </legend>
           <div className="mt-3 flex flex-wrap gap-2">
             {(field.options || []).map((option) => (
@@ -201,8 +209,8 @@ export default function PreconsultForm({
               </p>
               <h2 className="mt-1 font-display text-3xl text-graphite">Ficha pré-consulta</h2>
               <p className="mt-2 max-w-xl text-base leading-7 text-graphite/70">
-                Responda tocando nas opções. Nome e objetivo já vêm do cadastro; detalhes livres só
-                quando necessário.
+                Quase todas as perguntas são obrigatórias. Se alguma não fizer sentido para você
+                (ex.: ciclo menstrual), use “Não se aplica”.
               </p>
             </div>
           </div>

@@ -321,7 +321,8 @@ export async function handleDemoApi(request) {
       patient: {
         full_name: patient.full_name,
         birth_date: patient.birth_date,
-        goal: patient.goal
+        goal: patient.goal,
+        sex: patient.sex || null
       },
       required: priorCount === 0 && form?.status !== "submitted",
       priorAppointments: priorCount
