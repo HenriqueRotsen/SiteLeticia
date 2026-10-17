@@ -3,6 +3,7 @@ import { requirePatient } from "@/lib/auth";
 import { createSupabaseAdmin } from "@/lib/supabaseAdmin";
 import {
   emptyPreconsultAnswers,
+  mergePrefillAnswers,
   normalizePreconsultAnswers,
   validatePreconsultAnswers
 } from "@/lib/preconsult/schema";
@@ -45,19 +46,26 @@ export async function GET() {
   }
 
   const required = priorCount === 0 && form?.status !== "submitted";
+  const patient = auth.ctx.patient;
+  const answers = mergePrefillAnswers(form?.answers || emptyPreconsultAnswers(), patient);
 
   return NextResponse.json({
     form: form
       ? {
           ...form,
-          answers: normalizePreconsultAnswers(form.answers || {})
+          answers
         }
       : {
           patient_id: patientId,
-          answers: emptyPreconsultAnswers(),
+          answers,
           status: "draft",
           submitted_at: null
         },
+    patient: {
+      full_name: patient.full_name,
+      birth_date: patient.birth_date,
+      goal: patient.goal
+    },
     required,
     priorAppointments: priorCount
   });
@@ -75,7 +83,8 @@ export async function PUT(request) {
   }
 
   const submit = body.submit !== false;
-  const validation = validatePreconsultAnswers(body.answers || {});
+  const merged = mergePrefillAnswers(body.answers || {}, auth.ctx.patient);
+  const validation = validatePreconsultAnswers(merged);
 
   if (submit && !validation.ok) {
     return NextResponse.json(

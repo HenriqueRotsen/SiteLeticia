@@ -54,6 +54,7 @@ export default function AgendaPage() {
   const [bookingMessage, setBookingMessage] = useState("");
   const [preconsultRequired, setPreconsultRequired] = useState(false);
   const [preconsultForm, setPreconsultForm] = useState(null);
+  const [preconsultPatient, setPreconsultPatient] = useState(null);
   const [preconsultLoading, setPreconsultLoading] = useState(true);
   const [preconsultSaving, setPreconsultSaving] = useState(false);
 
@@ -97,9 +98,11 @@ export default function AgendaPage() {
           // Em dúvida, bloqueia a agenda até a ficha carregar (evita pular o formulário).
           setPreconsultRequired(true);
           setPreconsultForm(null);
+          setPreconsultPatient(null);
         } else {
           setPreconsultRequired(Boolean(preconsultData.required));
           setPreconsultForm(preconsultData.form || null);
+          setPreconsultPatient(preconsultData.patient || null);
         }
         setPreconsultLoading(false);
       })
@@ -185,6 +188,7 @@ export default function AgendaPage() {
           <PreconsultForm
             initialAnswers={preconsultForm?.answers}
             initialStatus={preconsultForm?.status || "draft"}
+            patientProfile={preconsultPatient}
             submitting={preconsultSaving}
             onSubmit={submitPreconsult}
           />

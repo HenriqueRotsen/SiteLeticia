@@ -8,14 +8,28 @@ export const PRECONSULT_SECTIONS = [
     title: "1. Identificação e Objetivos",
     description: "Quem você é e o que espera desta consulta.",
     fields: [
-      { key: "fullName", label: "Nome completo", type: "text", required: true },
-      { key: "age", label: "Idade", type: "text", required: true, cols: 1 },
-      { key: "profession", label: "Profissão", type: "text", required: false, cols: 2 },
+      {
+        key: "fullName",
+        label: "Nome completo",
+        type: "text",
+        required: true,
+        fromProfile: true
+      },
+      {
+        key: "age",
+        label: "Idade",
+        type: "text",
+        required: false,
+        cols: 1,
+        fromProfile: true
+      },
+      { key: "profession", label: "Profissão", type: "text", required: false, cols: 3 },
       {
         key: "mainGoal",
         label: "Qual é o objetivo principal da consulta?",
         type: "textarea",
-        required: true
+        required: true,
+        fromProfile: true
       },
       {
         key: "specificDoubts",
@@ -374,4 +388,40 @@ export function validatePreconsultAnswers(answers) {
 
 export function countFilledAnswers(answers = {}) {
   return PRECONSULT_FIELD_KEYS.filter((key) => String(answers[key] || "").trim()).length;
+}
+
+export const PROFILE_PREFILL_KEYS = PRECONSULT_SECTIONS.flatMap((section) =>
+  section.fields.filter((field) => field.fromProfile).map((field) => field.key)
+);
+
+function ageFromBirthDate(birthDate) {
+  if (!birthDate) return "";
+  const date = new Date(`${String(birthDate).slice(0, 10)}T12:00:00`);
+  if (Number.isNaN(date.getTime())) return "";
+  const today = new Date();
+  let age = today.getFullYear() - date.getFullYear();
+  const monthDiff = today.getMonth() - date.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < date.getDate())) age -= 1;
+  return age > 0 && age < 130 ? String(age) : "";
+}
+
+/** Monta valores já conhecidos do cadastro do paciente. */
+export function buildPrefillFromPatient(patient = {}) {
+  return {
+    fullName: String(patient.full_name || patient.fullName || "").trim(),
+    age: ageFromBirthDate(patient.birth_date || patient.birthDate),
+    mainGoal: String(patient.goal || "").trim()
+  };
+}
+
+/** Junta respostas salvas com pré-preenchimento do perfil (salva o que já existe). */
+export function mergePrefillAnswers(savedAnswers = {}, patient = {}) {
+  const base = normalizePreconsultAnswers(savedAnswers);
+  const prefill = buildPrefillFromPatient(patient);
+  for (const key of PROFILE_PREFILL_KEYS) {
+    if (!String(base[key] || "").trim() && prefill[key]) {
+      base[key] = prefill[key];
+    }
+  }
+  return base;
 }
