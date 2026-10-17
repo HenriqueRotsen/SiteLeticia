@@ -2,7 +2,12 @@
 
 import { ClipboardList } from "lucide-react";
 import { Card } from "@/components/layout/AppShell";
-import { PRECONSULT_SECTIONS, countFilledAnswers } from "@/lib/preconsult/schema";
+import {
+  PRECONSULT_SECTIONS,
+  countFilledAnswers,
+  formatAnswerLabel,
+  isFieldVisible
+} from "@/lib/preconsult/schema";
 
 function formatSubmittedAt(value) {
   if (!value) return null;
@@ -64,9 +69,10 @@ export default function PreconsultViewer({
 
       {PRECONSULT_SECTIONS.map((section) => {
         const entries = section.fields
+          .filter((field) => isFieldVisible(field, answers))
           .map((field) => ({
             label: field.label,
-            value: String(answers[field.key] || "").trim()
+            value: formatAnswerLabel(field, answers[field.key]).trim()
           }))
           .filter((item) => item.value);
 

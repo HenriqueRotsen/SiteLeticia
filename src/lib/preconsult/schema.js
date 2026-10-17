@@ -1,6 +1,26 @@
 /**
  * Ficha pré-consulta de nutrição integrativa — campos alinhados ao documento clínico.
+ * Tipos: text | textarea | choice (única) | multichoice (várias).
  */
+
+export const YES_NO = [
+  { value: "sim", label: "Sim" },
+  { value: "nao", label: "Não" }
+];
+
+export const YES_NO_UNKNOWN = [
+  { value: "sim", label: "Sim" },
+  { value: "nao", label: "Não" },
+  { value: "nao_sei", label: "Não sei / não lembro" }
+];
+
+export const FREQUENCY = [
+  { value: "nunca", label: "Nunca / quase nunca" },
+  { value: "raro", label: "Raro" },
+  { value: "as_vezes", label: "Às vezes" },
+  { value: "frequente", label: "Frequente" },
+  { value: "diario", label: "Diário / quase diário" }
+];
 
 export const PRECONSULT_SECTIONS = [
   {
@@ -47,28 +67,50 @@ export const PRECONSULT_SECTIONS = [
       {
         key: "birthType",
         label: "Você nasceu de parto normal ou cesárea?",
-        type: "textarea",
-        required: false
+        type: "choice",
+        required: false,
+        options: [
+          { value: "parto_normal", label: "Parto normal" },
+          { value: "cesarea", label: "Cesárea" },
+          { value: "nao_sei", label: "Não sei / não lembro" }
+        ]
       },
       {
         key: "breastfedExclusive",
         label: "Você foi amamentado exclusivamente até os 6 meses de idade?",
-        type: "textarea",
-        required: false
+        type: "choice",
+        required: false,
+        options: [
+          { value: "sim", label: "Sim, exclusivamente" },
+          { value: "parcial", label: "Parcialmente" },
+          { value: "nao", label: "Não" },
+          { value: "nao_sei", label: "Não sei / não lembro" }
+        ]
       },
       {
         key: "childhoodIssues",
-        label:
-          "Apresentou cólicas, diarreia, refluxo, alergias ou problemas respiratórios na infância?",
-        type: "textarea",
-        required: false
+        label: "Apresentou algum destes na infância?",
+        type: "multichoice",
+        required: false,
+        options: [
+          { value: "colicas", label: "Cólicas" },
+          { value: "diarreia", label: "Diarreia" },
+          { value: "refluxo", label: "Refluxo" },
+          { value: "alergias", label: "Alergias" },
+          { value: "respiratorio", label: "Problemas respiratórios" },
+          { value: "nenhum", label: "Nenhum / não lembro" }
+        ]
       },
       {
         key: "earlyMedicationsSurgeries",
-        label:
-          "Fez uso de medicamentos ou passou por cirurgias nos dois primeiros anos de vida?",
-        type: "textarea",
-        required: false
+        label: "Nos dois primeiros anos de vida, você:",
+        type: "multichoice",
+        required: false,
+        options: [
+          { value: "medicamentos", label: "Usou medicamentos com frequência" },
+          { value: "cirurgias", label: "Passou por cirurgia(s)" },
+          { value: "nenhum", label: "Nenhum dos dois / não lembro" }
+        ]
       }
     ]
   },
@@ -79,45 +121,78 @@ export const PRECONSULT_SECTIONS = [
     fields: [
       {
         key: "hormonalHistory",
-        label:
-          "Possui histórico de alterações hormonais (ex.: tireoide, insulina, menstruação irregular)?",
-        type: "textarea",
-        required: false
+        label: "Possui histórico de alterações hormonais?",
+        type: "multichoice",
+        required: false,
+        options: [
+          { value: "tireoide", label: "Tireoide" },
+          { value: "insulina", label: "Insulina / resistência" },
+          { value: "menstruacao", label: "Menstruação irregular" },
+          { value: "outros", label: "Outras alterações" },
+          { value: "nao", label: "Não" }
+        ]
       },
       {
         key: "stressorsTrauma",
-        label:
-          "Você sofreu ou sofre com fatores estressores marcantes, como traumas, luto, mudanças bruscas ou bullying?",
-        type: "textarea",
-        required: false
+        label: "Sofreu ou sofre com fatores estressores marcantes?",
+        type: "multichoice",
+        required: false,
+        options: [
+          { value: "trauma", label: "Trauma" },
+          { value: "luto", label: "Luto" },
+          { value: "mudancas", label: "Mudanças bruscas" },
+          { value: "bullying", label: "Bullying" },
+          { value: "outro", label: "Outro estressor" },
+          { value: "nao", label: "Não" }
+        ]
+      },
+      {
+        key: "hadSurgeries",
+        label: "Já realizou alguma cirurgia?",
+        type: "choice",
+        required: false,
+        options: YES_NO_UNKNOWN
       },
       {
         key: "surgeries",
-        label:
-          "Relate todas as cirurgias que já realizou (mesmo as mais simples, como amígdalas, apêndice, vesícula ou parto cesárea)",
+        label: "Se sim, relate as cirurgias (mesmo as mais simples)",
         type: "textarea",
-        required: false
+        required: false,
+        showWhen: { key: "hadSurgeries", values: ["sim"] }
       },
       {
         key: "physicalTrauma",
-        label:
-          "Você já sofreu quedas sobre o cóccix, traumas na cabeça/coluna ou acidentes graves?",
-        type: "textarea",
-        required: false
+        label: "Já sofreu quedas no cóccix, traumas na cabeça/coluna ou acidentes graves?",
+        type: "choice",
+        required: false,
+        options: YES_NO_UNKNOWN
       },
       {
         key: "recurrentInfections",
-        label:
-          "Possui histórico de infecções de repetição (ex.: candidíase, amigdalite, herpes, infecção urinária, micose)?",
-        type: "textarea",
-        required: false
+        label: "Possui histórico de infecções de repetição?",
+        type: "multichoice",
+        required: false,
+        options: [
+          { value: "candidiase", label: "Candidíase" },
+          { value: "amigdalite", label: "Amigdalite" },
+          { value: "herpes", label: "Herpes" },
+          { value: "itu", label: "Infecção urinária" },
+          { value: "micose", label: "Micose" },
+          { value: "outra", label: "Outra" },
+          { value: "nao", label: "Não" }
+        ]
       },
       {
         key: "familyGiHistory",
-        label:
-          "Há histórico na família de câncer no sistema digestivo, doença celíaca ou doença inflamatória intestinal?",
-        type: "textarea",
-        required: false
+        label: "Há histórico na família de:",
+        type: "multichoice",
+        required: false,
+        options: [
+          { value: "cancer_digestivo", label: "Câncer no sistema digestivo" },
+          { value: "celiaca", label: "Doença celíaca" },
+          { value: "dii", label: "Doença inflamatória intestinal" },
+          { value: "nao", label: "Não / desconheço" }
+        ]
       }
     ]
   },
@@ -127,32 +202,52 @@ export const PRECONSULT_SECTIONS = [
     description: "Medicamentos, suplementos e usos frequentes ao longo da vida.",
     fields: [
       {
+        key: "usesCurrentMedications",
+        label: "Usa medicamentos, suplementos ou manipulados atualmente?",
+        type: "choice",
+        required: false,
+        options: YES_NO
+      },
+      {
         key: "currentMedications",
-        label:
-          "Liste o nome, a dosagem e os horários de todos os medicamentos, suplementos ou manipulados que você usa atualmente",
+        label: "Liste nome, dosagem e horários",
         type: "textarea",
-        required: false
+        required: false,
+        showWhen: { key: "usesCurrentMedications", values: ["sim"] }
       },
       {
         key: "antibioticsAntiInflammatories",
-        label:
-          "Faz uso atual ou fez uso frequente ao longo da vida de antibióticos, anti-inflamatórios ou corticoides?",
-        type: "textarea",
-        required: false
+        label: "Uso de antibióticos, anti-inflamatórios ou corticoides:",
+        type: "choice",
+        required: false,
+        options: [
+          { value: "atual", label: "Uso atual" },
+          { value: "frequente_passado", label: "Uso frequente no passado" },
+          { value: "ocasional", label: "Uso ocasional" },
+          { value: "nao", label: "Não" }
+        ]
       },
       {
         key: "contraceptiveUse",
-        label:
-          "Você usa ou já fez uso prolongado de pílula anticoncepcional (ou adesivo, anel, DIU com hormônio)?",
-        type: "textarea",
-        required: false
+        label: "Uso de anticoncepcional hormonal (pílula, adesivo, anel, DIU hormonal):",
+        type: "choice",
+        required: false,
+        options: [
+          { value: "atual", label: "Uso atual" },
+          { value: "passado_prolongado", label: "Já usei por tempo prolongado" },
+          { value: "nao", label: "Nunca usei / não se aplica" }
+        ]
       },
       {
         key: "protonPumpInhibitors",
-        label:
-          "Faz uso de inibidores da bomba de prótons (omeprazol, pantoprazol) ou antiácidos (ENO, bicarbonato)?",
-        type: "textarea",
-        required: false
+        label: "Uso de omeprazol/pantoprazol ou antiácidos (ENO, bicarbonato):",
+        type: "choice",
+        required: false,
+        options: [
+          { value: "atual", label: "Uso atual" },
+          { value: "passado", label: "Já usei" },
+          { value: "nao", label: "Não" }
+        ]
       }
     ]
   },
@@ -163,76 +258,157 @@ export const PRECONSULT_SECTIONS = [
     fields: [
       {
         key: "abdominalPain",
-        label:
-          "Você sente dor abdominal recorrente (pelo menos 1 dia por semana)? Essa dor alivia ao ir ao banheiro ou eliminar gases?",
-        type: "textarea",
-        required: false
+        label: "Dor abdominal recorrente (pelo menos 1 dia por semana)?",
+        type: "choice",
+        required: false,
+        options: YES_NO
+      },
+      {
+        key: "abdominalPainRelief",
+        label: "Se sim, a dor alivia ao ir ao banheiro ou eliminar gases?",
+        type: "choice",
+        required: false,
+        options: [
+          { value: "sim", label: "Sim" },
+          { value: "nao", label: "Não" },
+          { value: "as_vezes", label: "Às vezes" }
+        ],
+        showWhen: { key: "abdominalPain", values: ["sim"] }
       },
       {
         key: "bloating",
-        label: "Apresenta inchaço ou distensão abdominal após se alimentar?",
-        type: "textarea",
-        required: false
+        label: "Inchaço ou distensão abdominal após se alimentar?",
+        type: "choice",
+        required: false,
+        options: FREQUENCY
       },
       {
         key: "redFlags",
-        label:
-          "Apresentou recentemente: perda de peso não intencional, sangramento retal, febre, sintomas noturnos ou dores nas articulações?",
-        type: "textarea",
-        required: false
+        label: "Apresentou recentemente algum destes sinais?",
+        type: "multichoice",
+        required: false,
+        options: [
+          { value: "perda_peso", label: "Perda de peso não intencional" },
+          { value: "sangramento", label: "Sangramento retal" },
+          { value: "febre", label: "Febre" },
+          { value: "noturno", label: "Sintomas noturnos" },
+          { value: "articulacoes", label: "Dores nas articulações" },
+          { value: "nao", label: "Nenhum" }
+        ]
       },
       {
         key: "bowelFrequency",
-        label: "Qual é a sua frequência de evacuação? Sente que a defecação é incompleta?",
-        type: "textarea",
-        required: false
+        label: "Frequência de evacuação:",
+        type: "choice",
+        required: false,
+        options: [
+          { value: "mais_3_dia", label: "Mais de 3 vezes ao dia" },
+          { value: "1_3_dia", label: "1 a 3 vezes ao dia" },
+          { value: "dia_sim_nao", label: "Dia sim, dia não" },
+          { value: "2_3_semana", label: "2 a 3 vezes por semana" },
+          { value: "menos_2_semana", label: "Menos de 2 vezes por semana" }
+        ]
+      },
+      {
+        key: "incompleteEvacuation",
+        label: "Sente que a defecação é incompleta?",
+        type: "choice",
+        required: false,
+        options: YES_NO
       },
       {
         key: "bowelUrgency",
-        label:
-          "Você precisa fazer muita força, tem urgência para correr ao banheiro ou não consegue segurar as fezes?",
-        type: "textarea",
-        required: false
+        label: "Sobre o controle intestinal, você:",
+        type: "multichoice",
+        required: false,
+        options: [
+          { value: "esforco", label: "Precisa fazer muita força" },
+          { value: "urgencia", label: "Tem urgência para correr ao banheiro" },
+          { value: "incontinencia", label: "Não consegue segurar as fezes" },
+          { value: "nenhum", label: "Nenhum desses" }
+        ]
       },
       {
         key: "stoolAppearance",
-        label:
-          "Como são suas fezes? (Descreva se são bolinhas, ressecadas, pastosas ou líquidas). Qual a cor predominante?",
-        type: "textarea",
-        required: false
+        label: "Como são suas fezes na maior parte do tempo?",
+        type: "choice",
+        required: false,
+        options: [
+          { value: "bolinhas", label: "Bolinhas / ressecadas" },
+          { value: "firmes", label: "Firmes / cilindro" },
+          { value: "pastosas", label: "Pastosas" },
+          { value: "liquidas", label: "Líquidas / diarreia" },
+          { value: "varia", label: "Varia bastante" }
+        ]
+      },
+      {
+        key: "stoolColor",
+        label: "Cor predominante das fezes:",
+        type: "choice",
+        required: false,
+        options: [
+          { value: "marrom", label: "Marrom" },
+          { value: "clara", label: "Clara / amarelada" },
+          { value: "esverdeada", label: "Esverdeada" },
+          { value: "escura", label: "Muito escura / preta" },
+          { value: "outra", label: "Outra" }
+        ]
       },
       {
         key: "stoolAbnormalities",
-        label:
-          "Você nota a presença de muco, sangue, gordura ou pedaços de alimentos mal digeridos nas fezes?",
-        type: "textarea",
-        required: false
+        label: "Nota nas fezes a presença de:",
+        type: "multichoice",
+        required: false,
+        options: [
+          { value: "muco", label: "Muco" },
+          { value: "sangue", label: "Sangue" },
+          { value: "gordura", label: "Gordura" },
+          { value: "alimentos", label: "Alimentos mal digeridos" },
+          { value: "nao", label: "Nada disso" }
+        ]
       },
       {
         key: "foulSmell",
-        label: "Suas fezes ou gases possuem cheiro muito ruim (ex.: enxofre/ovo podre)?",
-        type: "textarea",
-        required: false
+        label: "Fezes ou gases com cheiro muito ruim (ex.: enxofre/ovo podre)?",
+        type: "choice",
+        required: false,
+        options: FREQUENCY
       },
       {
         key: "refluxBurps",
-        label:
-          "Costuma ter azia, queimação, arrotos frequentes ou sente o gosto da comida horas após a refeição?",
-        type: "textarea",
-        required: false
+        label: "Sintomas digestivos altos:",
+        type: "multichoice",
+        required: false,
+        options: [
+          { value: "azia", label: "Azia / queimação" },
+          { value: "arrotos", label: "Arrotos frequentes" },
+          { value: "gosto_refeicao", label: "Gosto da comida horas depois" },
+          { value: "nao", label: "Nenhum" }
+        ]
       },
       {
         key: "garlicEggsMeatTrigger",
-        label: "Observa piora dos sintomas digestivos ao consumir alho, ovos ou carnes?",
-        type: "textarea",
-        required: false
+        label: "Piora dos sintomas ao consumir:",
+        type: "multichoice",
+        required: false,
+        options: [
+          { value: "alho", label: "Alho" },
+          { value: "ovos", label: "Ovos" },
+          { value: "carnes", label: "Carnes" },
+          { value: "nao", label: "Não observo piora" }
+        ]
       },
       {
         key: "nailsIronB12",
-        label:
-          "Apresenta unhas fracas/descamando ou tem exames com deficiência de ferro e vitamina B12?",
-        type: "textarea",
-        required: false
+        label: "Unhas fracas/descamando ou deficiência de ferro/B12 em exames?",
+        type: "multichoice",
+        required: false,
+        options: [
+          { value: "unhas", label: "Unhas fracas / descamando" },
+          { value: "ferro", label: "Deficiência de ferro" },
+          { value: "b12", label: "Deficiência de B12" },
+          { value: "nao", label: "Não" }
+        ]
       }
     ]
   },
@@ -244,27 +420,39 @@ export const PRECONSULT_SECTIONS = [
       {
         key: "amalgamFillings",
         label: "Tem ou já teve restaurações de amálgama (metálicas)?",
-        type: "textarea",
-        required: false
+        type: "choice",
+        required: false,
+        options: YES_NO_UNKNOWN
       },
       {
         key: "rootCanalExtractions",
         label: "Fez tratamento de canal ou extração de dentes (ex.: siso)?",
-        type: "textarea",
-        required: false
+        type: "multichoice",
+        required: false,
+        options: [
+          { value: "canal", label: "Tratamento de canal" },
+          { value: "extracao", label: "Extração (ex.: siso)" },
+          { value: "nao", label: "Não" }
+        ]
       },
       {
         key: "bleedingGums",
-        label: "Sua gengiva sangra com facilidade ao passar fio dental?",
-        type: "textarea",
-        required: false
+        label: "Gengiva sangra com facilidade ao passar fio dental?",
+        type: "choice",
+        required: false,
+        options: FREQUENCY
       },
       {
         key: "bruxismApneaMouthBreathing",
-        label:
-          "Você range os dentes durante o sono, tem apneia ou respira frequentemente pela boca?",
-        type: "textarea",
-        required: false
+        label: "Você apresenta:",
+        type: "multichoice",
+        required: false,
+        options: [
+          { value: "bruxismo", label: "Ranger os dentes (bruxismo)" },
+          { value: "apneia", label: "Apneia do sono" },
+          { value: "boca", label: "Respiração pela boca" },
+          { value: "nao", label: "Nenhum" }
+        ]
       }
     ]
   },
@@ -275,34 +463,85 @@ export const PRECONSULT_SECTIONS = [
     fields: [
       {
         key: "mealEnvironment",
-        label:
-          "Como é o seu ambiente na hora da refeição? Come de pé, no carro, no sofá, ou mexendo no celular/TV?",
-        type: "textarea",
-        required: false
+        label: "Ambiente na hora da refeição (marque o que mais se aplica):",
+        type: "multichoice",
+        required: false,
+        options: [
+          { value: "mesa", label: "Sentado à mesa, sem distrações" },
+          { value: "pe", label: "De pé" },
+          { value: "carro", label: "No carro" },
+          { value: "sofa", label: "No sofá" },
+          { value: "tela", label: "Com celular / TV / computador" }
+        ]
       },
       {
         key: "chewingSpeed",
         label: "A sua mastigação é rápida?",
-        type: "textarea",
-        required: false
+        type: "choice",
+        required: false,
+        options: [
+          { value: "sim", label: "Sim, rápida" },
+          { value: "media", label: "Moderada" },
+          { value: "nao", label: "Não, costumo mastigar bem" }
+        ]
       },
       {
-        key: "sleepStress",
-        label: "Como você avalia a qualidade do seu sono e o seu nível de estresse diário?",
-        type: "textarea",
-        required: false
+        key: "sleepQuality",
+        label: "Qualidade do sono:",
+        type: "choice",
+        required: false,
+        options: [
+          { value: "otima", label: "Ótima" },
+          { value: "boa", label: "Boa" },
+          { value: "regular", label: "Regular" },
+          { value: "ruim", label: "Ruim" },
+          { value: "pessima", label: "Péssima" }
+        ]
       },
       {
-        key: "alcoholCaffeineSugar",
-        label: "Qual é a frequência do seu consumo de álcool, cafeína, açúcar e ultraprocessados?",
-        type: "textarea",
-        required: false
+        key: "stressLevel",
+        label: "Nível de estresse diário:",
+        type: "choice",
+        required: false,
+        options: [
+          { value: "baixo", label: "Baixo" },
+          { value: "moderado", label: "Moderado" },
+          { value: "alto", label: "Alto" },
+          { value: "muito_alto", label: "Muito alto" }
+        ]
+      },
+      {
+        key: "alcoholFreq",
+        label: "Consumo de álcool:",
+        type: "choice",
+        required: false,
+        options: FREQUENCY
+      },
+      {
+        key: "caffeineFreq",
+        label: "Consumo de cafeína:",
+        type: "choice",
+        required: false,
+        options: FREQUENCY
+      },
+      {
+        key: "sugarUltraFreq",
+        label: "Consumo de açúcar e ultraprocessados:",
+        type: "choice",
+        required: false,
+        options: FREQUENCY
       },
       {
         key: "waterIntake",
-        label: "Sua ingestão de água diária é suficiente? A cor da sua urina é clara?",
-        type: "textarea",
-        required: false
+        label: "Ingestão de água e cor da urina:",
+        type: "choice",
+        required: false,
+        options: [
+          { value: "suficiente_clara", label: "Bebo o bastante e a urina é clara" },
+          { value: "suficiente_amarela", label: "Bebo o bastante, mas a urina fica amarela" },
+          { value: "pouca", label: "Bebo pouca água" },
+          { value: "nao_sei", label: "Não sei avaliar" }
+        ]
       }
     ]
   },
@@ -346,10 +585,20 @@ export const PRECONSULT_SECTIONS = [
         type: "textarea"
       },
       {
+        key: "recallTypical",
+        label: "O dia relatado representou sua rotina alimentar típica?",
+        type: "choice",
+        required: false,
+        options: [
+          { value: "tipico", label: "Sim, foi um dia típico" },
+          { value: "excecao", label: "Não, houve alguma exceção" }
+        ]
+      },
+      {
         key: "recallNotes",
-        label:
-          "O dia relatado representou sua rotina típica ou houve alguma exceção? Sentiu desconfortos após alguma refeição?",
-        type: "textarea"
+        label: "Observações (exceção, desconfortos após alguma refeição etc.)",
+        type: "textarea",
+        required: false
       }
     ]
   }
@@ -359,16 +608,63 @@ export const PRECONSULT_FIELD_KEYS = PRECONSULT_SECTIONS.flatMap((section) =>
   section.fields.map((field) => field.key)
 );
 
+const FIELD_BY_KEY = Object.fromEntries(
+  PRECONSULT_SECTIONS.flatMap((section) => section.fields.map((field) => [field.key, field]))
+);
+
 export function emptyPreconsultAnswers() {
   return Object.fromEntries(PRECONSULT_FIELD_KEYS.map((key) => [key, ""]));
+}
+
+export function parseMultiValues(raw) {
+  if (Array.isArray(raw)) return raw.map(String).filter(Boolean);
+  const text = String(raw || "").trim();
+  if (!text) return [];
+  return text
+    .split("|")
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+export function serializeMultiValues(values) {
+  return parseMultiValues(values).join("|");
 }
 
 export function normalizePreconsultAnswers(raw = {}) {
   const base = emptyPreconsultAnswers();
   for (const key of PRECONSULT_FIELD_KEYS) {
-    if (raw[key] != null) base[key] = String(raw[key]).slice(0, 4000);
+    if (raw[key] == null) continue;
+    const field = FIELD_BY_KEY[key];
+    if (field?.type === "multichoice") {
+      base[key] = serializeMultiValues(raw[key]);
+    } else {
+      base[key] = String(raw[key]).slice(0, 4000);
+    }
   }
   return base;
+}
+
+export function isFieldVisible(field, answers = {}) {
+  if (!field.showWhen) return true;
+  const current = String(answers[field.showWhen.key] || "");
+  return (field.showWhen.values || []).includes(current);
+}
+
+export function formatAnswerLabel(field, rawValue) {
+  if (rawValue == null || rawValue === "") return "";
+  if (field.type === "multichoice") {
+    const selected = parseMultiValues(rawValue);
+    const labels = selected.map((value) => {
+      const option = (field.options || []).find((item) => item.value === value);
+      return option?.label || value;
+    });
+    return labels.join(", ");
+  }
+  if (field.type === "choice") {
+    const option = (field.options || []).find((item) => item.value === rawValue);
+    return option?.label || String(rawValue);
+  }
+  return String(rawValue);
 }
 
 export function validatePreconsultAnswers(answers) {
@@ -377,6 +673,7 @@ export function validatePreconsultAnswers(answers) {
 
   for (const section of PRECONSULT_SECTIONS) {
     for (const field of section.fields) {
+      if (!isFieldVisible(field, normalized)) continue;
       if (field.required && !String(normalized[field.key] || "").trim()) {
         missing.push(field.label);
       }
