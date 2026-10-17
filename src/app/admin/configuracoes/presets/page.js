@@ -247,7 +247,7 @@ export default function AdminPresetsPage() {
   return (
     <AdminShell
       title="Presets de prescrição"
-      subtitle="Edite pacotes e templates em formulário — sem JSON"
+      subtitle="Edite pacotes e templates em formulário"
       breadcrumbs={["Admin", "Configurações", "Presets"]}
       userName="Letícia"
     >

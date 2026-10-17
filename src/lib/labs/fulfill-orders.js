@@ -2,6 +2,11 @@ import { createSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { canSendPdfInline, generateGeminiContent, hasGeminiConfigured } from "@/lib/ai/gemini";
 import { resolveAiProvider } from "@/lib/ai/provider";
 import { isExamDone } from "@/lib/labs/exam-status";
+import {
+  buildClinicalGuidePromptContext,
+  enrichResultsWithClinicalGuide,
+  resolveMarkerKeyFromName
+} from "@/lib/labs/clinical-guide";
 
 function normalizeName(value) {
   return String(value || "")
@@ -34,17 +39,40 @@ function namesMatch(requested, candidate) {
 
 function buildResultPayload({ match, reportId, source = "auto" }) {
   const value = parseNumeric(match.value ?? match.value_text);
-  const flag = ["low", "high", "normal", "unknown"].includes(match.flag) ? match.flag : "unknown";
+  const markerKey =
+    match.marker_key ||
+    resolveMarkerKeyFromName(match.matched_name || match.marker_name || match.examName);
+  const [enriched] = enrichResultsWithClinicalGuide([
+    {
+      marker_key: markerKey,
+      marker_name: match.matched_name || match.marker_name || match.examName,
+      value,
+      value_text: match.value_text,
+      unit: match.unit,
+      ref_min: parseNumeric(match.ref_min ?? match.refMin),
+      ref_max: parseNumeric(match.ref_max ?? match.refMax),
+      flag: ["low", "high", "normal", "unknown"].includes(match.flag) ? match.flag : "unknown"
+    }
+  ]);
 
   return {
     status: "done",
     result: {
-      value,
-      value_text: match.value_text != null ? String(match.value_text) : value != null ? String(value) : null,
-      unit: match.unit ? String(match.unit) : null,
-      ref_min: parseNumeric(match.ref_min ?? match.refMin),
-      ref_max: parseNumeric(match.ref_max ?? match.refMax),
-      flag,
+      value: enriched?.value ?? value,
+      value_text:
+        match.value_text != null
+          ? String(match.value_text)
+          : value != null
+            ? String(value)
+            : null,
+      unit: enriched?.unit || (match.unit ? String(match.unit) : null),
+      ref_min: enriched?.ref_min ?? parseNumeric(match.ref_min ?? match.refMin),
+      ref_max: enriched?.ref_max ?? parseNumeric(match.ref_max ?? match.refMax),
+      flag: enriched?.flag || "unknown",
+      ideal_min: enriched?.ideal_min ?? null,
+      ideal_max: enriched?.ideal_max ?? null,
+      ideal_flag: enriched?.ideal_flag || "unknown",
+      reassess_hint: enriched?.reassess_hint || null,
       matched_name: match.matched_name || match.marker_name || match.examName || null,
       report_id: reportId,
       matched_at: new Date().toISOString(),
@@ -81,10 +109,12 @@ async function geminiMatches({ requestedExams, labResults, extractedText, pdfBuf
     "Responda somente JSON válido no formato: " +
     '{"interpretationSummary":"string","matches":[{"examName":"string","matched":true,"value":number|null,"value_text":"string|null","unit":"string|null","ref_min":number|null,"ref_max":number|null,"flag":"low|high|normal|unknown","matched_name":"string|null"}]}. ' +
     "Para cada exame solicitado, diga se aparece no laudo. Não invente valores. " +
-    "flag: normal se dentro da referência do laudo; high/low se fora; unknown se não souber. " +
-    "interpretationSummary: parecer inicial em português focado nos exames solicitados.";
+    "flag: normal se dentro da referência do laudo (ou do guia clínico se o laudo não trouxer faixa); high/low se fora; unknown se não souber. " +
+    "interpretationSummary: parecer inicial em português focado nos exames solicitados, usando referência lab + ideal preventivo + prazo de reavaliação do guia.";
 
   const prompt = [
+    buildClinicalGuidePromptContext(),
+    "",
     "Exames solicitados:",
     JSON.stringify(
       requestedExams.map((exam) => ({ name: exam.name, category: exam.category || "principal" })),
@@ -101,7 +131,8 @@ async function geminiMatches({ requestedExams, labResults, extractedText, pdfBuf
         unit: item.unit,
         ref_min: item.ref_min,
         ref_max: item.ref_max,
-        flag: item.flag
+        flag: item.flag,
+        ideal_flag: item.ideal_flag
       })),
       null,
       2

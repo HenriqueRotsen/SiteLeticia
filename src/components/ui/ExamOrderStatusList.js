@@ -1,7 +1,7 @@
 "use client";
 
 import Badge from "@/components/ui/Badge";
-import { flagLabelPt, isExamDone } from "@/lib/labs/exam-status";
+import { flagLabelPt, idealFlagLabelPt, isExamDone } from "@/lib/labs/exam-status";
 
 function formatResultValue(result) {
   if (!result) return "—";
@@ -12,10 +12,13 @@ function formatResultValue(result) {
 
 function resultBadge(result) {
   if (!result) return { variant: "neutral", label: "Pendente" };
-  if (result.flag === "normal") return { variant: "success", label: "Normal" };
   if (result.flag === "high" || result.flag === "low") {
     return { variant: "warning", label: flagLabelPt(result.flag) };
   }
+  if (result.flag === "normal" && result.ideal_flag === "suboptimal") {
+    return { variant: "warning", label: idealFlagLabelPt(result.ideal_flag) };
+  }
+  if (result.flag === "normal") return { variant: "success", label: "Normal" };
   return { variant: "neutral", label: flagLabelPt(result.flag) };
 }
 
@@ -65,6 +68,12 @@ export default function ExamOrderStatusList({ orders = [], emptyMessage = "Nenhu
                             <span className="text-graphite/45">
                               {" "}
                               · Ref. {exam.result.ref_min ?? "—"} – {exam.result.ref_max ?? "—"}
+                            </span>
+                          ) : null}
+                          {exam.result?.ideal_min != null || exam.result?.ideal_max != null ? (
+                            <span className="text-graphite/45">
+                              {" "}
+                              · Ideal {exam.result.ideal_min ?? "—"} – {exam.result.ideal_max ?? "—"}
                             </span>
                           ) : null}
                         </p>

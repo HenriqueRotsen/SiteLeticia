@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { navLinks, site } from "@/lib/marketing/content";
 
 function NavLink({ href, label, onClick }) {
@@ -22,8 +22,89 @@ function NavLink({ href, label, onClick }) {
   );
 }
 
+function AuthActions({ session, onNavigate, compact = false }) {
+  if (session === undefined) {
+    return (
+      <div
+        className={compact ? "h-10" : "h-9 w-36"}
+        aria-hidden
+      />
+    );
+  }
+
+  if (session?.authenticated) {
+    return (
+      <Link
+        href={session.homePath || "/app"}
+        onClick={onNavigate}
+        className={
+          compact
+            ? "rounded-full bg-graphite px-5 py-3.5 text-center text-xs font-bold uppercase tracking-[0.16em] text-porcelain"
+            : "interactive-lift rounded-full bg-graphite px-5 py-2.5 text-xs font-bold uppercase tracking-[0.16em] text-porcelain transition hover:bg-olive-800"
+        }
+      >
+        {session.label || "Minha área"}
+      </Link>
+    );
+  }
+
+  if (compact) {
+    return (
+      <>
+        <Link
+          href="/entrar"
+          onClick={onNavigate}
+          className="rounded-xl px-3 py-3 text-sm font-semibold text-graphite/60 transition hover:bg-linen"
+        >
+          Entrar
+        </Link>
+        <Link
+          href="/criar-conta"
+          onClick={onNavigate}
+          className="mt-1 rounded-full bg-graphite px-5 py-3.5 text-center text-xs font-bold uppercase tracking-[0.16em] text-porcelain"
+        >
+          Criar conta
+        </Link>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <Link
+        href="/entrar"
+        className="text-xs font-semibold uppercase tracking-[0.16em] text-graphite/60 transition hover:text-olive-800"
+      >
+        Entrar
+      </Link>
+      <Link
+        href="/criar-conta"
+        className="interactive-lift rounded-full bg-graphite px-5 py-2.5 text-xs font-bold uppercase tracking-[0.16em] text-porcelain transition hover:bg-olive-800"
+      >
+        Criar conta
+      </Link>
+    </>
+  );
+}
+
 export default function MarketingShell({ children }) {
   const [open, setOpen] = useState(false);
+  const [session, setSession] = useState(undefined);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/auth/session")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled) setSession(data || { authenticated: false });
+      })
+      .catch(() => {
+        if (!cancelled) setSession({ authenticated: false });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <div className="min-h-screen overflow-x-hidden">
@@ -45,18 +126,7 @@ export default function MarketingShell({ children }) {
           </nav>
 
           <div className="hidden items-center gap-3 lg:flex">
-            <Link
-              href="/entrar"
-              className="text-xs font-semibold uppercase tracking-[0.16em] text-graphite/60 transition hover:text-olive-800"
-            >
-              Entrar
-            </Link>
-            <Link
-              href="/criar-conta"
-              className="interactive-lift rounded-full bg-graphite px-5 py-2.5 text-xs font-bold uppercase tracking-[0.16em] text-porcelain transition hover:bg-olive-800"
-            >
-              Criar conta
-            </Link>
+            <AuthActions session={session} />
           </div>
 
           <button
@@ -84,20 +154,7 @@ export default function MarketingShell({ children }) {
                 </Link>
               ))}
               <div className="my-2 border-t border-olive-900/8" />
-              <Link
-                href="/entrar"
-                onClick={() => setOpen(false)}
-                className="rounded-xl px-3 py-3 text-sm font-semibold text-graphite/60 transition hover:bg-linen"
-              >
-                Entrar
-              </Link>
-              <Link
-                href="/criar-conta"
-                onClick={() => setOpen(false)}
-                className="mt-1 rounded-full bg-graphite px-5 py-3.5 text-center text-xs font-bold uppercase tracking-[0.16em] text-porcelain"
-              >
-                Criar conta
-              </Link>
+              <AuthActions session={session} compact onNavigate={() => setOpen(false)} />
             </nav>
           </div>
         ) : null}
