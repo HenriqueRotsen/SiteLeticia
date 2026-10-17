@@ -45,6 +45,43 @@ export async function POST(request) {
     );
   }
 
+  const { count: priorCount } = await supabase
+    .from("appointments")
+    .select("id", { count: "exact", head: true })
+    .eq("patient_id", auth.ctx.patient.id)
+    .in("status", ["scheduled", "completed"]);
+
+  if ((priorCount || 0) === 0) {
+    const { data: preconsult, error: preconsultError } = await supabase
+      .from("patient_preconsult_forms")
+      .select("status")
+      .eq("patient_id", auth.ctx.patient.id)
+      .maybeSingle();
+
+    if (preconsultError) {
+      console.error("Preconsult check failed:", preconsultError);
+      return NextResponse.json(
+        {
+          message:
+            "Não foi possível validar a ficha pré-consulta. Confirme se a migration supabase/migrate-preconsult-forms.sql foi aplicada.",
+          code: "preconsult_unavailable"
+        },
+        { status: 503 }
+      );
+    }
+
+    if (preconsult?.status !== "submitted") {
+      return NextResponse.json(
+        {
+          message:
+            "Antes de agendar a primeira consulta, preencha a ficha pré-consulta. Ela fica disponível para a nutricionista.",
+          code: "preconsult_required"
+        },
+        { status: 403 }
+      );
+    }
+  }
+
   const priceCents =
     body.type === "return" && settings?.return_price_cents != null
       ? settings.return_price_cents

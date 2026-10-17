@@ -71,16 +71,20 @@ function SupplementEditor({ content, onChange }) {
               placeholder="Nome do suplemento"
             />
           </VariableField>
-          <div className="grid gap-2 sm:grid-cols-2">
-            <label className="block text-xs font-medium text-graphite/55">
-              Dosagem
+          <div className="grid gap-2 sm:grid-cols-2 sm:items-end">
+            <VariableField
+              label="Dosagem"
+              onInsert={(token) =>
+                updateItem(index, { dosage: appendToken(item.dosage, token) })
+              }
+            >
               <input
-                className={`mt-1 ${inputClassName()}`}
+                className={inputClassName()}
                 value={item.dosage || ""}
                 onChange={(e) => updateItem(index, { dosage: e.target.value })}
                 placeholder="Ex.: 300 mg"
               />
-            </label>
+            </VariableField>
             <VariableField
               label="Posologia"
               onInsert={(token) =>

@@ -5,6 +5,7 @@ import { CalendarDays, Check, Clock } from "lucide-react";
 import PatientShell from "@/components/layout/PatientShell";
 import { Card } from "@/components/layout/AppShell";
 import BookingPaymentPanel from "@/components/ui/BookingPaymentPanel";
+import PreconsultForm from "@/components/ui/PreconsultForm";
 import { TIMEZONE } from "@/lib/constants";
 import { zonedDateKey } from "@/lib/scheduling/timezone";
 
@@ -51,6 +52,10 @@ export default function AgendaPage() {
   const [loading, setLoading] = useState(false);
   const [bookingEnabled, setBookingEnabled] = useState(true);
   const [bookingMessage, setBookingMessage] = useState("");
+  const [preconsultRequired, setPreconsultRequired] = useState(false);
+  const [preconsultForm, setPreconsultForm] = useState(null);
+  const [preconsultLoading, setPreconsultLoading] = useState(true);
+  const [preconsultSaving, setPreconsultSaving] = useState(false);
 
   const slotGroups = useMemo(() => groupSlotsByDay(slots.slice(0, 24)), [slots]);
   const selectedDate = selected ? new Date(selected) : null;
@@ -61,21 +66,68 @@ export default function AgendaPage() {
     to.setDate(to.getDate() + 14);
 
     Promise.all([
-      fetch(`/api/appointments/slots?from=${from.toISOString()}&to=${to.toISOString()}`).then((r) => r.json()),
-      fetch("/api/payment-info").then((r) => r.json())
-    ]).then(([slotsRes, paymentRes]) => {
-      const enabled = slotsRes.bookingEnabled !== false && paymentRes.bookingEnabled !== false;
-      setBookingEnabled(enabled);
-      setBookingMessage(
-        slotsRes.message ||
-          (!enabled
-            ? "A marcação de consultas está temporariamente desativada. Fale com a Letícia pelo WhatsApp."
-            : "")
-      );
-      setSlots(enabled ? slotsRes.slots || [] : []);
-      setPayment(paymentRes);
-    });
+      fetch(`/api/appointments/slots?from=${from.toISOString()}&to=${to.toISOString()}`).then(async (r) => ({
+        ok: r.ok,
+        data: await r.json()
+      })),
+      fetch("/api/payment-info").then(async (r) => ({ ok: r.ok, data: await r.json() })),
+      fetch("/api/patients/me/preconsulta").then(async (r) => ({ ok: r.ok, data: await r.json() }))
+    ])
+      .then(([slotsRes, paymentRes, preconsultRes]) => {
+        const slotsData = slotsRes.data || {};
+        const paymentData = paymentRes.data || {};
+        const preconsultData = preconsultRes.data || {};
+        const enabled =
+          slotsData.bookingEnabled !== false && paymentData.bookingEnabled !== false;
+        setBookingEnabled(enabled);
+        setBookingMessage(
+          slotsData.message ||
+            (!enabled
+              ? "A marcação de consultas está temporariamente desativada. Fale com a Letícia pelo WhatsApp."
+              : "")
+        );
+        setSlots(enabled ? slotsData.slots || [] : []);
+        setPayment(paymentData);
+
+        if (!preconsultRes.ok) {
+          setFeedback(
+            preconsultData.message ||
+              "Não foi possível carregar a ficha pré-consulta. Atualize a página ou fale com a Letícia."
+          );
+          // Em dúvida, bloqueia a agenda até a ficha carregar (evita pular o formulário).
+          setPreconsultRequired(true);
+          setPreconsultForm(null);
+        } else {
+          setPreconsultRequired(Boolean(preconsultData.required));
+          setPreconsultForm(preconsultData.form || null);
+        }
+        setPreconsultLoading(false);
+      })
+      .catch(() => {
+        setFeedback("Falha ao carregar a agenda. Atualize a página.");
+        setPreconsultRequired(true);
+        setPreconsultLoading(false);
+      });
   }, []);
+
+  async function submitPreconsult(answers) {
+    setPreconsultSaving(true);
+    setFeedback("");
+    const res = await fetch("/api/patients/me/preconsulta", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ answers, submit: true })
+    });
+    const data = await res.json();
+    setPreconsultSaving(false);
+    if (!res.ok) {
+      setFeedback(data.message || "Não foi possível enviar a ficha.");
+      return;
+    }
+    setPreconsultForm(data.form);
+    setPreconsultRequired(false);
+    setFeedback("Ficha enviada. Agora escolha o horário da sua consulta.");
+  }
 
   async function book() {
     if (!selected) return;
@@ -89,6 +141,9 @@ export default function AgendaPage() {
     const data = await res.json();
     setLoading(false);
     if (!res.ok) {
+      if (data.code === "preconsult_required") {
+        setPreconsultRequired(true);
+      }
       setFeedback(data.message || "Não foi possível agendar.");
       return;
     }
@@ -99,7 +154,11 @@ export default function AgendaPage() {
   return (
     <PatientShell
       title="Agendar consulta"
-      subtitle="Escolha o melhor horário disponível"
+      subtitle={
+        preconsultRequired
+          ? "Primeiro passo: ficha pré-consulta"
+          : "Escolha o melhor horário disponível"
+      }
       breadcrumbs={["Paciente", "Agenda"]}
     >
       {!bookingEnabled ? (
@@ -112,96 +171,121 @@ export default function AgendaPage() {
         </Card>
       ) : null}
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h2 className="font-semibold text-graphite">Horários disponíveis</h2>
-              <p className="mt-1 text-sm text-graphite/60">Sessões de 60 minutos</p>
-            </div>
-            {selectedDate && bookingEnabled ? (
-              <div className="inline-flex items-center gap-2 rounded-xl bg-olive-100 px-3 py-2 text-sm font-medium text-olive-800">
-                <Check className="h-4 w-4" />
-                {formatDayHeading(selected)} · {formatSlotTime(selected)}
-              </div>
-            ) : null}
-          </div>
-
-          {!bookingEnabled ? (
-            <div className="mt-6 rounded-2xl border border-dashed border-amber-300/80 bg-amber-50/40 px-4 py-10 text-center">
-              <p className="font-medium text-graphite">Marcação indisponível no momento</p>
-              <p className="mt-2 text-sm text-graphite/55">
-                Assim que a agenda for reaberta, os horários voltam a aparecer aqui.
-              </p>
-            </div>
-          ) : slotGroups.length ? (
-            <div className="mt-6 space-y-5">
-              {slotGroups.map((group) => (
-                <section key={group.key} className="overflow-hidden rounded-2xl border border-olive-900/10 bg-linen/50">
-                  <div className="flex items-center gap-2 border-b border-olive-900/10 bg-porcelain px-4 py-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-olive-100 text-olive-700">
-                      <CalendarDays className="h-4 w-4" strokeWidth={1.75} />
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-graphite">{formatDayHeading(group.startsAt)}</p>
-                      <p className="text-xs text-graphite/45">
-                        {group.slots.length === 1
-                          ? "1 horário livre"
-                          : `${group.slots.length} horários livres`}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap gap-2 p-4">
-                    {group.slots.map((slot) => {
-                      const isSelected = selected === slot.startsAt;
-
-                      return (
-                        <button
-                          key={slot.startsAt}
-                          type="button"
-                          onClick={() => setSelected(slot.startsAt)}
-                          className={`inline-flex min-w-[5.5rem] items-center justify-center gap-1.5 rounded-xl border px-4 py-3 text-sm font-semibold transition ${
-                            isSelected
-                              ? "border-olive-700 bg-olive-700 text-white shadow-sm"
-                              : "border-olive-900/10 bg-white text-graphite hover:border-olive-400 hover:bg-olive-50/70"
-                          }`}
-                        >
-                          <Clock className="h-3.5 w-3.5 opacity-80" strokeWidth={1.75} />
-                          {formatSlotTime(slot.startsAt)}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </section>
-              ))}
-            </div>
-          ) : (
-            <div className="mt-6 rounded-2xl border border-dashed border-olive-300/80 bg-olive-50/40 px-4 py-10 text-center">
-              <p className="font-medium text-graphite">Nenhum horário disponível</p>
-              <p className="mt-2 text-sm text-graphite/55">
-                Tente novamente em alguns dias ou entre em contato com a Letícia.
-              </p>
-            </div>
-          )}
+      {preconsultLoading ? (
+        <Card>
+          <p className="text-sm text-graphite/55">Carregando agenda…</p>
         </Card>
-
-        <Card className="lg:sticky lg:top-[calc(var(--demo-banner-height,0px)+5.5rem)] lg:self-start">
-          <BookingPaymentPanel
-            payment={payment}
-            selectedSummary={
-              selectedDate && bookingEnabled
-                ? { day: formatDayHeading(selected), time: formatSlotTime(selected) }
-                : null
-            }
-            loading={loading}
-            disabled={!bookingEnabled || !selected}
-            feedback={feedback}
-            onConfirm={book}
-            confirmLabel={bookingEnabled ? "Confirmar agendamento" : "Agendamentos pausados"}
+      ) : preconsultRequired ? (
+        <div className="space-y-4">
+          {feedback ? (
+            <p className="rounded-xl border border-olive-200 bg-olive-50 px-4 py-3 text-sm text-olive-900">
+              {feedback}
+            </p>
+          ) : null}
+          <PreconsultForm
+            initialAnswers={preconsultForm?.answers}
+            initialStatus={preconsultForm?.status || "draft"}
+            submitting={preconsultSaving}
+            onSubmit={submitPreconsult}
           />
-        </Card>
-      </div>
+        </div>
+      ) : (
+        <div className="grid gap-4 lg:grid-cols-3">
+          <Card className="lg:col-span-2">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="font-semibold text-graphite">Horários disponíveis</h2>
+                <p className="mt-1 text-sm text-graphite/60">Sessões de 60 minutos</p>
+              </div>
+              {selectedDate && bookingEnabled ? (
+                <div className="inline-flex items-center gap-2 rounded-xl bg-olive-100 px-3 py-2 text-sm font-medium text-olive-800">
+                  <Check className="h-4 w-4" />
+                  {formatDayHeading(selected)} · {formatSlotTime(selected)}
+                </div>
+              ) : null}
+            </div>
+
+            {!bookingEnabled ? (
+              <div className="mt-6 rounded-2xl border border-dashed border-amber-300/80 bg-amber-50/40 px-4 py-10 text-center">
+                <p className="font-medium text-graphite">Marcação indisponível no momento</p>
+                <p className="mt-2 text-sm text-graphite/55">
+                  Assim que a agenda for reaberta, os horários voltam a aparecer aqui.
+                </p>
+              </div>
+            ) : slotGroups.length ? (
+              <div className="mt-6 space-y-5">
+                {slotGroups.map((group) => (
+                  <section
+                    key={group.key}
+                    className="overflow-hidden rounded-2xl border border-olive-900/10 bg-linen/50"
+                  >
+                    <div className="flex items-center gap-2 border-b border-olive-900/10 bg-porcelain px-4 py-3">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-olive-100 text-olive-700">
+                        <CalendarDays className="h-4 w-4" strokeWidth={1.75} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-graphite">
+                          {formatDayHeading(group.startsAt)}
+                        </p>
+                        <p className="text-xs text-graphite/45">
+                          {group.slots.length === 1
+                            ? "1 horário livre"
+                            : `${group.slots.length} horários livres`}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2 p-4">
+                      {group.slots.map((slot) => {
+                        const isSelected = selected === slot.startsAt;
+
+                        return (
+                          <button
+                            key={slot.startsAt}
+                            type="button"
+                            onClick={() => setSelected(slot.startsAt)}
+                            className={`inline-flex min-w-[5.5rem] items-center justify-center gap-1.5 rounded-xl border px-4 py-3 text-sm font-semibold transition ${
+                              isSelected
+                                ? "border-olive-700 bg-olive-700 text-white shadow-sm"
+                                : "border-olive-900/10 bg-white text-graphite hover:border-olive-400 hover:bg-olive-50/70"
+                            }`}
+                          >
+                            <Clock className="h-3.5 w-3.5 opacity-80" strokeWidth={1.75} />
+                            {formatSlotTime(slot.startsAt)}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </section>
+                ))}
+              </div>
+            ) : (
+              <div className="mt-6 rounded-2xl border border-dashed border-olive-300/80 bg-olive-50/40 px-4 py-10 text-center">
+                <p className="font-medium text-graphite">Nenhum horário disponível</p>
+                <p className="mt-2 text-sm text-graphite/55">
+                  Tente novamente em alguns dias ou entre em contato com a Letícia.
+                </p>
+              </div>
+            )}
+          </Card>
+
+          <Card className="lg:sticky lg:top-[calc(var(--demo-banner-height,0px)+5.5rem)] lg:self-start">
+            <BookingPaymentPanel
+              payment={payment}
+              selectedSummary={
+                selectedDate && bookingEnabled
+                  ? { day: formatDayHeading(selected), time: formatSlotTime(selected) }
+                  : null
+              }
+              loading={loading}
+              disabled={!bookingEnabled || !selected}
+              feedback={feedback}
+              onConfirm={book}
+              confirmLabel={bookingEnabled ? "Confirmar agendamento" : "Agendamentos pausados"}
+            />
+          </Card>
+        </div>
+      )}
     </PatientShell>
   );
 }

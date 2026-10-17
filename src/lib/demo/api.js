@@ -197,6 +197,25 @@ export async function handleDemoApi(request) {
         403
       );
     }
+    const priorCount = (state.appointments || []).filter(
+      (item) =>
+        item.patient_id === patientId && ["scheduled", "completed"].includes(item.status)
+    ).length;
+    if (priorCount === 0) {
+      const preconsult = (state.preconsultForms || []).find(
+        (item) => item.patient_id === patientId && item.status === "submitted"
+      );
+      if (!preconsult) {
+        return json(
+          {
+            message:
+              "Antes de agendar a primeira consulta, preencha a ficha pré-consulta. Ela fica disponível para a nutricionista.",
+            code: "preconsult_required"
+          },
+          403
+        );
+      }
+    }
     const body = await request.json();
     const startsAt = new Date(body.startsAt);
     const endsAt = new Date(startsAt.getTime() + 60 * 60 * 1000);
@@ -278,6 +297,60 @@ export async function handleDemoApi(request) {
   if (path === "/api/notifications" && method === "GET") {
     const role = request.cookies.get(DEMO_ROLE_COOKIE)?.value || "patient";
     return json({ notifications: getDemoNotifications(role) });
+  }
+
+  if (path === "/api/patients/me/preconsulta" && method === "GET") {
+    const form =
+      (state.preconsultForms || []).find((item) => item.patient_id === patientId) || null;
+    const priorCount = (state.appointments || []).filter(
+      (item) =>
+        item.patient_id === patientId && ["scheduled", "completed"].includes(item.status)
+    ).length;
+    return json({
+      form: form || {
+        patient_id: patientId,
+        answers: {},
+        status: "draft",
+        submitted_at: null
+      },
+      required: priorCount === 0 && form?.status !== "submitted",
+      priorAppointments: priorCount
+    });
+  }
+
+  if (path === "/api/patients/me/preconsulta" && method === "PUT") {
+    const body = await request.json().catch(() => ({}));
+    const submit = body.submit !== false;
+    const existing = (state.preconsultForms || []).find((item) => item.patient_id === patientId);
+    const now = new Date().toISOString();
+    const next = {
+      id: existing?.id || `preconsult-${Date.now()}`,
+      patient_id: patientId,
+      answers: body.answers || {},
+      status: submit ? "submitted" : "draft",
+      submitted_at: submit ? now : null,
+      created_at: existing?.created_at || now,
+      updated_at: now
+    };
+    state.preconsultForms = [
+      ...(state.preconsultForms || []).filter((item) => item.patient_id !== patientId),
+      next
+    ];
+    return json({ form: next });
+  }
+
+  if (path.match(/^\/api\/patients\/[^/]+\/preconsulta$/) && method === "GET") {
+    const id = path.split("/")[3];
+    const patient =
+      state.patientsList?.find((item) => item.id === id) ||
+      (id === patientId ? state.patientProfile : null) ||
+      demoPatientsList.find((item) => item.id === id);
+    if (!patient) return json({ message: "Paciente não encontrado." }, 404);
+    const form = (state.preconsultForms || []).find((item) => item.patient_id === id) || null;
+    return json({
+      patient: { id: patient.id, full_name: patient.full_name },
+      form
+    });
   }
 
   if (path === "/api/patients/me" && method === "GET") {

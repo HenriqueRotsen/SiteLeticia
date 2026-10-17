@@ -113,7 +113,7 @@ export default function VariableInsertButton({ onInsert, className = "" }) {
 export function VariableField({ label, children, onInsert }) {
   return (
     <div>
-      <div className="mb-1 flex items-center justify-between gap-2">
+      <div className="mb-1 flex min-h-7 items-center justify-between gap-2">
         <span className="text-xs font-medium text-graphite/55">{label}</span>
         {onInsert ? <VariableInsertButton onInsert={onInsert} /> : null}
       </div>
