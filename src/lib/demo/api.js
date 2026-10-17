@@ -306,12 +306,22 @@ export async function handleDemoApi(request) {
       (item) =>
         item.patient_id === patientId && ["scheduled", "completed"].includes(item.status)
     ).length;
+    const patient = state.patientProfile || {};
     return json({
       form: form || {
         patient_id: patientId,
-        answers: {},
+        answers: {
+          fullName: patient.full_name || "",
+          age: "36",
+          mainGoal: patient.goal || ""
+        },
         status: "draft",
         submitted_at: null
+      },
+      patient: {
+        full_name: patient.full_name,
+        birth_date: patient.birth_date,
+        goal: patient.goal
       },
       required: priorCount === 0 && form?.status !== "submitted",
       priorAppointments: priorCount
