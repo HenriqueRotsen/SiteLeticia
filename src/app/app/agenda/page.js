@@ -66,26 +66,48 @@ export default function AgendaPage() {
     to.setDate(to.getDate() + 14);
 
     Promise.all([
-      fetch(`/api/appointments/slots?from=${from.toISOString()}&to=${to.toISOString()}`).then((r) =>
-        r.json()
-      ),
-      fetch("/api/payment-info").then((r) => r.json()),
-      fetch("/api/patients/me/preconsulta").then((r) => r.json())
-    ]).then(([slotsRes, paymentRes, preconsultRes]) => {
-      const enabled = slotsRes.bookingEnabled !== false && paymentRes.bookingEnabled !== false;
-      setBookingEnabled(enabled);
-      setBookingMessage(
-        slotsRes.message ||
-          (!enabled
-            ? "A marcação de consultas está temporariamente desativada. Fale com a Letícia pelo WhatsApp."
-            : "")
-      );
-      setSlots(enabled ? slotsRes.slots || [] : []);
-      setPayment(paymentRes);
-      setPreconsultRequired(Boolean(preconsultRes.required));
-      setPreconsultForm(preconsultRes.form || null);
-      setPreconsultLoading(false);
-    });
+      fetch(`/api/appointments/slots?from=${from.toISOString()}&to=${to.toISOString()}`).then(async (r) => ({
+        ok: r.ok,
+        data: await r.json()
+      })),
+      fetch("/api/payment-info").then(async (r) => ({ ok: r.ok, data: await r.json() })),
+      fetch("/api/patients/me/preconsulta").then(async (r) => ({ ok: r.ok, data: await r.json() }))
+    ])
+      .then(([slotsRes, paymentRes, preconsultRes]) => {
+        const slotsData = slotsRes.data || {};
+        const paymentData = paymentRes.data || {};
+        const preconsultData = preconsultRes.data || {};
+        const enabled =
+          slotsData.bookingEnabled !== false && paymentData.bookingEnabled !== false;
+        setBookingEnabled(enabled);
+        setBookingMessage(
+          slotsData.message ||
+            (!enabled
+              ? "A marcação de consultas está temporariamente desativada. Fale com a Letícia pelo WhatsApp."
+              : "")
+        );
+        setSlots(enabled ? slotsData.slots || [] : []);
+        setPayment(paymentData);
+
+        if (!preconsultRes.ok) {
+          setFeedback(
+            preconsultData.message ||
+              "Não foi possível carregar a ficha pré-consulta. Atualize a página ou fale com a Letícia."
+          );
+          // Em dúvida, bloqueia a agenda até a ficha carregar (evita pular o formulário).
+          setPreconsultRequired(true);
+          setPreconsultForm(null);
+        } else {
+          setPreconsultRequired(Boolean(preconsultData.required));
+          setPreconsultForm(preconsultData.form || null);
+        }
+        setPreconsultLoading(false);
+      })
+      .catch(() => {
+        setFeedback("Falha ao carregar a agenda. Atualize a página.");
+        setPreconsultRequired(true);
+        setPreconsultLoading(false);
+      });
   }, []);
 
   async function submitPreconsult(answers) {

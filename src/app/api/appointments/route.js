@@ -52,11 +52,23 @@ export async function POST(request) {
     .in("status", ["scheduled", "completed"]);
 
   if ((priorCount || 0) === 0) {
-    const { data: preconsult } = await supabase
+    const { data: preconsult, error: preconsultError } = await supabase
       .from("patient_preconsult_forms")
       .select("status")
       .eq("patient_id", auth.ctx.patient.id)
       .maybeSingle();
+
+    if (preconsultError) {
+      console.error("Preconsult check failed:", preconsultError);
+      return NextResponse.json(
+        {
+          message:
+            "Não foi possível validar a ficha pré-consulta. Confirme se a migration supabase/migrate-preconsult-forms.sql foi aplicada.",
+          code: "preconsult_unavailable"
+        },
+        { status: 503 }
+      );
+    }
 
     if (preconsult?.status !== "submitted") {
       return NextResponse.json(

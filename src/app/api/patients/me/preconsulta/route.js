@@ -24,10 +24,25 @@ export async function GET() {
   const supabase = createSupabaseAdmin();
   const patientId = auth.ctx.patient.id;
 
-  const [{ data: form }, priorCount] = await Promise.all([
+  const [{ data: form, error: formError }, priorCount] = await Promise.all([
     supabase.from("patient_preconsult_forms").select("*").eq("patient_id", patientId).maybeSingle(),
     countPriorAppointments(supabase, patientId)
   ]);
+
+  if (formError) {
+    console.error("Preconsult GET failed:", formError);
+    return NextResponse.json(
+      {
+        message:
+          formError.message?.includes("patient_preconsult_forms") || formError.code === "42P01"
+            ? "Banco desatualizado: execute supabase/migrate-preconsult-forms.sql no Supabase."
+            : "Não foi possível carregar a ficha pré-consulta.",
+        required: priorCount === 0,
+        priorAppointments: priorCount
+      },
+      { status: 500 }
+    );
+  }
 
   const required = priorCount === 0 && form?.status !== "submitted";
 
