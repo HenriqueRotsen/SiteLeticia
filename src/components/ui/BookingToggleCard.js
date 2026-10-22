@@ -71,7 +71,7 @@ export default function BookingToggleCard({ onFeedback, onError, className = "mb
           aria-label={bookingEnabled ? "Desativar marcação" : "Ativar marcação"}
         >
           <span
-            className={`inline-block h-6 w-6 transform rounded-full bg-white shadow transition ${
+            className={`inline-block h-6 w-6 rounded-full bg-white shadow-sm transition ${
               bookingEnabled ? "translate-x-7" : "translate-x-1"
             }`}
           />

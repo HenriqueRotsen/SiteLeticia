@@ -38,9 +38,7 @@ const nextConfig = {
   async headers() {
     return [{ source: "/(.*)", headers: securityHeaders }];
   },
-  experimental: {
-    serverComponentsExternalPackages: ["pdf-parse", "sharp"]
-  }
+  serverExternalPackages: ["pdf-parse", "sharp"]
 };
 
 module.exports = nextConfig;

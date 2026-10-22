@@ -20,7 +20,8 @@ async function getAppointment(appointmentId) {
   return data;
 }
 
-export async function GET(_request, { params }) {
+export async function GET(_request, { params: paramsPromise }) {
+  const params = await paramsPromise;
   const auth = await requireNutritionist();
   if (auth.error) return auth.error;
 
@@ -41,7 +42,8 @@ export async function GET(_request, { params }) {
   });
 }
 
-export async function POST(request, { params }) {
+export async function POST(request, { params: paramsPromise }) {
+  const params = await paramsPromise;
   const auth = await requireNutritionist();
   if (auth.error) return auth.error;
 

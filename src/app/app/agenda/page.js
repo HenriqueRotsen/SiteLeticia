@@ -216,7 +216,7 @@ export default function AgendaPage() {
                             onClick={() => setSelected(slot.startsAt)}
                             className={`inline-flex min-w-[5.5rem] items-center justify-center gap-1.5 rounded-xl border px-4 py-3 text-sm font-semibold transition ${
                               isSelected
-                                ? "border-olive-700 bg-olive-700 text-white shadow-sm"
+                                ? "border-olive-700 bg-olive-700 text-white shadow-xs"
                                 : "border-olive-900/10 bg-white text-graphite hover:border-olive-400 hover:bg-olive-50/70"
                             }`}
                           >

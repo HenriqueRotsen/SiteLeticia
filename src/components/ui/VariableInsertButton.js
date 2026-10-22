@@ -46,7 +46,7 @@ export default function VariableInsertButton({ onInsert, className = "" }) {
     <div ref={rootRef} className={`relative inline-flex ${className}`}>
       <button
         type="button"
-        className="inline-flex items-center gap-1 rounded-lg border border-olive-900/10 bg-white px-2 py-1 text-[11px] font-semibold text-olive-800 shadow-sm transition hover:border-olive-300 hover:bg-olive-50"
+        className="inline-flex items-center gap-1 rounded-lg border border-olive-900/10 bg-white px-2 py-1 text-[11px] font-semibold text-olive-800 shadow-xs transition hover:border-olive-300 hover:bg-olive-50"
         onClick={() => setOpen((value) => !value)}
         title="Inserir variável"
       >

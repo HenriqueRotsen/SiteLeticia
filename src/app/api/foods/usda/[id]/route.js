@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { getUsdaFood, isUsdaConfigured } from "@/lib/foods/usda";
 import { requireAuth } from "@/lib/auth";
 
-export async function GET(_request, { params }) {
+export async function GET(_request, { params: paramsPromise }) {
+  const params = await paramsPromise;
   const auth = await requireAuth();
   if (auth.error) return auth.error;
 

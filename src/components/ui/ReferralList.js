@@ -167,7 +167,7 @@ export default function ReferralList({
             onClick={addItem}
             className="flex w-full flex-col items-center rounded-2xl border border-dashed border-sky-300 bg-sky-50/35 px-6 py-14 text-center transition hover:border-sky-400 hover:bg-sky-50/70"
           >
-            <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-sky-600 shadow-sm">
+            <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-sky-600 shadow-xs">
               <UserRoundPlus className="h-6 w-6" strokeWidth={1.5} />
             </span>
             <span className="mt-3 text-sm font-semibold text-graphite">

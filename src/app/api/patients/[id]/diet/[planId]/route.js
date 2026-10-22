@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { requireNutritionist } from "@/lib/auth";
 import { writeAuditLog, getClientIp } from "@/lib/audit";
 
-export async function PATCH(request, { params }) {
+export async function PATCH(request, { params: paramsPromise }) {
+  const params = await paramsPromise;
   const auth = await requireNutritionist();
   if (auth.error) return auth.error;
 
@@ -70,7 +71,8 @@ export async function PATCH(request, { params }) {
   return NextResponse.json({ ok: true, plan });
 }
 
-export async function DELETE(request, { params }) {
+export async function DELETE(request, { params: paramsPromise }) {
+  const params = await paramsPromise;
   const auth = await requireNutritionist();
   if (auth.error) return auth.error;
 

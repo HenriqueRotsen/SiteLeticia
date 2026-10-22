@@ -54,9 +54,9 @@ function FilterSelect({ label, icon: Icon, options, value, onChange }) {
         aria-controls={listId}
         className={`group flex w-full items-center gap-2 rounded-xl border bg-white px-3 py-2 text-left text-sm outline-none transition ${
           open
-            ? "border-olive-500 shadow-sm ring-2 ring-olive-100"
+            ? "border-olive-500 shadow-xs ring-2 ring-olive-100"
             : isActive
-              ? "border-olive-400/70 bg-olive-50/60 shadow-sm hover:border-olive-500"
+              ? "border-olive-400/70 bg-olive-50/60 shadow-xs hover:border-olive-500"
               : "border-olive-900/10 hover:border-olive-300 hover:bg-linen/40"
         }`}
       >
