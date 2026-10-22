@@ -12,6 +12,7 @@ import {
   User,
   X
 } from "lucide-react";
+import { LcMonogram } from "@/components/brand/BrandMark";
 import NotificationBell from "@/components/ui/NotificationBell";
 
 function NavItem({ href, label, icon: Icon, onNavigate, collapsed = false }) {
@@ -26,15 +27,24 @@ function NavItem({ href, label, icon: Icon, onNavigate, collapsed = false }) {
       href={href}
       onClick={onNavigate}
       title={collapsed ? label : undefined}
-      className={`flex items-center rounded-xl py-2.5 text-sm font-medium transition-colors ${
+      className={`group flex items-center rounded-xl py-2.5 text-sm font-medium transition-colors ${
         collapsed ? "justify-center px-2" : "gap-3 px-3"
       } ${
         active
-          ? "bg-olive-100 text-olive-900"
+          ? "bg-[#BD9B72]/12 text-graphite"
           : "text-graphite/60 hover:bg-porcelain hover:text-graphite"
       }`}
     >
-      {Icon ? <Icon className="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} /> : null}
+      {Icon ? (
+        <Icon
+          className={`h-[18px] w-[18px] shrink-0 transition-colors ${
+            active
+              ? "fill-[#BD9B72]/20 text-[#BD9B72]"
+              : "text-graphite/45 group-hover:text-[#BD9B72]"
+          }`}
+          strokeWidth={active ? 2 : 1.75}
+        />
+      ) : null}
       {!collapsed ? <span className="truncate">{label}</span> : null}
     </Link>
   );
@@ -55,7 +65,7 @@ function UserAvatar({ name, size = "md" }) {
 
   return (
     <div
-      className={`flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-olive-600 to-olive-800 font-semibold text-white ring-olive-100 ${sizeClass}`}
+      className={`flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#BD9B72] to-olive-800 font-semibold text-white ring-[#BD9B72]/25 ${sizeClass}`}
     >
       {initials}
     </div>
@@ -84,8 +94,8 @@ function UserProfileChip({ name, href, label = "Meu perfil", active = false }) {
 
   const className = `group flex shrink-0 items-center gap-2.5 rounded-2xl border p-1.5 transition sm:gap-3 sm:px-3 sm:py-2 ${
     active
-      ? "border-olive-300/40 bg-olive-50/80 shadow-sm"
-      : "border-olive-900/10 bg-white/80 hover:border-olive-300/35 hover:bg-white hover:shadow-sm"
+      ? "border-[#BD9B72]/40 bg-[#BD9B72]/10 shadow-sm"
+      : "border-olive-900/10 bg-white/80 hover:border-[#BD9B72]/35 hover:bg-white hover:shadow-sm"
   }`;
 
   if (!href) {
@@ -102,17 +112,17 @@ function UserProfileChip({ name, href, label = "Meu perfil", active = false }) {
 function SidebarBrand({ collapsed }) {
   return (
     <div
-      className={`flex items-center border-b border-olive-900/10 py-5 ${
-        collapsed ? "flex-col gap-3 px-3" : "gap-3 px-5"
+      className={`flex h-24 items-center border-b border-olive-900/10 ${
+        collapsed ? "flex-col justify-center gap-2 px-3" : "gap-3 px-5"
       }`}
     >
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-olive-700 text-sm font-bold text-white shadow-sm">
-        LC
+      <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-visible">
+        <LcMonogram className="h-10 w-auto" alt="" />
       </div>
       {!collapsed ? (
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-graphite">Letícia Cunha</p>
-          <p className="text-xs text-graphite/45">Plataforma</p>
+          <p className="truncate font-display text-base leading-tight text-graphite">Letícia Cunha</p>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-graphite/45">Nutricionista</p>
         </div>
       ) : null}
     </div>
@@ -197,7 +207,7 @@ export default function AppShell({
         <button
           type="button"
           onClick={toggleSidebar}
-          className="absolute -right-4 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-olive-900/10 bg-white text-graphite/55 shadow-md transition hover:border-olive-300 hover:bg-olive-50 hover:text-olive-800"
+          className="absolute -right-4 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-olive-900/10 bg-white text-graphite/55 shadow-md transition hover:border-[#BD9B72]/40 hover:bg-[#BD9B72]/10 hover:text-[#BD9B72]"
           title={sidebarCollapsed ? "Expandir menu" : "Recolher menu"}
           aria-label={sidebarCollapsed ? "Expandir menu lateral" : "Recolher menu lateral"}
         >
@@ -215,11 +225,11 @@ export default function AppShell({
             type="button"
             onClick={onLogout}
             title={sidebarCollapsed ? "Sair" : undefined}
-            className={`flex w-full items-center rounded-xl py-2.5 text-sm font-medium text-graphite/60 transition hover:bg-porcelain hover:text-graphite ${
+            className={`group flex w-full items-center rounded-xl py-2.5 text-sm font-medium text-graphite/60 transition hover:bg-porcelain hover:text-graphite ${
               sidebarCollapsed ? "justify-center px-2" : "gap-3 px-3"
             }`}
           >
-            <LogOut className="h-[18px] w-[18px]" strokeWidth={1.75} />
+            <LogOut className="h-[18px] w-[18px] text-graphite/45 group-hover:text-[#BD9B72]" strokeWidth={1.75} />
             {!sidebarCollapsed ? "Sair" : null}
           </button>
         </div>
@@ -274,7 +284,7 @@ export default function AppShell({
         }`}
       >
         <header className="sticky top-[var(--demo-banner-height,0px)] z-20 border-b border-olive-900/10 bg-porcelain/90 backdrop-blur-md">
-          <div className="flex items-center gap-2 px-3 py-2.5 sm:gap-4 sm:px-6 sm:py-3 lg:px-8">
+          <div className="flex h-16 items-center gap-2 px-3 sm:h-24 sm:gap-4 sm:px-6 lg:px-8">
             <button
               type="button"
               onClick={() => setMenuOpen(true)}
@@ -314,7 +324,7 @@ export default function AppShell({
                 {title}
               </h1>
               {subtitle ? (
-                <p className="mt-0.5 hidden text-sm text-graphite/55 sm:line-clamp-2 sm:block">
+                <p className="mt-0.5 hidden truncate text-sm text-graphite/55 sm:block">
                   {subtitle}
                 </p>
               ) : null}
@@ -349,10 +359,17 @@ export default function AppShell({
                     <Link
                       href={item.href}
                       className={`flex flex-col items-center gap-1 rounded-xl px-1 py-2 text-[10px] font-medium leading-none ${
-                        active ? "bg-olive-100 text-olive-800" : "text-graphite/55"
+                        active ? "bg-[#BD9B72]/12 text-graphite" : "text-graphite/55"
                       }`}
                     >
-                      {Icon ? <Icon className="h-[18px] w-[18px]" strokeWidth={1.75} /> : null}
+                      {Icon ? (
+                        <Icon
+                          className={`h-[18px] w-[18px] ${
+                            active ? "fill-[#BD9B72]/20 text-[#BD9B72]" : "text-graphite/45"
+                          }`}
+                          strokeWidth={active ? 2 : 1.75}
+                        />
+                      ) : null}
                       <span className="truncate max-w-full">{item.label.split(" ")[0]}</span>
                     </Link>
                   </li>
@@ -439,7 +456,7 @@ export function inputClassName(extra = "") {
 }
 
 export function btnPrimary(extra = "") {
-  return `inline-flex items-center justify-center gap-2 rounded-xl bg-olive-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-olive-800 focus:outline-none focus:ring-2 focus:ring-olive-200 disabled:opacity-60 ${extra}`;
+  return `inline-flex items-center justify-center gap-2 rounded-xl bg-[#BD9B72] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#A8875F] focus:outline-none focus:ring-2 focus:ring-[#BD9B72]/30 disabled:opacity-60 ${extra}`;
 }
 
 export function btnSecondary(extra = "") {
@@ -447,5 +464,7 @@ export function btnSecondary(extra = "") {
 }
 
 export function formatCurrency(cents) {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format((cents || 0) / 100);
+  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" })
+    .format((cents || 0) / 100)
+    .replace(/[\u00a0\u202f]/g, " ");
 }

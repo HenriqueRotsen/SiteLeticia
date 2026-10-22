@@ -1,8 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import Reveal from "@/components/Reveal";
-import MarketingShell, { SectionEyebrow } from "@/components/marketing/MarketingShell";
+import MarketingShell, { BookingButton, SectionEyebrow } from "@/components/marketing/MarketingShell";
 import { formationHighlights, formationTimeline, site } from "@/lib/marketing/content";
+import { portraitBlur } from "@/lib/branding/placeholders";
 
 export const metadata = {
   title: "Formação | Letícia Cunha",
@@ -13,9 +14,6 @@ const periodStyles = {
   Concluído: "bg-olive-100 text-olive-800 ring-olive-200/60",
   "Em curso": "bg-amber-50 text-amber-900 ring-amber-200/70"
 };
-
-const FORMATION_CONTENT_FADE =
-  "linear-gradient(90deg, #f2eee4 0%, #f2eee4 22%, rgba(242, 238, 228, 0.98) 30%, rgba(242, 238, 228, 0.9) 38%, rgba(242, 238, 228, 0.72) 46%, rgba(242, 238, 228, 0.42) 52%, rgba(242, 238, 228, 0.12) 58%, transparent 64%)";
 
 const FORMATION_PILLARS = ["Enfermagem", "Nutrição", "Mestrado UFMG"];
 
@@ -80,49 +78,60 @@ export default function FormacaoPage() {
   return (
     <MarketingShell>
       <section className="relative overflow-hidden bg-linen">
-        <div aria-hidden className="pointer-events-none absolute inset-0 z-0">
-          <Image
-            src="/leticia2.jpeg"
-            alt=""
-            fill
-            priority
-            className="object-cover object-[62%_22%] sm:object-[68%_22%] lg:object-[78%_20%]"
-            sizes="100vw"
-          />
+        <div className="grid lg:min-h-[calc(100svh-5.25rem)] lg:grid-cols-[1fr_1fr]">
+          {/* Texto */}
+          <div className="relative order-2 flex items-center px-5 py-14 sm:px-8 lg:order-1 lg:py-20 lg:pl-12 lg:pr-0 xl:pl-20">
+            <div className="relative z-10 w-full max-w-xl lg:-mr-24 lg:max-w-[36rem]">
+              <div className="intro" style={{ animationDelay: "150ms" }}>
+                <IntroPanel>
+                  <SectionEyebrow>Formação profissional</SectionEyebrow>
+                  <h1 className="mt-4 max-w-2xl font-display text-[2rem] leading-[1.08] text-graphite sm:text-4xl lg:text-[2.75rem]">
+                    Trajetória acadêmica em nutrição clínica
+                  </h1>
+                  <p className="mt-4 max-w-xl text-base leading-8 text-graphite/65">
+                    Enfermagem, Nutrição e mestrado na UFMG. Ciência, escuta e conduta responsável em cada
+                    etapa.
+                  </p>
+                  <ul className="mt-6 flex flex-wrap gap-2">
+                    {FORMATION_PILLARS.map((label) => (
+                      <li
+                        key={label}
+                        className="rounded-full border border-olive-900/10 bg-linen/70 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-graphite/70"
+                      >
+                        {label}
+                      </li>
+                    ))}
+                  </ul>
+                  <BookingButton className="mt-7" />
+                </IntroPanel>
+              </div>
+            </div>
+          </div>
+
+          {/* Foto: coluna própria, ocupa toda a altura da seção sem esticar a imagem */}
+          <div className="relative order-1 h-[62svh] min-h-[24rem] overflow-hidden bg-linen lg:order-2 lg:h-auto">
+            <Image
+              src="/leticia-portrait.jpg"
+              alt={`Retrato de ${site.name}`}
+              fill
+              priority
+              quality={88}
+              placeholder="blur"
+              blurDataURL={portraitBlur}
+              className="hero-photo object-cover object-[center_20%]"
+              sizes="(min-width: 1024px) 50vw, 100vw"
+            />
+            <div
+              aria-hidden
+              className="pointer-events-none absolute -inset-px bg-[linear-gradient(180deg,transparent_65%,#ECE3D8_100%)] lg:bg-[linear-gradient(90deg,#ECE3D8_0%,rgba(236,227,216,0.85)_8%,rgba(236,227,216,0.35)_22%,transparent_40%)]"
+            />
+          </div>
         </div>
+      </section>
 
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 z-[1]"
-          style={{ background: FORMATION_CONTENT_FADE }}
-        />
-
-        <div className="relative z-10 mx-auto max-w-7xl px-5 pb-16 pt-10 sm:px-8 sm:pt-12 lg:pb-24 lg:pt-16">
-          <div className="max-w-3xl lg:max-w-[min(100%,44rem)]">
-            <Reveal variant="up">
-              <IntroPanel>
-                <SectionEyebrow>Formação profissional</SectionEyebrow>
-                <h1 className="mt-3 max-w-2xl font-display text-[2rem] leading-[1.08] text-graphite sm:text-4xl lg:text-[2.75rem]">
-                  Trajetória acadêmica em nutrição clínica
-                </h1>
-                <p className="mt-4 max-w-xl text-base leading-8 text-graphite/65">
-                  Enfermagem, Nutrição e mestrado na UFMG. Ciência, escuta e conduta responsável em cada
-                  etapa.
-                </p>
-                <ul className="mt-6 flex flex-wrap gap-2">
-                  {FORMATION_PILLARS.map((label) => (
-                    <li
-                      key={label}
-                      className="rounded-full border border-olive-900/10 bg-linen/70 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-graphite/70"
-                    >
-                      {label}
-                    </li>
-                  ))}
-                </ul>
-              </IntroPanel>
-            </Reveal>
-
-            <div className="mt-10 lg:mt-12">
+      <section className="bg-linen px-5 py-16 sm:px-8 lg:py-20">
+        <div className="mx-auto max-w-7xl">
+          <div className="max-w-3xl">
               <Reveal variant="up" delay={100}>
                 <IntroPanel className="relative overflow-hidden pl-7 sm:pl-8">
                   <span
@@ -168,7 +177,6 @@ export default function FormacaoPage() {
                 </p>
                 <p className="mt-4 text-sm text-porcelain/65">{site.name}</p>
               </Reveal>
-            </div>
           </div>
         </div>
       </section>

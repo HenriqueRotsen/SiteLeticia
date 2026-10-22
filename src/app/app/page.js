@@ -2,13 +2,31 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Calendar, Sparkles, Video } from "lucide-react";
+import { ArrowRight, Calendar, FlaskConical, LineChart, Salad, Sparkles, Video } from "lucide-react";
 import PatientShell from "@/components/layout/PatientShell";
 import WaitlistPositionCard from "@/components/waitlist/WaitlistPositionCard";
 import { Card, formatCurrency } from "@/components/layout/AppShell";
 import { paymentBadge } from "@/components/ui/Badge";
 import StatCard from "@/components/ui/StatCard";
 import { usePatientProfile } from "@/lib/hooks/usePatientProfile";
+
+function insightHref(title) {
+  const text = String(title || "").toLowerCase();
+  if (text.includes("consulta")) return "/app/consultas";
+  if (text.includes("exame")) return "/app/exames";
+  if (text.includes("dieta") || text.includes("plano") || text.includes("adesão")) return "/app/dieta";
+  if (text.includes("peso") || text.includes("evolução")) return "/app/evolucao";
+  return "/app/evolucao";
+}
+
+function insightIcon(title) {
+  const text = String(title || "").toLowerCase();
+  if (text.includes("consulta")) return Calendar;
+  if (text.includes("exame")) return FlaskConical;
+  if (text.includes("dieta") || text.includes("plano") || text.includes("adesão")) return Salad;
+  if (text.includes("peso") || text.includes("evolução")) return LineChart;
+  return Sparkles;
+}
 
 export default function PatientHomePage() {
   const { firstName } = usePatientProfile();
@@ -35,6 +53,7 @@ export default function PatientHomePage() {
 
   const next = data.appointments.find((a) => new Date(a.starts_at) >= new Date());
   const payment = next ? paymentBadge(next.payment_status) : null;
+  const highlights = data.insights.slice(0, 3);
 
   return (
     <PatientShell
@@ -47,7 +66,7 @@ export default function PatientHomePage() {
       {next ? (
         <div className="mb-6 overflow-hidden rounded-2xl border border-olive-200/80 bg-gradient-to-r from-olive-700 to-olive-800 p-6 text-white shadow-card sm:p-8">
           <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="min-w-0">
+            <div className="flex min-w-0 flex-col items-start">
               <p className="text-sm font-medium text-olive-100">Próxima consulta</p>
               <p className="mt-2 text-xl font-semibold tracking-tight sm:text-2xl">
                 {new Date(next.starts_at).toLocaleString("pt-BR", {
@@ -58,16 +77,16 @@ export default function PatientHomePage() {
                   minute: "2-digit"
                 })}
               </p>
-              <div className="mt-3 flex flex-wrap items-center gap-2">
+              <p className="mt-3">
                 {payment ? (
-                  <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-medium backdrop-blur">
+                  <span className="mr-2 inline-block rounded-full bg-white/15 px-3 py-1 text-xs font-medium">
                     Pagamento: {payment.label}
                   </span>
                 ) : null}
-                <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-medium backdrop-blur">
+                <span className="inline-block rounded-full bg-white/15 px-3 py-1 text-xs font-medium">
                   {formatCurrency(next.amount_cents)}
                 </span>
-              </div>
+              </p>
             </div>
             {next.meet_link ? (
               <a
@@ -84,37 +103,64 @@ export default function PatientHomePage() {
         </div>
       ) : null}
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-3">
         <StatCard
           label="Consultas agendadas"
           value={data.appointments.length}
           hint="Próximas sessões"
           icon={Calendar}
           tone="olive"
+          href="/app/consultas"
         />
-        <StatCard
-          label="Destaques"
-          value={data.insights.length || 0}
-          hint="Resumos personalizados"
-          icon={Sparkles}
-          tone="linen"
-        />
-      </div>
 
-      <div className="mt-6 grid gap-4 lg:grid-cols-2">
-        <Card title="Destaque da semana">
-          {data.insights[0] ? (
-            <div className="rounded-xl bg-linen p-4">
-              <p className="font-semibold text-graphite">{data.insights[0].title}</p>
-              <p className="mt-2 text-sm leading-6 text-graphite/65">{data.insights[0].body}</p>
+        <section className="rounded-2xl border border-olive-900/10 bg-porcelain/95 p-5 shadow-card lg:col-span-2 sm:p-6">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-[#BD9B72]" strokeWidth={1.75} />
+              <h2 className="text-base font-semibold text-graphite">Destaques</h2>
+            </div>
+            <Link href="/app/evolucao" className="text-xs font-semibold text-[#BD9B72] hover:underline">
+              Ver todos →
+            </Link>
+          </div>
+
+          {highlights.length ? (
+            <div className="grid gap-2 sm:grid-cols-2">
+              {highlights.map((item) => {
+                const Icon = insightIcon(item.title);
+                const href = insightHref(item.title);
+                return (
+                  <Link
+                    key={item.id || item.title}
+                    href={href}
+                    className="group flex gap-3 rounded-xl bg-linen p-4 transition hover:bg-[#BD9B72]/12 hover:ring-1 hover:ring-[#BD9B72]/30"
+                  >
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-[#BD9B72] shadow-sm">
+                      <Icon className="h-4 w-4" strokeWidth={1.75} />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block text-sm font-semibold text-graphite group-hover:text-[#BD9B72]">
+                        {item.title}
+                      </span>
+                      <span className="mt-1 line-clamp-2 block text-sm leading-5 text-graphite/60">
+                        {item.body}
+                      </span>
+                    </span>
+                  </Link>
+                );
+              })}
             </div>
           ) : (
-            <p className="text-sm text-graphite/45">Sem destaques ainda. Continue registrando sua evolução.</p>
+            <p className="text-sm text-graphite/45">
+              Os destaques aparecem conforme consultas, dieta e evolução forem registrados.
+            </p>
           )}
-        </Card>
+        </section>
+      </div>
 
+      <div className="mt-6">
         <Card title="Acesso rápido">
-          <div className="grid gap-2 sm:grid-cols-2">
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             {[
               { href: "/app/dieta", label: "Ver dieta" },
               { href: "/app/agenda", label: "Agendar consulta" },

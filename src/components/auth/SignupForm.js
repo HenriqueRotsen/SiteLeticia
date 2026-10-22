@@ -2,12 +2,18 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { GOALS } from "@/lib/constants";
 import { formatCpf, isValidCpf, normalizeCpf } from "@/lib/cpf-utils";
 import { formatPhone, isValidPhone, normalizePhone } from "@/lib/phone";
 import { PASSWORD_RULES } from "@/lib/validation/password";
 import { btnPrimary, inputClassName } from "@/components/layout/AppShell";
 import PasswordInput from "@/components/ui/PasswordInput";
+
+/** Aceita só caminhos internos (evita redirecionamento para sites externos). */
+function safeNextPath(value) {
+  return value && value.startsWith("/") && !value.startsWith("//") ? value : "";
+}
 
 const initial = {
   fullName: "",
@@ -30,6 +36,9 @@ function FieldError({ message }) {
 }
 
 export default function SignupForm() {
+  const searchParams = useSearchParams();
+  const nextPath = safeNextPath(searchParams.get("next"));
+  const nextQuery = nextPath ? `&next=${encodeURIComponent(nextPath)}` : "";
   const [form, setForm] = useState(initial);
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
@@ -155,7 +164,7 @@ export default function SignupForm() {
       return;
     }
 
-    window.location.href = "/entrar?registered=1";
+    window.location.href = `/entrar?registered=1${nextQuery}`;
   }
 
   return (
@@ -343,7 +352,7 @@ export default function SignupForm() {
           </p>
           <p className="mt-1 text-3xl font-semibold">#{waitlistPosition}</p>
           <Link
-            href="/entrar?registered=1"
+            href={`/entrar?registered=1${nextQuery}`}
             className="mt-3 inline-flex text-sm font-semibold text-olive-800 underline decoration-olive-900/20"
           >
             Continuar para o login
@@ -365,7 +374,10 @@ export default function SignupForm() {
 
       <p className="text-center text-sm text-graphite/55">
         Já tem conta?{" "}
-        <Link href="/entrar" className="font-semibold text-olive-700 hover:text-olive-800">
+        <Link
+          href={nextPath ? `/entrar?next=${encodeURIComponent(nextPath)}` : "/entrar"}
+          className="font-semibold text-olive-700 hover:text-olive-800"
+        >
           Entrar
         </Link>
       </p>

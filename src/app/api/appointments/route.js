@@ -17,6 +17,8 @@ import {
   getGoogleAccessToken
 } from "@/lib/google/calendar";
 import { writeAuditLog, getClientIp } from "@/lib/audit";
+import { preconsultEmail, sendEmail } from "@/lib/email/resend";
+import { getSiteUrl } from "@/lib/site-url";
 
 export async function POST(request) {
   const auth = await requirePatient();
@@ -51,36 +53,8 @@ export async function POST(request) {
     .eq("patient_id", auth.ctx.patient.id)
     .in("status", ["scheduled", "completed"]);
 
-  if ((priorCount || 0) === 0) {
-    const { data: preconsult, error: preconsultError } = await supabase
-      .from("patient_preconsult_forms")
-      .select("status")
-      .eq("patient_id", auth.ctx.patient.id)
-      .maybeSingle();
-
-    if (preconsultError) {
-      console.error("Preconsult check failed:", preconsultError);
-      return NextResponse.json(
-        {
-          message:
-            "Não foi possível validar a ficha pré-consulta. Confirme se a migration supabase/migrate-preconsult-forms.sql foi aplicada.",
-          code: "preconsult_unavailable"
-        },
-        { status: 503 }
-      );
-    }
-
-    if (preconsult?.status !== "submitted") {
-      return NextResponse.json(
-        {
-          message:
-            "Antes de agendar a primeira consulta, preencha a ficha pré-consulta. Ela fica disponível para a nutricionista.",
-          code: "preconsult_required"
-        },
-        { status: 403 }
-      );
-    }
-  }
+  // A ficha pré-consulta é opcional: não bloqueia o agendamento.
+  const isFirstConsultation = (priorCount || 0) === 0;
 
   const priceCents =
     body.type === "return" && settings?.return_price_cents != null
@@ -170,9 +144,35 @@ export async function POST(request) {
     ip: getClientIp(request)
   });
 
+  // Primeira consulta: convida para a ficha pré-consulta (se ainda não foi enviada).
+  let preconsultInvite = false;
+  if (isFirstConsultation && auth.ctx.user.email) {
+    try {
+      const { data: preconsult } = await supabase
+        .from("patient_preconsult_forms")
+        .select("status")
+        .eq("patient_id", auth.ctx.patient.id)
+        .maybeSingle();
+
+      if (preconsult?.status !== "submitted") {
+        preconsultInvite = true;
+        const message = preconsultEmail({
+          kind: "invite",
+          fullName: auth.ctx.patient.full_name,
+          startsAt: startsAt.toISOString(),
+          siteUrl: getSiteUrl(request)
+        });
+        await sendEmail({ to: auth.ctx.user.email, ...message });
+      }
+    } catch (error) {
+      console.error("Preconsult invite email failed:", error?.message || error);
+    }
+  }
+
   return NextResponse.json({
     appointment: { ...appointment, meet_link: meetLink, google_event_id: googleEventId },
-    calendarWarning
+    calendarWarning,
+    preconsultPending: preconsultInvite
   });
 }
 

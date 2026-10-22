@@ -201,21 +201,7 @@ export async function handleDemoApi(request) {
       (item) =>
         item.patient_id === patientId && ["scheduled", "completed"].includes(item.status)
     ).length;
-    if (priorCount === 0) {
-      const preconsult = (state.preconsultForms || []).find(
-        (item) => item.patient_id === patientId && item.status === "submitted"
-      );
-      if (!preconsult) {
-        return json(
-          {
-            message:
-              "Antes de agendar a primeira consulta, preencha a ficha pré-consulta. Ela fica disponível para a nutricionista.",
-            code: "preconsult_required"
-          },
-          403
-        );
-      }
-    }
+    // Ficha pré-consulta é opcional: não bloqueia o agendamento.
     const body = await request.json();
     const startsAt = new Date(body.startsAt);
     const endsAt = new Date(startsAt.getTime() + 60 * 60 * 1000);
@@ -233,7 +219,14 @@ export async function handleDemoApi(request) {
       meet_link: state.googleConnected ? "https://meet.google.com/demo-nova-consulta" : null
     };
     state.appointments.push(appt);
-    return json({ appointment: appt, calendarWarning: state.googleConnected ? null : "Modo demo: Meet simulado se Google conectado." });
+    const preconsultDone = (state.preconsultForms || []).some(
+      (item) => item.patient_id === patientId && item.status === "submitted"
+    );
+    return json({
+      appointment: appt,
+      calendarWarning: state.googleConnected ? null : "Modo demo: Meet simulado se Google conectado.",
+      preconsultPending: priorCount === 0 && !preconsultDone
+    });
   }
 
   const patientCancelMatch = path.match(/^\/api\/appointments\/([^/]+)$/);
@@ -324,7 +317,7 @@ export async function handleDemoApi(request) {
         goal: patient.goal,
         sex: patient.sex || null
       },
-      required: priorCount === 0 && form?.status !== "submitted",
+      required: false,
       priorAppointments: priorCount
     });
   }

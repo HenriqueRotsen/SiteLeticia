@@ -101,8 +101,8 @@ export default function AdminDashboardPage() {
               <AreaChart data={chartData}>
                 <defs>
                   <linearGradient id="consultasFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#4f2819" stopOpacity={0.22} />
-                    <stop offset="100%" stopColor="#4f2819" stopOpacity={0} />
+                    <stop offset="0%" stopColor="#BD9B72" stopOpacity={0.28} />
+                    <stop offset="100%" stopColor="#BD9B72" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid stroke="#f2eee4" vertical={false} />
@@ -111,14 +111,14 @@ export default function AdminDashboardPage() {
                 <Tooltip
                   contentStyle={{
                     borderRadius: 12,
-                    border: "1px solid rgba(79, 40, 25, 0.12)",
+                    border: "1px solid rgba(189, 155, 114, 0.28)",
                     boxShadow: "0 8px 24px rgba(37, 40, 36, 0.08)"
                   }}
                 />
                 <Area
                   type="monotone"
                   dataKey="consultas"
-                  stroke="#4f2819"
+                  stroke="#BD9B72"
                   strokeWidth={2.5}
                   fill="url(#consultasFill)"
                 />
@@ -131,13 +131,13 @@ export default function AdminDashboardPage() {
           <div className="flex flex-col items-center justify-center py-4">
             <div className="relative flex h-40 w-40 items-center justify-center">
               <svg className="h-full w-full -rotate-90" viewBox="0 0 120 120">
-                <circle cx="60" cy="60" r="48" fill="none" stroke="#f2eee4" strokeWidth="10" />
+                <circle cx="60" cy="60" r="48" fill="none" stroke="#ECE3D8" strokeWidth="10" />
                 <circle
                   cx="60"
                   cy="60"
                   r="48"
                   fill="none"
-                  stroke="#4f2819"
+                  stroke="#BD9B72"
                   strokeWidth="10"
                   strokeLinecap="round"
                   strokeDasharray={`${occupancy * 3.01} 301`}

@@ -1,10 +1,11 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   CalendarPlus,
   Camera,
   CircleDollarSign,
+  ClipboardList,
   FlaskConical,
   LayoutDashboard,
   LineChart,
@@ -13,6 +14,7 @@ import {
   User
 } from "lucide-react";
 import AppShell from "@/components/layout/AppShell";
+import PreconsultBanner from "@/components/ui/PreconsultBanner";
 import { isPublicDemoMode } from "@/lib/demo/config-public";
 import { resetPatientProfileCache, usePatientProfile } from "@/lib/hooks/usePatientProfile";
 
@@ -32,6 +34,7 @@ const navSections = [
     items: [
       { href: "/app/agenda", label: "Agendar", icon: CalendarPlus },
       { href: "/app/consultas", label: "Minhas consultas", icon: Stethoscope },
+      { href: "/app/ficha", label: "Ficha pré-consulta", icon: ClipboardList },
       { href: "/app/financeiro", label: "Financeiro", icon: CircleDollarSign }
     ]
   },
@@ -49,6 +52,7 @@ const PATIENT_CRUMB_HREFS = {
   Fotos: "/app/fotos",
   Evolução: "/app/evolucao",
   Agenda: "/app/agenda",
+  Ficha: "/app/ficha",
   "Minhas consultas": "/app/consultas",
   Consultas: "/app/consultas",
   Financeiro: "/app/financeiro",
@@ -72,6 +76,8 @@ function resolvePatientBreadcrumbs(breadcrumbs = []) {
 
 export default function PatientShell({ title, breadcrumbs, userName: userNameOverride, subtitle, children }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const showPreconsultBanner = ["/app", "/app/agenda", "/app/consultas"].includes(pathname);
   const { fullName, loading } = usePatientProfile();
   const userName = userNameOverride || fullName || (loading ? "Carregando..." : "Paciente");
 
@@ -97,6 +103,7 @@ export default function PatientShell({ title, breadcrumbs, userName: userNameOve
       onLogout={logout}
       navSections={navSections}
     >
+      {showPreconsultBanner ? <PreconsultBanner className="mb-4" /> : null}
       {children}
     </AppShell>
   );

@@ -1,4 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96" fill="none">
-  <rect width="96" height="96" rx="28" fill="#4f2819"/>
-  <text x="48" y="58" text-anchor="middle" fill="#fbfaf5" font-family="Georgia, 'Times New Roman', serif" font-size="34" letter-spacing="1">LC</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="420" height="360" viewBox="0 0 420 360" fill="none">
+  <!-- Placeholder até a logo oficial sem fundo. Substitua este arquivo. -->
+  <text x="8" y="300" fill="#BD9B72" font-family="Georgia, 'Times New Roman', serif" font-size="300" font-style="italic">L</text>
+  <text x="78" y="300" fill="#BD9B72" font-family="Georgia, 'Times New Roman', serif" font-size="300">C</text>
 </svg>

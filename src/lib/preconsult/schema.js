@@ -27,7 +27,7 @@ export const FREQUENCY = [
   { value: "diario", label: "Diário / quase diário" }
 ];
 
-export const PRECONSULT_SECTIONS = [
+const RAW_SECTIONS = [
   {
     id: "identification",
     title: "1. Identificação e Objetivos",
@@ -665,6 +665,151 @@ export const PRECONSULT_SECTIONS = [
   }
 ];
 
+/**
+ * Ficha enxuta: o essencial (cerca de 5 minutos, quase tudo em toques) e, ao final,
+ * um bloco opcional de detalhes que pode ser respondido agora ou na consulta.
+ * Todas as chaves originais foram mantidas, então respostas antigas continuam válidas.
+ */
+const RAW_BY_KEY = Object.fromEntries(
+  RAW_SECTIONS.flatMap((section) => section.fields.map((field) => [field.key, field]))
+);
+
+function pick(keys, overrides = {}, group) {
+  return keys.map((key) => {
+    const field = RAW_BY_KEY[key];
+    if (!field) throw new Error(`Campo da ficha não encontrado: ${key}`);
+    return { ...field, ...(overrides[key] || {}), ...(group ? { group } : {}) };
+  });
+}
+
+const OPTIONAL = { required: false };
+
+function optionalFields(keys, group) {
+  return pick(keys, Object.fromEntries(keys.map((key) => [key, OPTIONAL])), group);
+}
+
+export const PRECONSULT_SECTIONS = [
+  {
+    id: "identification",
+    title: "Você e seu objetivo",
+    description: "Já preenchemos o que temos do seu cadastro. Falta pouco!",
+    fields: pick(["fullName", "age", "profession", "mainGoal", "specificDoubts"], {
+      profession: { required: false, cols: 3 }
+    })
+  },
+  {
+    id: "health",
+    title: "Sua saúde",
+    description: "Toque nas opções que mais combinam com você.",
+    fields: pick([
+      "hormonalHistory",
+      "menstrualHistory",
+      "pregnancyHistory",
+      "hadSurgeries",
+      "surgeries",
+      "usesCurrentMedications",
+      "currentMedications"
+    ])
+  },
+  {
+    id: "digestive",
+    title: "Digestão",
+    description: "Como está o seu intestino no dia a dia.",
+    fields: pick([
+      "abdominalPain",
+      "abdominalPainRelief",
+      "bloating",
+      "redFlags",
+      "bowelFrequency",
+      "stoolAppearance",
+      "refluxBurps"
+    ])
+  },
+  {
+    id: "lifestyle",
+    title: "Rotina",
+    description: "Sono, estresse e hidratação.",
+    fields: pick(
+      ["sleepQuality", "stressLevel", "waterIntake", "sugarUltraFreq", "wakeTime", "sleepTime"],
+      { wakeTime: OPTIONAL, sleepTime: OPTIONAL }
+    )
+  },
+  {
+    id: "food_recall",
+    title: "Um dia de alimentação",
+    description:
+      "Conte o que comeu ontem, só os alimentos principais. Não precisa de quantidades exatas.",
+    fields: pick(
+      [
+        "breakfast",
+        "morningSnack",
+        "lunch",
+        "afternoonSnack",
+        "dinner",
+        "eveningSnack",
+        "recallTypical",
+        "recallNotes",
+        "waterLiters"
+      ],
+      {
+        breakfast: { label: "Café da manhã", compact: true },
+        morningSnack: { label: "Lanche da manhã", required: false, compact: true, quickNone: "Não fiz" },
+        lunch: { label: "Almoço", compact: true },
+        afternoonSnack: { label: "Lanche da tarde", required: false, compact: true, quickNone: "Não fiz" },
+        dinner: { label: "Jantar", compact: true },
+        eveningSnack: { label: "Ceia / antes de dormir", required: false, compact: true, quickNone: "Não fiz" },
+        recallNotes: { required: false },
+        waterLiters: { required: false, label: "Água que bebeu ontem (litros)" }
+      }
+    )
+  },
+  {
+    id: "extras",
+    title: "Detalhes extras",
+    optional: true,
+    description:
+      "Opcional. Se preferir, a Letícia conversa sobre isso com você na consulta. Pule sem culpa!",
+    fields: [
+      ...optionalFields(
+        ["birthType", "breastfedExclusive", "childhoodIssues", "earlyMedicationsSurgeries"],
+        "Infância"
+      ),
+      ...optionalFields(
+        [
+          "stressorsTrauma",
+          "physicalTrauma",
+          "recurrentInfections",
+          "familyGiHistory",
+          "antibioticsAntiInflammatories",
+          "contraceptiveUse",
+          "protonPumpInhibitors"
+        ],
+        "Histórico e medicamentos"
+      ),
+      ...optionalFields(
+        [
+          "incompleteEvacuation",
+          "bowelUrgency",
+          "stoolColor",
+          "stoolAbnormalities",
+          "foulSmell",
+          "garlicEggsMeatTrigger",
+          "nailsIronB12"
+        ],
+        "Digestão em detalhe"
+      ),
+      ...optionalFields(
+        ["amalgamFillings", "rootCanalExtractions", "bleedingGums", "bruxismApneaMouthBreathing"],
+        "Boca e dentes"
+      ),
+      ...optionalFields(
+        ["mealEnvironment", "chewingSpeed", "alcoholFreq", "caffeineFreq"],
+        "Hábitos"
+      )
+    ]
+  }
+];
+
 export const PRECONSULT_FIELD_KEYS = PRECONSULT_SECTIONS.flatMap((section) =>
   section.fields.map((field) => field.key)
 );
@@ -833,4 +978,38 @@ export function mergePrefillAnswers(savedAnswers = {}, patient = {}) {
   }
 
   return base;
+}
+
+/** Campos obrigatórios visíveis e ainda sem resposta (ignora o que vem do cadastro). */
+function pendingRequiredFields(answers = {}) {
+  const normalized = normalizePreconsultAnswers(answers);
+  const pending = [];
+  let total = 0;
+  for (const section of PRECONSULT_SECTIONS) {
+    for (const field of section.fields) {
+      if (field.fromProfile || field.required === false) continue;
+      if (!isFieldVisible(field, normalized)) continue;
+      total += 1;
+      if (!String(normalized[field.key] || "").trim()) pending.push(field);
+    }
+  }
+  return { pending, total };
+}
+
+/** Progresso considerando só o essencial (o bloco opcional não conta). */
+export function getRequiredProgress(answers = {}) {
+  const { pending, total } = pendingRequiredFields(answers);
+  const done = total - pending.length;
+  return { done, total, percent: total ? Math.round((done / total) * 100) : 100 };
+}
+
+/** Estimativa de tempo restante: ~7 s por toque e ~30 s por resposta escrita. */
+export function estimateRemainingMinutes(answers = {}) {
+  const { pending } = pendingRequiredFields(answers);
+  if (!pending.length) return 0;
+  const seconds = pending.reduce(
+    (sum, field) => sum + (field.type === "textarea" ? 30 : field.type === "text" ? 15 : 7),
+    0
+  );
+  return Math.max(1, Math.ceil(seconds / 60));
 }

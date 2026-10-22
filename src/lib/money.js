@@ -15,7 +15,9 @@ export function formatReais(reais) {
     currency: "BRL",
     minimumFractionDigits: 0,
     maximumFractionDigits: 0
-  }).format(Number(reais) || 0);
+  })
+    .format(Number(reais) || 0)
+    .replace(/[\u00a0\u202f]/g, " ");
 }
 
 /** Extrai apenas dígitos e interpreta como reais inteiros. */

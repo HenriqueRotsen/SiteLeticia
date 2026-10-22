@@ -32,6 +32,14 @@ export function getDemoNotifications(role) {
 
   return [
     {
+      id: "n-patient-0",
+      title: "Preencha sua ficha pré-consulta",
+      body: "Leva cerca de 5 minutos e ajuda a Letícia a aproveitar melhor a sua consulta.",
+      href: "/app/ficha",
+      createdAt: new Date(now - 1000 * 60 * 10).toISOString(),
+      unread: true
+    },
+    {
       id: "n-patient-1",
       title: "Consulta confirmada",
       body: "Sua próxima sessão com a Letícia está agendada.",

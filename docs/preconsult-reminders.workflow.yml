@@ -1,0 +1,20 @@
+name: Lembretes da ficha pré-consulta
+
+# Roda a cada 15 minutos. A rota só envia e-mail a quem ainda não preencheu a ficha.
+# Configure em Settings > Secrets and variables > Actions:
+#   SITE_URL     ex.: https://seu-site.com.br
+#   CRON_SECRET  o mesmo valor da variável CRON_SECRET do servidor
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Chamar a rota de lembretes
+        run: |
+          curl -fsS --max-time 60 \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.SITE_URL }}/api/cron/preconsult-reminders"

@@ -2,10 +2,10 @@ import Link from "next/link";
 
 export default function StatCard({ label, value, hint, icon: Icon, tone = "olive", href }) {
   const tones = {
-    olive: "bg-olive-100 text-olive-700",
-    sand: "bg-olive-50 text-olive-600",
+    olive: "bg-[#BD9B72]/15 text-[#BD9B72]",
+    sand: "bg-linen text-[#BD9B72]",
     amber: "bg-amber-50 text-amber-700",
-    linen: "bg-linen text-olive-800"
+    linen: "bg-linen text-[#BD9B72]"
   };
 
   const content = (
@@ -22,12 +22,13 @@ export default function StatCard({ label, value, hint, icon: Icon, tone = "olive
           </div>
         ) : null}
       </div>
-      {href ? <p className="mt-3 text-xs font-semibold text-olive-700">Ver detalhes →</p> : null}
+      {href ? <p className="mt-3 text-xs font-semibold text-[#BD9B72]">Ver detalhes →</p> : null}
     </>
   );
 
-  const className =
-    "block rounded-2xl border border-olive-900/10 bg-porcelain/95 p-5 shadow-card transition hover:border-olive-300 hover:shadow-card-hover";
+  const className = href
+    ? "group block cursor-pointer rounded-2xl border border-olive-900/10 bg-porcelain/95 p-5 shadow-card transition hover:-translate-y-0.5 hover:border-[#BD9B72]/40 hover:shadow-card-hover"
+    : "block rounded-2xl border border-olive-900/10 bg-porcelain/95 p-5 shadow-card";
 
   if (href) {
     return (
