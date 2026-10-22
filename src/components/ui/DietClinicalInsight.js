@@ -53,7 +53,7 @@ export default function DietClinicalInsight({ insight, compact = false }) {
 
       <div className="relative flex items-start gap-3">
         <div
-          className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${styles.badge} shadow-sm`}
+          className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${styles.badge} shadow-xs`}
         >
           <Sparkles className="h-4 w-4" strokeWidth={1.75} />
         </div>

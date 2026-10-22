@@ -92,7 +92,7 @@ function ModalFrame({ children, onClose, size = "sm", label }) {
         aria-label="Fechar"
         tabIndex={-1}
         onClick={onClose}
-        className="modal-backdrop absolute inset-0 bg-graphite/55 backdrop-blur-sm"
+        className="modal-backdrop absolute inset-0 bg-graphite/55 backdrop-blur-xs"
       />
       <div
         ref={panelRef}

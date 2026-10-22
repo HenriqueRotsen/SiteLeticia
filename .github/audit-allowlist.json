@@ -1,15 +1,10 @@
 {
-  "$comment": "Exceções temporárias de npm audit (high/critical). Remover ao migrar Next 15+ / Tailwind 4.",
+  "$comment": "Exceções de npm audit (high/critical). Revisar a cada atualização de Next/ESLint.",
   "packages": {
-    "next": "Next 14.x sem patch para GHSA críticos; upgrade planejado para >=15.5.24 (breaking: params/cookies async).",
-    "postcss": "Transitivo via next@14; sobe com o upgrade do Next.",
-    "eslint-config-next": "Alinhado à major do Next 14; sobe junto na migração.",
-    "@next/eslint-plugin-next": "Transitivo de eslint-config-next@14.",
-    "tailwindcss": "v3.4; braces/chokidar exigem Tailwind 4 (breaking).",
-    "braces": "Transitivo Tailwind 3 / micromatch; fix via Tailwind 4.",
-    "chokidar": "Transitivo Tailwind 3.",
-    "micromatch": "Transitivo Tailwind 3 / fast-glob.",
-    "fast-glob": "Transitivo Tailwind 3.",
-    "glob": "Transitivo eslint-config-next@14."
+    "braces": "Sem versão corrigida publicada (3.0.3 é a última e está em <=3.0.3). Entra via micromatch -> fast-glob (fixado em 3.3.1) em @next/eslint-plugin-next, usado só no lint do próprio repositório.",
+    "micromatch": "Transitivo de fast-glob -> braces (sem correção disponível). Só no lint.",
+    "fast-glob": "Fixado em 3.3.1 por @next/eslint-plugin-next (inclusive na 16.4.2). Só no lint.",
+    "@next/eslint-plugin-next": "Dependência de lint; herda o alerta de braces via fast-glob até o plugin atualizar o fast-glob.",
+    "eslint-config-next": "Dependência de lint; herda o alerta de braces via @next/eslint-plugin-next."
   }
 }

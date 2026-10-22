@@ -227,7 +227,7 @@ export default function WaitlistBox() {
             onClick={() => handleTabChange(tab.id)}
             className={`rounded-full px-4 py-3 text-sm font-semibold transition ${
               activeTab === tab.id
-                ? "bg-olive-700 text-white shadow-sm"
+                ? "bg-olive-700 text-white shadow-xs"
                 : "text-graphite/68 hover:text-graphite"
             }`}
           >

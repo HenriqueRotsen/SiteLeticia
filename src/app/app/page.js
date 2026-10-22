@@ -135,7 +135,7 @@ export default function PatientHomePage() {
                     href={href}
                     className="group flex gap-3 rounded-xl bg-linen p-4 transition hover:bg-[#BD9B72]/12 hover:ring-1 hover:ring-[#BD9B72]/30"
                   >
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-[#BD9B72] shadow-sm">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-[#BD9B72] shadow-xs">
                       <Icon className="h-4 w-4" strokeWidth={1.75} />
                     </span>
                     <span className="min-w-0">

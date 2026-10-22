@@ -26,7 +26,7 @@ function OptionButton({ selected, label, onClick, multi = false }) {
       aria-pressed={selected}
       className={`rounded-xl border px-3.5 py-2.5 text-left text-sm font-medium transition sm:text-base ${
         selected
-          ? "border-olive-700 bg-olive-700 text-white shadow-sm"
+          ? "border-olive-700 bg-olive-700 text-white shadow-xs"
           : "border-olive-900/10 bg-white text-graphite/75 hover:border-olive-400 hover:bg-olive-50/70"
       }`}
     >
@@ -332,7 +332,7 @@ export default function PreconsultForm({
       <Card className="overflow-hidden border-olive-200/80 bg-gradient-to-br from-olive-50 via-porcelain to-linen p-0 sm:p-0">
         <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
           <div className="flex items-start gap-3">
-            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-olive-700 text-white shadow-sm">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-olive-700 text-white shadow-xs">
               <ClipboardList className="h-6 w-6" strokeWidth={1.75} />
             </span>
             <div>

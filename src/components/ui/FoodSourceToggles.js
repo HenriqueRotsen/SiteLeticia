@@ -30,7 +30,7 @@ function SourceToggle({ option, enabled, onChange, disabled }) {
     <label
       className={`flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 ${
         enabled
-          ? "border-olive-600/25 bg-white shadow-sm"
+          ? "border-olive-600/25 bg-white shadow-xs"
           : "border-white/50 bg-white/50 opacity-80"
       } ${disabled ? "cursor-not-allowed opacity-50" : ""}`}
     >
@@ -46,7 +46,7 @@ function SourceToggle({ option, enabled, onChange, disabled }) {
         }`}
       >
         <span
-          className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+          className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${
             enabled ? "translate-x-5" : "translate-x-0.5"
           }`}
         />

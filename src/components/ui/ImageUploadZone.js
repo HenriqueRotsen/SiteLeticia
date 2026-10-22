@@ -82,7 +82,7 @@ export default function ImageUploadZone({
           htmlFor={inputId}
           className="flex cursor-pointer flex-col items-center justify-center px-6 py-10 text-center sm:py-12"
         >
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-olive-700 text-white shadow-sm">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-olive-700 text-white shadow-xs">
             {uploading ? (
               <Loader2 className="h-7 w-7 animate-spin" strokeWidth={1.75} />
             ) : dragging ? (
@@ -97,7 +97,7 @@ export default function ImageUploadZone({
           </p>
           <p className="mt-2 max-w-sm text-sm text-graphite/55">{hint}</p>
 
-          <span className="mt-5 inline-flex items-center gap-2 rounded-xl bg-olive-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm">
+          <span className="mt-5 inline-flex items-center gap-2 rounded-xl bg-olive-700 px-4 py-2.5 text-sm font-semibold text-white shadow-xs">
             <Camera className="h-4 w-4" />
             Escolher arquivo
           </span>

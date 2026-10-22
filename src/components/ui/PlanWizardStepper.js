@@ -33,7 +33,7 @@ export default function PlanWizardStepper({ step, maxReached = 1, onStepChange }
                 <span
                   className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold transition ${
                     active
-                      ? "bg-olive-800 text-white shadow-sm"
+                      ? "bg-olive-800 text-white shadow-xs"
                       : done
                         ? "bg-olive-600 text-white"
                         : "border border-olive-900/15 bg-white text-graphite/45"

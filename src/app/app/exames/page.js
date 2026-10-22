@@ -323,7 +323,7 @@ export default function ExamesPage() {
               onClick={() => setDeclaredTiming("after")}
               className={`group relative overflow-hidden rounded-2xl border px-4 py-4 text-left transition ${
                 declaredTiming === "after"
-                  ? "border-emerald-500 bg-gradient-to-br from-emerald-50 to-emerald-100/80 font-semibold text-emerald-950 ring-2 ring-emerald-200/80 shadow-sm"
+                  ? "border-emerald-500 bg-gradient-to-br from-emerald-50 to-emerald-100/80 font-semibold text-emerald-950 ring-2 ring-emerald-200/80 shadow-xs"
                   : "border-emerald-200/80 bg-emerald-50/40 text-emerald-900/80 hover:border-emerald-400 hover:bg-emerald-50"
               }`}
             >
@@ -335,7 +335,7 @@ export default function ExamesPage() {
                 <span
                   className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
                     declaredTiming === "after"
-                      ? "bg-emerald-500 text-white shadow-sm shadow-emerald-500/30"
+                      ? "bg-emerald-500 text-white shadow-xs shadow-emerald-500/30"
                       : "bg-emerald-100 text-emerald-700"
                   }`}
                 >
@@ -364,7 +364,7 @@ export default function ExamesPage() {
               onClick={() => setDeclaredTiming("before")}
               className={`group relative overflow-hidden rounded-2xl border px-4 py-4 text-left transition ${
                 declaredTiming === "before"
-                  ? "border-orange-500 bg-gradient-to-br from-orange-50 to-amber-100/80 font-semibold text-orange-950 ring-2 ring-orange-200/80 shadow-sm"
+                  ? "border-orange-500 bg-gradient-to-br from-orange-50 to-amber-100/80 font-semibold text-orange-950 ring-2 ring-orange-200/80 shadow-xs"
                   : "border-orange-200/80 bg-orange-50/40 text-orange-900/80 hover:border-orange-400 hover:bg-orange-50"
               }`}
             >
@@ -376,7 +376,7 @@ export default function ExamesPage() {
                 <span
                   className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
                     declaredTiming === "before"
-                      ? "bg-orange-500 text-white shadow-sm shadow-orange-500/30"
+                      ? "bg-orange-500 text-white shadow-xs shadow-orange-500/30"
                       : "bg-orange-100 text-orange-700"
                   }`}
                 >

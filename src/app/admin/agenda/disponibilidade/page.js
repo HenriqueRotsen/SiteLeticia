@@ -180,7 +180,7 @@ export default function DisponibilidadePage() {
                 onClick={() => setForm((current) => ({ ...current, weekday: day.value }))}
                 className={`rounded-xl border px-3 py-2 text-sm font-semibold transition ${
                   form.weekday === day.value
-                    ? "border-olive-700 bg-olive-700 text-white shadow-sm"
+                    ? "border-olive-700 bg-olive-700 text-white shadow-xs"
                     : "border-olive-900/10 bg-white text-graphite hover:border-olive-400 hover:bg-olive-50/70"
                 }`}
               >

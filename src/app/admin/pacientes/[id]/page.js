@@ -152,7 +152,7 @@ export default function AdminPatientDetailPage() {
         <div className="flex flex-col gap-5 p-5 sm:p-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-olive-700 text-white shadow-sm">
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-olive-700 text-white shadow-xs">
                 <UserRound className="h-6 w-6" strokeWidth={1.75} />
               </span>
               <div className="min-w-0">

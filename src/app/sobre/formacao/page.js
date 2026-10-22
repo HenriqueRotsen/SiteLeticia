@@ -20,7 +20,7 @@ const FORMATION_PILLARS = ["Enfermagem", "Nutrição", "Mestrado UFMG"];
 function IntroPanel({ children, className = "" }) {
   return (
     <div
-      className={`rounded-[1.75rem] border border-olive-900/10 bg-white/72 p-7 shadow-card backdrop-blur-sm sm:rounded-[2rem] sm:p-8 ${className}`}
+      className={`rounded-[1.75rem] border border-olive-900/10 bg-white/72 p-7 shadow-card backdrop-blur-xs sm:rounded-[2rem] sm:p-8 ${className}`}
     >
       {children}
     </div>
@@ -42,7 +42,7 @@ function TimelineStep({ item, index, total }) {
 
   return (
     <article className="relative">
-      <div className="rounded-[1.75rem] border border-olive-900/10 bg-white/75 shadow-card backdrop-blur-sm sm:rounded-[2rem]">
+      <div className="rounded-[1.75rem] border border-olive-900/10 bg-white/75 shadow-card backdrop-blur-xs sm:rounded-[2rem]">
         <div className="grid gap-0 lg:grid-cols-[10rem_1fr]">
           <div className="flex flex-col items-start gap-3 border-b border-olive-900/8 bg-linen/50 px-6 py-5 sm:flex-row sm:items-center sm:justify-between lg:flex-col lg:items-start lg:justify-center lg:border-b-0 lg:border-r lg:px-5 lg:py-8">
             <span className="font-display text-5xl leading-none text-olive-200 sm:text-6xl">
@@ -156,7 +156,7 @@ export default function FormacaoPage() {
             </div>
 
             <div className="mt-14 grid gap-8 lg:mt-20">
-              <Reveal variant="up" className="rounded-[1.75rem] border border-olive-900/10 bg-white/75 p-7 shadow-card backdrop-blur-sm sm:p-8">
+              <Reveal variant="up" className="rounded-[1.75rem] border border-olive-900/10 bg-white/75 p-7 shadow-card backdrop-blur-xs sm:p-8">
                 <SectionEyebrow>Competências</SectionEyebrow>
                 <h3 className="mt-4 font-display text-3xl text-graphite">
                   O que essa formação sustenta na consulta

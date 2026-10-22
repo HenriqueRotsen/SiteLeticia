@@ -93,3 +93,12 @@ Manual (ambiente de preview da Vercel):
 ## 7. Estimativa
 
 Cerca de 1 a 2 dias de trabalho, sem contar a validação manual no preview.
+
+## 8. Execução (resultado)
+
+- Next 15.5.28, React 19, eslint-config-next 15.5.28. `serverComponentsExternalPackages` virou `serverExternalPackages`.
+- Tailwind 4 (`@tailwindcss/postcss`), com `tailwind.config.js` carregado por `@config`. Classes renomeadas para o padrão v4: `shadow-sm`→`shadow-xs`, `shadow`→`shadow-sm`, `blur-sm`→`blur-xs`, `transform` removido. Padrões da v3 que mudaram (cor de borda, placeholder, cursor de botão) restaurados em `@layer base`. Regras de elemento em `globals.css` ficaram em `@layer base`, senão `font: inherit` em `button` anulava utilitários como `font-semibold`.
+- Overrides: `glob` ^10.5.0 e `postcss` ^8.5.31 (o `postcss` do próprio Next estava fixado em 8.4.31).
+- Vulnerabilidades restantes: só `braces` (GHSA-vfj7-8cjw-p6xm, sem versão corrigida publicada). Entra via `@next/eslint-plugin-next` → `fast-glob` 3.3.1 (fixado pelo plugin, inclusive na 16.4.2), usado só no lint. Está documentado em `.github/audit-allowlist.json` e `osv-scanner.toml`.
+- Verificação: lint sem erros, 80/80 testes, build ok, smoke Playwright (3/3), `npm run security:audit` ok, consulta OSV em 638 pacotes do lockfile só com `braces`. Comparação visual com o baseline (commit 23da488): formulários idênticos (0%); páginas com diferenças pequenas de layout e animação, sem regressão visível.
+- Não verificado: fluxos autenticados (Supabase) e OSV via Docker (sem daemon local).

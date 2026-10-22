@@ -132,7 +132,7 @@ export default function FatSecretNutrientGrid({
             <div
               key={nutrient.key}
               title={`${nutrient.fullLabel}: ${empty ? "vazio" : formatNutrientValue(nutrient.key, value)}`}
-              className={`flex flex-col items-center justify-center border text-center transition hover:-translate-y-0.5 hover:shadow-sm ${tone} ${
+              className={`flex flex-col items-center justify-center border text-center transition hover:-translate-y-0.5 hover:shadow-xs ${tone} ${
                 empty ? "opacity-50" : ""
               } ${
                 isMicro

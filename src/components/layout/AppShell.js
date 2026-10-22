@@ -94,8 +94,8 @@ function UserProfileChip({ name, href, label = "Meu perfil", active = false }) {
 
   const className = `group flex shrink-0 items-center gap-2.5 rounded-2xl border p-1.5 transition sm:gap-3 sm:px-3 sm:py-2 ${
     active
-      ? "border-[#BD9B72]/40 bg-[#BD9B72]/10 shadow-sm"
-      : "border-olive-900/10 bg-white/80 hover:border-[#BD9B72]/35 hover:bg-white hover:shadow-sm"
+      ? "border-[#BD9B72]/40 bg-[#BD9B72]/10 shadow-xs"
+      : "border-olive-900/10 bg-white/80 hover:border-[#BD9B72]/35 hover:bg-white hover:shadow-xs"
   }`;
 
   if (!href) {
@@ -456,7 +456,7 @@ export function inputClassName(extra = "") {
 }
 
 export function btnPrimary(extra = "") {
-  return `inline-flex items-center justify-center gap-2 rounded-xl bg-[#BD9B72] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#A8875F] focus:outline-none focus:ring-2 focus:ring-[#BD9B72]/30 disabled:opacity-60 ${extra}`;
+  return `inline-flex items-center justify-center gap-2 rounded-xl bg-[#BD9B72] px-4 py-2.5 text-sm font-semibold text-white shadow-xs transition hover:bg-[#A8875F] focus:outline-none focus:ring-2 focus:ring-[#BD9B72]/30 disabled:opacity-60 ${extra}`;
 }
 
 export function btnSecondary(extra = "") {
