@@ -1,7 +1,10 @@
 export const site = {
   name: "Letícia Cunha",
-  role: "Nutricionista clínica",
+  role: "Nutricionista",
   domain: "Saúde & Nutrição",
+  tagline: "Nutrição com método, história e cuidado.",
+  valueProposition:
+    "Letícia Cunha une enfermagem, nutrição e pesquisa clínica para construir estratégias alimentares individualizadas.",
   email: process.env.NEXT_PUBLIC_CONTACT_EMAIL || "leticiavrcunha@gmail.com",
   whatsapp: process.env.NEXT_PUBLIC_CONTACT_WHATSAPP || "5531987450173",
   instagram: process.env.NEXT_PUBLIC_CONTACT_INSTAGRAM || "leticiavrcunha",

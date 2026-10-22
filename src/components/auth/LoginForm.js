@@ -11,6 +11,12 @@ export default function LoginForm() {
   const [form, setForm] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState("");
+  const requestedNextParam = searchParams.get("next");
+  const hasSlot = Boolean(requestedNextParam && requestedNextParam.includes("slot="));
+  const nextQuery =
+    requestedNextParam && requestedNextParam.startsWith("/") && !requestedNextParam.startsWith("//")
+      ? `?next=${encodeURIComponent(requestedNextParam)}`
+      : "";
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -57,6 +63,12 @@ export default function LoginForm() {
 
   return (
     <form className="space-y-4" onSubmit={handleSubmit}>
+      {hasSlot ? (
+        <p className="rounded-xl border border-gold-500/40 bg-cream p-4 text-sm leading-6 text-graphite/80">
+          Seu horário está guardado. Entre ou crie sua conta para confirmar a consulta.
+        </p>
+      ) : null}
+
       {searchParams.get("registered") ? (
         <p className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
           Conta criada! Faça login para continuar.
@@ -113,7 +125,10 @@ export default function LoginForm() {
 
       <p className="text-center text-sm text-graphite/55">
         Ainda não tem conta?{" "}
-        <Link href="/criar-conta" className="font-semibold text-olive-700 hover:text-olive-800">
+        <Link
+          href={`/criar-conta${nextQuery}`}
+          className="font-semibold text-olive-700 hover:text-olive-800"
+        >
           Criar conta
         </Link>
       </p>

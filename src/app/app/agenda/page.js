@@ -5,7 +5,6 @@ import { CalendarDays, Check, Clock } from "lucide-react";
 import PatientShell from "@/components/layout/PatientShell";
 import { Card } from "@/components/layout/AppShell";
 import BookingPaymentPanel from "@/components/ui/BookingPaymentPanel";
-import PreconsultForm from "@/components/ui/PreconsultForm";
 import { TIMEZONE } from "@/lib/constants";
 import { zonedDateKey } from "@/lib/scheduling/timezone";
 
@@ -52,34 +51,37 @@ export default function AgendaPage() {
   const [loading, setLoading] = useState(false);
   const [bookingEnabled, setBookingEnabled] = useState(true);
   const [bookingMessage, setBookingMessage] = useState("");
-  const [preconsultRequired, setPreconsultRequired] = useState(false);
-  const [preconsultForm, setPreconsultForm] = useState(null);
-  const [preconsultPatient, setPreconsultPatient] = useState(null);
-  const [preconsultLoading, setPreconsultLoading] = useState(true);
-  const [preconsultSaving, setPreconsultSaving] = useState(false);
+  const [slotNotice, setSlotNotice] = useState("");
+  const [loadingAgenda, setLoadingAgenda] = useState(true);
 
-  const slotGroups = useMemo(() => groupSlotsByDay(slots.slice(0, 24)), [slots]);
+  const slotGroups = useMemo(() => {
+    const visible = slots.slice(0, 40);
+    if (selected && !visible.some((slot) => slot.startsAt === selected)) {
+      const chosen = slots.find((slot) => slot.startsAt === selected);
+      if (chosen) visible.push(chosen);
+    }
+    return groupSlotsByDay(visible);
+  }, [slots, selected]);
   const selectedDate = selected ? new Date(selected) : null;
 
   useEffect(() => {
     const from = new Date();
     const to = new Date();
-    to.setDate(to.getDate() + 14);
+    to.setDate(to.getDate() + 21);
 
     Promise.all([
       fetch(`/api/appointments/slots?from=${from.toISOString()}&to=${to.toISOString()}`).then(async (r) => ({
         ok: r.ok,
         data: await r.json()
       })),
-      fetch("/api/payment-info").then(async (r) => ({ ok: r.ok, data: await r.json() })),
-      fetch("/api/patients/me/preconsulta").then(async (r) => ({ ok: r.ok, data: await r.json() }))
+      fetch("/api/payment-info").then(async (r) => ({ ok: r.ok, data: await r.json() }))
     ])
-      .then(([slotsRes, paymentRes, preconsultRes]) => {
+      .then(([slotsRes, paymentRes]) => {
         const slotsData = slotsRes.data || {};
         const paymentData = paymentRes.data || {};
-        const preconsultData = preconsultRes.data || {};
         const enabled =
           slotsData.bookingEnabled !== false && paymentData.bookingEnabled !== false;
+        const list = enabled ? slotsData.slots || [] : [];
         setBookingEnabled(enabled);
         setBookingMessage(
           slotsData.message ||
@@ -87,64 +89,30 @@ export default function AgendaPage() {
               ? "A marcação de consultas está temporariamente desativada. Fale com a Letícia pelo WhatsApp."
               : "")
         );
-        setSlots(enabled ? slotsData.slots || [] : []);
+        setSlots(list);
         setPayment(paymentData);
 
-        if (!preconsultRes.ok) {
-          setFeedback(
-            preconsultData.message ||
-              "Não foi possível carregar a ficha pré-consulta. Atualize a página ou fale com a Letícia."
-          );
-          // Em dúvida, bloqueia a agenda até a ficha carregar (evita pular o formulário).
-          setPreconsultRequired(true);
-          setPreconsultForm(null);
-          setPreconsultPatient(null);
-        } else {
-          setPreconsultRequired(Boolean(preconsultData.required));
-          setPreconsultForm(preconsultData.form || null);
-          setPreconsultPatient(preconsultData.patient || null);
+        // Horário escolhido no pop-up do site (?slot=...): já deixa selecionado.
+        const wanted = new URLSearchParams(window.location.search).get("slot");
+        if (wanted && enabled) {
+          const wantedTime = new Date(wanted).getTime();
+          const match = list.find((slot) => new Date(slot.startsAt).getTime() === wantedTime);
+          if (match) {
+            setSelected(match.startsAt);
+            setSlotNotice("Reservamos o horário que você escolheu. Confirme abaixo para finalizar.");
+          } else if (!Number.isNaN(wantedTime)) {
+            setSlotNotice(
+              "O horário que você escolheu não está mais disponível. Escolha outro abaixo."
+            );
+          }
         }
-        setPreconsultLoading(false);
+        setLoadingAgenda(false);
       })
       .catch(() => {
         setFeedback("Falha ao carregar a agenda. Atualize a página.");
-        setPreconsultRequired(true);
-        setPreconsultLoading(false);
+        setLoadingAgenda(false);
       });
   }, []);
-
-  async function savePreconsultProgress(answers) {
-    const res = await fetch("/api/patients/me/preconsulta", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ answers, submit: false })
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data.message || "Não foi possível salvar o progresso.");
-    }
-    setPreconsultForm(data.form);
-    return data.form;
-  }
-
-  async function submitPreconsult(answers) {
-    setPreconsultSaving(true);
-    setFeedback("");
-    const res = await fetch("/api/patients/me/preconsulta", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ answers, submit: true })
-    });
-    const data = await res.json();
-    setPreconsultSaving(false);
-    if (!res.ok) {
-      setFeedback(data.message || "Não foi possível enviar a ficha.");
-      return;
-    }
-    setPreconsultForm(data.form);
-    setPreconsultRequired(false);
-    setFeedback("Ficha enviada. Agora escolha o horário da sua consulta.");
-  }
 
   async function book() {
     if (!selected) return;
@@ -158,9 +126,6 @@ export default function AgendaPage() {
     const data = await res.json();
     setLoading(false);
     if (!res.ok) {
-      if (data.code === "preconsult_required") {
-        setPreconsultRequired(true);
-      }
       setFeedback(data.message || "Não foi possível agendar.");
       return;
     }
@@ -171,11 +136,7 @@ export default function AgendaPage() {
   return (
     <PatientShell
       title="Agendar consulta"
-      subtitle={
-        preconsultRequired
-          ? "Primeiro passo: ficha pré-consulta"
-          : "Escolha o melhor horário disponível"
-      }
+      subtitle="Escolha o melhor horário disponível"
       breadcrumbs={["Paciente", "Agenda"]}
     >
       {!bookingEnabled ? (
@@ -188,26 +149,16 @@ export default function AgendaPage() {
         </Card>
       ) : null}
 
-      {preconsultLoading ? (
+      {slotNotice ? (
+        <p className="mb-4 rounded-xl border border-gold-500/40 bg-cream px-4 py-3 text-sm leading-6 text-graphite/80">
+          {slotNotice}
+        </p>
+      ) : null}
+
+      {loadingAgenda ? (
         <Card>
           <p className="text-sm text-graphite/55">Carregando agenda…</p>
         </Card>
-      ) : preconsultRequired ? (
-        <div className="space-y-4">
-          {feedback ? (
-            <p className="rounded-xl border border-olive-200 bg-olive-50 px-4 py-3 text-sm text-olive-900">
-              {feedback}
-            </p>
-          ) : null}
-          <PreconsultForm
-            initialAnswers={preconsultForm?.answers}
-            initialStatus={preconsultForm?.status || "draft"}
-            patientProfile={preconsultPatient}
-            submitting={preconsultSaving}
-            onSubmit={submitPreconsult}
-            onSaveProgress={savePreconsultProgress}
-          />
-        </div>
       ) : (
         <div className="grid gap-4 lg:grid-cols-3">
           <Card className="lg:col-span-2">

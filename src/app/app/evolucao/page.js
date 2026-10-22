@@ -47,24 +47,24 @@ export default function EvolucaoPage() {
                 <AreaChart data={measurements}>
                   <defs>
                     <linearGradient id="pesoFill" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#4f2819" stopOpacity={0.22} />
-                      <stop offset="100%" stopColor="#4f2819" stopOpacity={0} />
+                      <stop offset="0%" stopColor="#BD9B72" stopOpacity={0.28} />
+                      <stop offset="100%" stopColor="#BD9B72" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid stroke="#f2eee4" vertical={false} />
+                  <CartesianGrid stroke="#ECE3D8" vertical={false} />
                   <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: "#252824", fontSize: 12, opacity: 0.45 }} />
                   <YAxis axisLine={false} tickLine={false} tick={{ fill: "#252824", fontSize: 12, opacity: 0.45 }} />
                   <Tooltip
                     contentStyle={{
                       borderRadius: 12,
-                      border: "1px solid rgba(79, 40, 25, 0.12)",
+                      border: "1px solid rgba(189, 155, 114, 0.28)",
                       boxShadow: "0 8px 24px rgba(37, 40, 36, 0.08)"
                     }}
                   />
                   <Area
                     type="monotone"
                     dataKey="peso"
-                    stroke="#4f2819"
+                    stroke="#BD9B72"
                     strokeWidth={2.5}
                     fill="url(#pesoFill)"
                   />

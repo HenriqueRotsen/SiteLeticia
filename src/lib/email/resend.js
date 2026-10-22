@@ -1,6 +1,7 @@
 import { Resend } from "resend";
 import { brand, escapeHtml, wrapEmailDocument } from "@/lib/branding/shell";
 import { getSiteUrl } from "@/lib/site-url";
+import { TIMEZONE } from "@/lib/constants";
 
 function getResendClient() {
   const apiKey = process.env.RESEND_API_KEY?.trim();
@@ -43,7 +44,7 @@ function emailCtaButton({ href, label }) {
     text-decoration:none;
     padding:14px 22px;
     border-radius:999px;
-    font-family:Inter,ui-sans-serif,system-ui,sans-serif;
+    font-family:Gotham,ui-sans-serif,system-ui,sans-serif;
     font-weight:700;
     font-size:12px;
     letter-spacing:0.14em;
@@ -54,7 +55,7 @@ function emailCtaButton({ href, label }) {
 function emailTitle(text) {
   return `<h1 style="
     margin:0 0 12px;
-    font-family:Georgia,'Times New Roman',serif;
+    font-family:Gentium Plus,Georgia,'Times New Roman',serif;
     font-size:28px;
     line-height:1.2;
     font-weight:400;
@@ -65,7 +66,7 @@ function emailTitle(text) {
 function emailParagraph(text) {
   return `<p style="
     margin:0 0 20px;
-    font-family:Inter,ui-sans-serif,system-ui,sans-serif;
+    font-family:Gotham,ui-sans-serif,system-ui,sans-serif;
     font-size:15px;
     line-height:1.65;
     color:rgba(37,40,36,0.68);
@@ -75,7 +76,7 @@ function emailParagraph(text) {
 function emailMuted(text) {
   return `<p style="
     margin:20px 0 0;
-    font-family:Inter,ui-sans-serif,system-ui,sans-serif;
+    font-family:Gotham,ui-sans-serif,system-ui,sans-serif;
     font-size:12px;
     line-height:1.5;
     color:rgba(37,40,36,0.42);
@@ -90,7 +91,7 @@ export function passwordResetEmail({ resetUrl, siteUrl } = {}) {
     ${emailTitle("Redefinir senha")}
     ${emailParagraph("Recebemos um pedido para redefinir a senha da sua conta.")}
     <div style="margin:8px 0 24px;">${emailCtaButton({ href: resetUrl, label: "Escolher nova senha" })}</div>
-    <p style="margin:0;font-family:Inter,ui-sans-serif,system-ui,sans-serif;font-size:13px;line-height:1.55;color:rgba(37,40,36,0.55);">
+    <p style="margin:0;font-family:Gotham,ui-sans-serif,system-ui,sans-serif;font-size:13px;line-height:1.55;color:rgba(47,42,39,0.55);">
       Se o botão não funcionar, copie e cole este link no navegador:<br/>
       <span style="word-break:break-all;color:${brand.colors.olive700};">${escapeHtml(resetUrl)}</span>
     </p>
@@ -127,7 +128,7 @@ export function loginOtpEmail({ code, siteUrl } = {}) {
     ">
       <p style="
         margin:0;
-        font-family:Inter,ui-sans-serif,system-ui,sans-serif;
+        font-family:Gotham,ui-sans-serif,system-ui,sans-serif;
         font-size:34px;
         letter-spacing:0.28em;
         font-weight:700;
@@ -143,6 +144,86 @@ export function loginOtpEmail({ code, siteUrl } = {}) {
     html: wrapEmailDocument({
       title: subject,
       preheader: `Seu código: ${code}`,
+      bodyHtml,
+      siteUrl: resolvedSiteUrl
+    })
+  };
+}
+
+function formatAppointmentWhen(startsAt) {
+  const date = new Date(startsAt);
+  const day = date.toLocaleDateString("pt-BR", {
+    timeZone: TIMEZONE,
+    weekday: "long",
+    day: "numeric",
+    month: "long"
+  });
+  const time = date.toLocaleTimeString("pt-BR", {
+    timeZone: TIMEZONE,
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+  return `${day.charAt(0).toUpperCase()}${day.slice(1)} às ${time}`;
+}
+
+function firstName(fullName) {
+  return String(fullName || "").trim().split(/\s+/)[0] || "";
+}
+
+/**
+ * E-mail enviado ao agendar a primeira consulta, com o link da ficha pré-consulta.
+ * kind: "invite" (logo após agendar) | "day" (1 dia antes) | "hour" (1 hora antes)
+ */
+export function preconsultEmail({ kind = "invite", fullName, startsAt, siteUrl } = {}) {
+  const resolvedSiteUrl = siteUrl || getSiteUrl();
+  const formUrl = `${resolvedSiteUrl}/app/ficha`;
+  const when = formatAppointmentWhen(startsAt);
+  const name = firstName(fullName);
+  const greeting = name ? `Olá, ${name}!` : "Olá!";
+
+  const copy = {
+    invite: {
+      subject: `Sua consulta está agendada — preencha a ficha (5 min) | ${brand.name}`,
+      title: "Consulta agendada",
+      intro: `Sua consulta com a ${brand.name} está marcada para ${when}.`,
+      ask: "Para a Letícia aproveitar melhor o nosso tempo, preencha a ficha pré-consulta. Leva cerca de 5 minutos, quase tudo em toques. É opcional, mas faz muita diferença.",
+      preheader: `Consulta em ${when}. Preencha a ficha pré-consulta em 5 minutos.`
+    },
+    day: {
+      subject: `Amanhã é a sua consulta — falta a ficha pré-consulta | ${brand.name}`,
+      title: "Sua consulta é amanhã",
+      intro: `Lembrando: sua consulta é ${when}.`,
+      ask: "Ainda não recebemos a sua ficha pré-consulta. Leva cerca de 5 minutos e ajuda a Letícia a preparar o atendimento.",
+      preheader: `Consulta ${when}. Falta só a ficha pré-consulta.`
+    },
+    hour: {
+      subject: `Sua consulta é daqui a pouco — dá tempo da ficha | ${brand.name}`,
+      title: "Sua consulta é daqui a pouco",
+      intro: `Sua consulta começa às ${when.split(" às ")[1]}.`,
+      ask: "Se der tempo, preencha agora a ficha pré-consulta (cerca de 5 minutos). Se não der, tudo bem, a Letícia conversa com você na consulta.",
+      preheader: "Sua consulta começa em cerca de 1 hora."
+    }
+  }[kind];
+
+  const text = `${greeting}\n\n${copy.intro}\n\n${copy.ask}\n\nPreencher a ficha: ${formUrl}\n\n— ${brand.name}`;
+  const bodyHtml = `
+    ${emailTitle(copy.title)}
+    ${emailParagraph(`${greeting} ${copy.intro}`)}
+    ${emailParagraph(copy.ask)}
+    <div style="margin:8px 0 24px;">${emailCtaButton({ href: formUrl, label: "Preencher a ficha" })}</div>
+    <p style="margin:0;font-family:Gotham,ui-sans-serif,system-ui,sans-serif;font-size:13px;line-height:1.55;color:rgba(47,42,39,0.55);">
+      Se o botão não funcionar, copie e cole este link no navegador:<br/>
+      <span style="word-break:break-all;color:${brand.colors.olive700};">${escapeHtml(formUrl)}</span>
+    </p>
+    ${emailMuted("Você precisa estar com a sua conta aberta para preencher. A ficha salva automaticamente o seu progresso.")}
+  `;
+
+  return {
+    subject: copy.subject,
+    text,
+    html: wrapEmailDocument({
+      title: copy.subject,
+      preheader: copy.preheader,
       bodyHtml,
       siteUrl: resolvedSiteUrl
     })

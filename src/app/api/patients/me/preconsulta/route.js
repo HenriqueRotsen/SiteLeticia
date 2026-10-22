@@ -45,7 +45,8 @@ export async function GET() {
     );
   }
 
-  const required = priorCount === 0 && form?.status !== "submitted";
+  // Ficha opcional: nunca bloqueia o agendamento.
+  const required = false;
   const patient = auth.ctx.patient;
   const answers = mergePrefillAnswers(form?.answers || emptyPreconsultAnswers(), patient);
 

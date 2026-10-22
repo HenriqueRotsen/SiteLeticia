@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { LcMonogram } from "@/components/brand/BrandMark";
 import { ArrowRight, Sparkles, Stethoscope, UserRound } from "lucide-react";
 import { isPublicDemoMode } from "@/lib/demo/config-public";
 
@@ -47,11 +48,9 @@ export default function DemoPageClient() {
     <main className="flex min-h-screen items-center justify-center bg-linen px-5 py-10">
       <section className="w-full max-w-2xl">
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-olive-700 text-lg font-bold text-white shadow-sm">
-            LC
-          </div>
+          <LcMonogram className="mx-auto mb-4 h-16 w-auto" alt="" />
           <p className="text-sm font-medium text-olive-700">Modo demonstração</p>
-          <h1 className="mt-2 text-3xl font-semibold tracking-tight text-graphite">Testar sem Supabase</h1>
+          <h1 className="mt-2 font-display text-3xl tracking-tight text-graphite">Testar sem Supabase</h1>
           <p className="mx-auto mt-3 max-w-lg text-sm leading-6 text-graphite/60">
             Explore layout e fluxos com dados fictícios. Nada é salvo no banco — ideal para validar a experiência
             antes de configurar login e Supabase.

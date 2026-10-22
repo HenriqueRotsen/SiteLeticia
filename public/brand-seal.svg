@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240" viewBox="0 0 240 240" fill="none">
+  <circle cx="120" cy="120" r="108" stroke="#2F2A27" stroke-width="1.4" fill="none"/>
+  <circle cx="120" cy="120" r="78" stroke="#2F2A27" stroke-width="0.8" fill="none"/>
+  <circle cx="42" cy="120" r="3.2" fill="#2F2A27"/>
+  <circle cx="198" cy="120" r="3.2" fill="#2F2A27"/>
+  <defs>
+    <path id="seal-top" d="M48,120 a72,72 0 0 1 144,0"/>
+    <path id="seal-bottom" d="M192,120 a72,72 0 0 1 -144,0"/>
+  </defs>
+  <text fill="#2F2A27" font-family="Gotham, ui-sans-serif, sans-serif" font-size="13" font-weight="600" letter-spacing="4.2">
+    <textPath href="#seal-top" startOffset="50%" text-anchor="middle">NUTRICIONISTA  NUTRICIONISTA</textPath>
+  </text>
+  <text fill="#2F2A27" font-family="Gotham, ui-sans-serif, sans-serif" font-size="13" font-weight="600" letter-spacing="4.2">
+    <textPath href="#seal-bottom" startOffset="50%" text-anchor="middle">NUTRICIONISTA  NUTRICIONISTA</textPath>
+  </text>
+  <text x="78" y="142" fill="#2F2A27" font-family="Georgia, 'Times New Roman', serif" font-size="72" font-style="italic">L</text>
+  <text x="98" y="142" fill="#2F2A27" font-family="Georgia, 'Times New Roman', serif" font-size="72">C</text>
+</svg>

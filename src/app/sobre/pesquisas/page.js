@@ -29,7 +29,7 @@ export default function PesquisasPage() {
           href={lattes.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="interactive-lift mt-8 inline-flex rounded-full border border-olive-900/12 bg-white/60 px-6 py-3 text-xs font-bold uppercase tracking-[0.16em] text-graphite transition hover:border-olive-700"
+          className="interactive-lift inline-flex rounded-full border border-olive-900/12 bg-white/60 px-6 py-3 text-xs font-bold uppercase tracking-[0.16em] text-graphite transition hover:border-olive-700"
         >
           Ver Currículo Lattes completo
         </a>

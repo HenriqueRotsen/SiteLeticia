@@ -14,9 +14,9 @@ const securityHeaders = [
     value: [
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.google.com https://www.gstatic.com",
-      "style-src 'self' 'unsafe-inline'",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "img-src 'self' data: blob: https:",
-      "font-src 'self' data:",
+      "font-src 'self' data: https://fonts.gstatic.com",
       "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://world.openfoodfacts.org https://www.googleapis.com https://oauth2.googleapis.com",
       "frame-src 'self' blob: https://www.google.com https://meet.google.com",
       "child-src 'self' blob:",
@@ -28,6 +28,13 @@ const securityHeaders = [
 ];
 
 const nextConfig = {
+  images: {
+    // WebP: bem mais leve que JPG/PNG e rápido de gerar (AVIF é lento e atrasava as imagens)
+    formats: ["image/webp"],
+    deviceSizes: [640, 750, 828, 1080, 1280, 1600, 1920, 2400],
+    // Em desenvolvimento não guarda cache longo (senão trocar uma imagem em public/ não aparece)
+    minimumCacheTTL: process.env.NODE_ENV === "production" ? 60 * 60 * 24 * 30 : 60
+  },
   async headers() {
     return [{ source: "/(.*)", headers: securityHeaders }];
   },

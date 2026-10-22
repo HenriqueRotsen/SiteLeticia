@@ -1,14 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { CheckCircle2, ClipboardList } from "lucide-react";
+import { Fragment, useMemo, useState } from "react";
+import { CheckCircle2, ClipboardList, Clock } from "lucide-react";
 import { Card, btnPrimary, btnSecondary, inputClassName } from "@/components/layout/AppShell";
 import {
   PRECONSULT_SECTIONS,
   emptyPreconsultAnswers,
   validatePreconsultAnswers,
   getMissingRequiredInSection,
-  countFilledAnswers,
+  estimateRemainingMinutes,
+  getRequiredProgress,
   mergePrefillAnswers,
   isFieldVisible,
   parseMultiValues,
@@ -65,10 +66,21 @@ export default function PreconsultForm({
     return items;
   }, [answers.fullName, answers.age, answers.mainGoal]);
 
-  const filled = useMemo(() => countFilledAnswers(answers), [answers]);
-  const total = PRECONSULT_SECTIONS.reduce((sum, item) => sum + item.fields.length, 0);
-  const progress = Math.round((filled / Math.max(total, 1)) * 100);
+  const withProfile = useMemo(
+    () => mergePrefillAnswers(answers, patientProfile || {}),
+    [answers, patientProfile]
+  );
+  const { done, total, percent: progress } = useMemo(
+    () => getRequiredProgress(withProfile),
+    [withProfile]
+  );
+  const minutesLeft = useMemo(() => estimateRemainingMinutes(withProfile), [withProfile]);
+  const lastRequiredIndex = PRECONSULT_SECTIONS.reduce(
+    (last, item, index) => (item.optional ? last : index),
+    0
+  );
   const isLast = sectionIndex === PRECONSULT_SECTIONS.length - 1;
+  const isLastRequired = sectionIndex === lastRequiredIndex && !isLast;
 
   function updateField(key, value) {
     setError("");
@@ -170,13 +182,17 @@ export default function PreconsultForm({
     const cols = field.cols || 3;
     const span = cols === 1 ? "sm:col-span-1" : cols === 2 ? "sm:col-span-2" : "sm:col-span-3";
     const value = answers[field.key] || "";
+    const optionalTag =
+      !section.optional && !field.fromProfile ? (
+        <span className="ml-2 text-xs font-normal text-graphite/45">(opcional)</span>
+      ) : null;
 
     if (field.type === "choice") {
       return (
         <fieldset key={field.key} className={`${span}`}>
           <legend className="text-sm font-medium leading-6 text-graphite/75 sm:text-base">
             {field.label}
-            {field.required ? <span className="text-rose-500"> *</span> : null}
+            {field.required ? <span className="text-rose-500"> *</span> : optionalTag}
             {field.womenOnly ? (
               <span className="ml-2 text-xs font-normal text-graphite/45">
                 (se não se aplica a você, marque “Não se aplica”)
@@ -203,7 +219,7 @@ export default function PreconsultForm({
         <fieldset key={field.key} className={`${span}`}>
           <legend className="text-sm font-medium leading-6 text-graphite/75 sm:text-base">
             {field.label}
-            {field.required ? <span className="text-rose-500"> *</span> : null}
+            {field.required ? <span className="text-rose-500"> *</span> : optionalTag}
             <span className="ml-2 text-xs font-normal text-graphite/45">
               (pode marcar mais de uma
               {field.womenOnly ? "; use “Não se aplica” se não for o seu caso" : ""})
@@ -231,7 +247,7 @@ export default function PreconsultForm({
           className={`block text-sm font-medium leading-6 text-graphite/75 sm:text-base ${span}`}
         >
           {field.label}
-          {field.required ? <span className="text-rose-500"> *</span> : null}
+          {field.required ? <span className="text-rose-500"> *</span> : optionalTag}
           <input
             type="time"
             className={`mt-2 text-base ${inputClassName()}`}
@@ -250,7 +266,7 @@ export default function PreconsultForm({
           className={`block text-sm font-medium leading-6 text-graphite/75 sm:text-base ${span}`}
         >
           {field.label}
-          {field.required ? <span className="text-rose-500"> *</span> : null}
+          {field.required ? <span className="text-rose-500"> *</span> : optionalTag}
           <input
             type="number"
             inputMode="decimal"
@@ -273,14 +289,32 @@ export default function PreconsultForm({
         className={`block text-sm font-medium leading-6 text-graphite/75 sm:text-base ${span}`}
       >
         {field.label}
-        {field.required ? <span className="text-rose-500"> *</span> : null}
+        {field.required ? <span className="text-rose-500"> *</span> : optionalTag}
         {field.type === "textarea" ? (
-          <textarea
-            className={`mt-2 min-h-[120px] text-base leading-7 ${inputClassName()}`}
-            value={value}
-            onChange={(e) => updateField(field.key, e.target.value)}
-            placeholder="Escreva aqui…"
-          />
+          <>
+            <textarea
+              className={`mt-2 text-base leading-7 ${
+                field.compact ? "min-h-[76px]" : "min-h-[110px]"
+              } ${inputClassName()}`}
+              value={value}
+              onChange={(e) => updateField(field.key, e.target.value)}
+              placeholder={field.compact ? "Ex.: pão com ovos e café com leite" : "Escreva aqui…"}
+            />
+            {field.quickNone ? (
+              <button
+                type="button"
+                onClick={() => updateField(field.key, field.quickNone)}
+                aria-pressed={value === field.quickNone}
+                className={`mt-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                  value === field.quickNone
+                    ? "border-olive-700 bg-olive-700 text-white"
+                    : "border-olive-900/10 bg-white text-graphite/65 hover:border-olive-400"
+                }`}
+              >
+                {field.quickNone}
+              </button>
+            ) : null}
+          </>
         ) : (
           <input
             className={`mt-2 text-base ${inputClassName()}`}
@@ -306,6 +340,10 @@ export default function PreconsultForm({
                 Antes da 1ª consulta
               </p>
               <h2 className="mt-1 font-display text-3xl text-graphite">Ficha pré-consulta</h2>
+              <p className="mt-1 inline-flex items-center gap-1.5 text-sm text-graphite/60">
+                <Clock className="h-4 w-4" strokeWidth={1.75} />
+                Leva cerca de 5 minutos · quase tudo em toques
+              </p>
             </div>
           </div>
           <div className="rounded-2xl bg-white/80 px-4 py-3 ring-1 ring-olive-900/8">
@@ -314,7 +352,9 @@ export default function PreconsultForm({
             </p>
             <p className="mt-1 text-2xl font-semibold tabular-nums text-olive-800">{progress}%</p>
             <p className="text-sm text-graphite/50">
-              {filled}/{total} campos · {initialStatus === "submitted" ? "enviada" : "rascunho"}
+              {minutesLeft > 0
+                ? `Faltam ~${minutesLeft} min · ${done}/${total}`
+                : `Tudo pronto · ${initialStatus === "submitted" ? "enviada" : "pode enviar"}`}
             </p>
           </div>
         </div>
@@ -359,7 +399,8 @@ export default function PreconsultForm({
                   : "border border-olive-900/10 bg-white text-graphite/65 hover:border-olive-300"
               }`}
             >
-              {index + 1}. {item.title.replace(/^\d+\.\s*/, "").split("—")[0].trim()}
+              {index + 1}. {item.title}
+              {item.optional ? <span className="ml-1.5 text-xs font-medium opacity-70">(opcional)</span> : null}
             </button>
           );
         })}
@@ -373,7 +414,21 @@ export default function PreconsultForm({
           ) : null}
         </div>
 
-        <div className="grid gap-6 sm:grid-cols-3">{editableFields.map(renderField)}</div>
+        <div className="grid gap-6 sm:grid-cols-3">
+          {editableFields.map((field, index) => {
+            const showGroup = field.group && field.group !== editableFields[index - 1]?.group;
+            return (
+              <Fragment key={field.key}>
+                {showGroup ? (
+                  <p className="border-b border-olive-900/10 pb-2 pt-2 text-xs font-semibold uppercase tracking-[0.18em] text-olive-700 sm:col-span-3">
+                    {field.group}
+                  </p>
+                ) : null}
+                {renderField(field)}
+              </Fragment>
+            );
+          })}
+        </div>
 
         {error ? (
           <p className="mt-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-base text-rose-800">
@@ -391,14 +446,34 @@ export default function PreconsultForm({
             Anterior
           </button>
           <div className="flex flex-wrap gap-2">
-            {!isLast ? (
+            {isLastRequired ? (
+              <>
+                <button
+                  type="button"
+                  className={btnSecondary()}
+                  disabled={savingProgress || submitting}
+                  onClick={() => goToSection(sectionIndex + 1)}
+                >
+                  {savingProgress ? "Salvando…" : "Responder detalhes extras"}
+                </button>
+                <button
+                  type="button"
+                  className={btnPrimary()}
+                  disabled={submitting || savingProgress}
+                  onClick={handleSubmit}
+                >
+                  <CheckCircle2 className="h-4 w-4" strokeWidth={1.75} />
+                  {submitting ? "Enviando…" : "Enviar ficha"}
+                </button>
+              </>
+            ) : !isLast ? (
               <button
                 type="button"
                 className={btnPrimary()}
                 disabled={savingProgress || submitting}
                 onClick={() => goToSection(sectionIndex + 1)}
               >
-                {savingProgress ? "Salvando…" : "Próxima seção"}
+                {savingProgress ? "Salvando…" : "Continuar"}
               </button>
             ) : (
               <button
@@ -408,7 +483,7 @@ export default function PreconsultForm({
                 onClick={handleSubmit}
               >
                 <CheckCircle2 className="h-4 w-4" strokeWidth={1.75} />
-                {submitting ? "Enviando…" : "Enviar ficha e continuar"}
+                {submitting ? "Enviando…" : "Enviar ficha"}
               </button>
             )}
           </div>
