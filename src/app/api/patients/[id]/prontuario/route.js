@@ -8,7 +8,8 @@ function readBodyText(body = {}) {
   return String(body.bodyText ?? body.body_text ?? body.bodyMd ?? body.body_md ?? "");
 }
 
-export async function GET(_request, { params }) {
+export async function GET(_request, { params: paramsPromise }) {
+  const params = await paramsPromise;
   const auth = await requireNutritionist();
   if (auth.error) return auth.error;
 
@@ -31,7 +32,8 @@ export async function GET(_request, { params }) {
   return NextResponse.json({ records });
 }
 
-export async function POST(request, { params }) {
+export async function POST(request, { params: paramsPromise }) {
+  const params = await paramsPromise;
   const auth = await requireNutritionist();
   if (auth.error) return auth.error;
 
@@ -89,7 +91,8 @@ export async function POST(request, { params }) {
   });
 }
 
-export async function PATCH(request, { params }) {
+export async function PATCH(request, { params: paramsPromise }) {
+  const params = await paramsPromise;
   const auth = await requireNutritionist();
   if (auth.error) return auth.error;
 

@@ -4,7 +4,8 @@ import { getFatSecretFood, isFatSecretConfigured } from "@/lib/foods/fatsecret";
 import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { getClientIp } from "@/lib/audit";
 
-export async function GET(request, { params }) {
+export async function GET(request, { params: paramsPromise }) {
+  const params = await paramsPromise;
   const auth = await requireAuth();
   if (auth.error) return auth.error;
 

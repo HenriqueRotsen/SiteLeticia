@@ -12,7 +12,8 @@ function isAllowedCsv(file) {
   return name.endsWith(".csv") || type === "" || type === "application/octet-stream";
 }
 
-export async function POST(request, { params }) {
+export async function POST(request, { params: paramsPromise }) {
+  const params = await paramsPromise;
   const auth = await requireNutritionist();
   if (auth.error) return auth.error;
 

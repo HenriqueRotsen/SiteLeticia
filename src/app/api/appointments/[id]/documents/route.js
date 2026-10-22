@@ -21,7 +21,8 @@ async function getOwnAppointment(patientId, appointmentId) {
   return data;
 }
 
-export async function GET(_request, { params }) {
+export async function GET(_request, { params: paramsPromise }) {
+  const params = await paramsPromise;
   const auth = await requirePatient();
   if (auth.error) return auth.error;
 
@@ -46,7 +47,8 @@ export async function GET(_request, { params }) {
   });
 }
 
-export async function POST(request, { params }) {
+export async function POST(request, { params: paramsPromise }) {
+  const params = await paramsPromise;
   const auth = await requirePatient();
   if (auth.error) return auth.error;
 

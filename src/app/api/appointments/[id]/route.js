@@ -4,7 +4,8 @@ import { createSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { cancelAppointmentRecord } from "@/lib/scheduling/cancel-appointment";
 import { writeAuditLog, getClientIp } from "@/lib/audit";
 
-export async function PATCH(request, { params }) {
+export async function PATCH(request, { params: paramsPromise }) {
+  const params = await paramsPromise;
   const auth = await requirePatient();
   if (auth.error) return auth.error;
 

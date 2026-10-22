@@ -56,7 +56,8 @@ async function maybeUploadDietCsv(patientId, file) {
   return path;
 }
 
-export async function GET(_request, { params }) {
+export async function GET(_request, { params: paramsPromise }) {
+  const params = await paramsPromise;
   const auth = await requireNutritionist();
   if (auth.error) return auth.error;
 
@@ -98,7 +99,8 @@ export async function GET(_request, { params }) {
   return NextResponse.json({ dietPlans: plans });
 }
 
-export async function POST(request, { params }) {
+export async function POST(request, { params: paramsPromise }) {
+  const params = await paramsPromise;
   const auth = await requireNutritionist();
   if (auth.error) return auth.error;
 

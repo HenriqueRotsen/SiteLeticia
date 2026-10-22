@@ -17,7 +17,8 @@ function readReportId(request) {
 }
 
 /** Compat: /labs/file?id=… — preferir /labs/file/[reportId]. */
-export async function GET(request, { params }) {
+export async function GET(request, { params: paramsPromise }) {
+  const params = await paramsPromise;
   const auth = await requireNutritionist();
   if (auth.error) return auth.error;
 

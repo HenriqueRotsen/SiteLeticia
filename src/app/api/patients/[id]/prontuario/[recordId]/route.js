@@ -5,7 +5,8 @@ import { writeAuditLog, getClientIp } from "@/lib/audit";
 
 const BUCKET = () => process.env.SUPABASE_STORAGE_BUCKET_CLINICAL || "clinical-records";
 
-export async function DELETE(request, { params }) {
+export async function DELETE(request, { params: paramsPromise }) {
+  const params = await paramsPromise;
   const auth = await requireNutritionist();
   if (auth.error) return auth.error;
 

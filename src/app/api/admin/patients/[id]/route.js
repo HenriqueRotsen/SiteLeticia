@@ -50,7 +50,8 @@ function mapDbError(error) {
   return "Erro ao salvar dados do paciente.";
 }
 
-export async function GET(_request, { params }) {
+export async function GET(_request, { params: paramsPromise }) {
+  const params = await paramsPromise;
   const auth = await requireNutritionist();
   if (auth.error) return auth.error;
 
@@ -83,7 +84,8 @@ export async function GET(_request, { params }) {
   });
 }
 
-export async function PATCH(request, { params }) {
+export async function PATCH(request, { params: paramsPromise }) {
+  const params = await paramsPromise;
   const auth = await requireNutritionist();
   if (auth.error) return auth.error;
 
