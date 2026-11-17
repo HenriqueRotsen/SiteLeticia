@@ -17,7 +17,7 @@ import InstallAppCard from "@/components/pwa/InstallAppCard";
 import { Card, DataTable, formatCurrency } from "@/components/layout/AppShell";
 import Badge, { appointmentBadge, paymentBadge } from "@/components/ui/Badge";
 import StatCard from "@/components/ui/StatCard";
-import { MeetJoinButton } from "@/components/ui/UpcomingAppointments";
+import { AppointmentJoinButton } from "@/components/ui/UpcomingAppointments";
 
 const weekdayLabels = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
@@ -166,7 +166,7 @@ export default function AdminDashboardPage() {
               key: "patient",
               label: "Paciente",
               render: (row) => (
-                <Link href={`/admin/consultas/${row.id}`} className="font-medium text-graphite hover:text-olive-800">
+                <Link href={`/admin/pacientes/${row.patient_id}`} className="font-medium text-graphite underline-offset-2 hover:text-olive-800 hover:underline">
                   {row.patients?.full_name || "—"}
                 </Link>
               )
@@ -174,7 +174,11 @@ export default function AdminDashboardPage() {
             {
               key: "when",
               label: "Data e hora",
-              render: (row) => new Date(row.starts_at).toLocaleString("pt-BR")
+              render: (row) => (
+                <Link href={`/admin/consultas/${row.id}`} className="underline-offset-2 hover:text-olive-800 hover:underline">
+                  {new Date(row.starts_at).toLocaleString("pt-BR")}
+                </Link>
+              )
             },
             {
               key: "status",
@@ -199,8 +203,8 @@ export default function AdminDashboardPage() {
             },
             {
               key: "meet",
-              label: "Meet",
-              render: (row) => <MeetJoinButton link={row.meet_link} size="sm" />
+              label: "Local",
+              render: (row) => <AppointmentJoinButton appointment={row} size="sm" />
             }
           ]}
           rows={(data.upcoming || []).map((appt) => ({ ...appt, id: appt.id }))}

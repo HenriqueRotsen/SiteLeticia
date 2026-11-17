@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import {
   CalendarClock,
+  CalendarPlus,
   Camera,
   ClipboardList,
   FileSpreadsheet,
@@ -20,6 +21,8 @@ import AdminShell from "@/components/layout/AdminShell";
 import Badge, { appointmentBadge } from "@/components/ui/Badge";
 import { Card, btnPrimary, btnSecondary } from "@/components/layout/AppShell";
 import { labelDietStatus } from "@/lib/labels";
+import ScheduleAppointmentModal from "@/components/ui/ScheduleAppointmentModal";
+import PatientPackagesCard from "@/components/ui/PatientPackagesCard";
 
 function formatPhone(phone) {
   const digits = String(phone || "").replace(/\D/g, "");
@@ -87,6 +90,14 @@ export default function AdminPatientDetailPage() {
   const [clinicalRecords, setClinicalRecords] = useState([]);
   const [preconsult, setPreconsult] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [scheduling, setScheduling] = useState(false);
+  const [packagesVersion, setPackagesVersion] = useState(0);
+
+  function reloadAppointments() {
+    return fetch(`/api/admin/appointments?patientId=${params.id}`)
+      .then((r) => r.json())
+      .then((data) => setAppointments(data.appointments || []));
+  }
 
   useEffect(() => {
     setLoading(true);
@@ -146,11 +157,11 @@ export default function AdminPatientDetailPage() {
   return (
     <AdminShell
       title={patient.full_name}
-      breadcrumbs={["Admin", "Pacientes", patient.full_name]}
+      breadcrumbs={["Admin", { label: "Pacientes", href: "/admin/pacientes" }, patient.full_name]}
       userName="Letícia"
     >
       <section className="overflow-hidden rounded-3xl border border-olive-900/10 bg-gradient-to-br from-olive-50 via-porcelain to-linen shadow-card">
-        <div className="flex flex-col gap-5 p-5 sm:p-6 lg:flex-row lg:items-end lg:justify-between">
+        <div className="flex flex-col gap-5 p-5 sm:p-6">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-olive-700 text-white shadow-xs">
@@ -173,8 +184,8 @@ export default function AdminPatientDetailPage() {
               </div>
             </div>
 
-            <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="rounded-2xl bg-white/70 px-3.5 py-3 ring-1 ring-olive-900/8">
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="min-w-0 rounded-2xl bg-white/70 px-3.5 py-3 ring-1 ring-olive-900/8">
                 <p className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-graphite/40">
                   <Phone className="h-3.5 w-3.5" /> WhatsApp
                 </p>
@@ -183,7 +194,7 @@ export default function AdminPatientDetailPage() {
                     href={whatsappHref(patient.phone)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="mt-1 inline-block text-sm font-semibold text-olive-800 underline-offset-2 transition hover:text-olive-900 hover:underline"
+                    className="mt-1 inline-block break-words text-sm font-semibold text-olive-800 underline-offset-2 transition hover:text-olive-900 hover:underline"
                   >
                     {formatPhone(patient.phone)}
                   </a>
@@ -191,13 +202,13 @@ export default function AdminPatientDetailPage() {
                   <p className="mt-1 text-sm font-semibold text-graphite">—</p>
                 )}
               </div>
-              <div className="rounded-2xl bg-white/70 px-3.5 py-3 ring-1 ring-olive-900/8">
+              <div className="min-w-0 rounded-2xl bg-white/70 px-3.5 py-3 ring-1 ring-olive-900/8">
                 <p className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-graphite/40">
                   <Target className="h-3.5 w-3.5" /> Objetivo
                 </p>
-                <p className="mt-1 text-sm font-semibold text-graphite">{patient.goal || "—"}</p>
+                <p className="mt-1 break-words text-sm font-semibold text-graphite">{patient.goal || "—"}</p>
               </div>
-              <div className="rounded-2xl bg-white/70 px-3.5 py-3 ring-1 ring-olive-900/8">
+              <div className="min-w-0 rounded-2xl bg-white/70 px-3.5 py-3 ring-1 ring-olive-900/8">
                 <p className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-graphite/40">
                   <Scale className="h-3.5 w-3.5" /> Peso
                 </p>
@@ -205,9 +216,9 @@ export default function AdminPatientDetailPage() {
                   {patient.latest_weight_kg != null ? `${patient.latest_weight_kg} kg` : "—"}
                 </p>
               </div>
-              <div className="rounded-2xl bg-white/70 px-3.5 py-3 ring-1 ring-olive-900/8">
+              <div className="min-w-0 rounded-2xl bg-white/70 px-3.5 py-3 ring-1 ring-olive-900/8">
                 <p className="text-[11px] font-medium uppercase tracking-wide text-graphite/40">CPF</p>
-                <p className="mt-1 text-sm font-semibold text-graphite">{patient.cpf_masked || "—"}</p>
+                <p className="mt-1 whitespace-nowrap text-sm font-semibold text-graphite">{patient.cpf_masked || "—"}</p>
               </div>
             </div>
           </div>
@@ -258,6 +269,8 @@ export default function AdminPatientDetailPage() {
         </div>
       </Card>
 
+      <PatientPackagesCard patientId={params.id} version={packagesVersion} />
+
       <div className="mt-5 grid items-start gap-5 xl:grid-cols-2">
         <Card className="overflow-hidden p-0 sm:p-0">
           <div className="flex items-center justify-between border-b border-olive-900/10 bg-gradient-to-r from-sky-50/80 to-porcelain px-5 py-4">
@@ -272,7 +285,24 @@ export default function AdminPatientDetailPage() {
                 </p>
               </div>
             </div>
+            <button
+              type="button"
+              onClick={() => setScheduling(true)}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-olive-700 hover:text-olive-800"
+            >
+              <CalendarPlus className="h-4 w-4" strokeWidth={1.75} />
+              Marcar
+            </button>
           </div>
+          <ScheduleAppointmentModal
+            open={scheduling}
+            onClose={() => setScheduling(false)}
+            patient={patient}
+            onScheduled={() => {
+              reloadAppointments();
+              setPackagesVersion((v) => v + 1);
+            }}
+          />
 
           <div className="space-y-5 p-5">
             <div>
@@ -284,10 +314,11 @@ export default function AdminPatientDetailPage() {
                   {upcoming.map((appt) => {
                     const badge = appointmentBadge(appt.status);
                     return (
-                      <li
-                        key={appt.id}
-                        className="rounded-2xl border border-sky-100 bg-sky-50/40 px-4 py-3"
-                      >
+                      <li key={appt.id}>
+                        <Link
+                          href={`/admin/consultas/${appt.id}`}
+                          className="block rounded-2xl border border-sky-100 bg-sky-50/40 px-4 py-3 transition hover:border-olive-300 hover:bg-olive-50/40"
+                        >
                         <div className="flex flex-wrap items-start justify-between gap-2">
                           <div>
                             <p className="text-sm font-semibold text-graphite">
@@ -295,10 +326,12 @@ export default function AdminPatientDetailPage() {
                             </p>
                             <p className="mt-0.5 text-xs text-graphite/50">
                               {appointmentTypeLabel(appt.type)}
+                              {appt.modality === "in_person" ? " · Presencial" : " · Online"}
                             </p>
                           </div>
                           <Badge variant={badge.variant}>{badge.label}</Badge>
                         </div>
+                        </Link>
                       </li>
                     );
                   })}
@@ -317,10 +350,11 @@ export default function AdminPatientDetailPage() {
                   {past.slice(0, 8).map((appt) => {
                     const badge = appointmentBadge(appt.status);
                     return (
-                      <li
-                        key={appt.id}
-                        className="rounded-2xl border border-olive-900/8 bg-white px-4 py-3"
-                      >
+                      <li key={appt.id}>
+                        <Link
+                          href={`/admin/consultas/${appt.id}`}
+                          className="block rounded-2xl border border-olive-900/8 bg-white px-4 py-3 transition hover:border-olive-300 hover:bg-olive-50/40"
+                        >
                         <div className="flex flex-wrap items-start justify-between gap-2">
                           <div>
                             <p className="text-sm font-medium text-graphite">
@@ -328,10 +362,12 @@ export default function AdminPatientDetailPage() {
                             </p>
                             <p className="mt-0.5 text-xs text-graphite/45">
                               {appointmentTypeLabel(appt.type)}
+                              {appt.modality === "in_person" ? " · Presencial" : " · Online"}
                             </p>
                           </div>
                           <Badge variant={badge.variant}>{badge.label}</Badge>
                         </div>
+                        </Link>
                       </li>
                     );
                   })}

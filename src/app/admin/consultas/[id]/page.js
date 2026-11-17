@@ -9,6 +9,7 @@ import Badge, { appointmentBadge, paymentBadge } from "@/components/ui/Badge";
 import PaymentDocUploadZone from "@/components/ui/PaymentDocUploadZone";
 import { formatAppointmentDateTime } from "@/lib/datetime";
 import { labelPaymentDocType } from "@/lib/labels";
+import { googleMapsEmbedUrl, googleMapsLink } from "@/lib/appointments/location";
 import { useDialog } from "@/components/ui/ConfirmDialog";
 
 export default function AdminConsultaDetailPage() {
@@ -149,7 +150,7 @@ export default function AdminConsultaDetailPage() {
   return (
     <AdminShell
       title="Detalhe da consulta"
-      breadcrumbs={["Admin", "Consultas", appointment.patients?.full_name || "Detalhe"]}
+      breadcrumbs={["Admin", { label: "Consultas", href: "/admin/consultas" }, appointment.patients?.full_name || "Detalhe"]}
       userName="Letícia"
     >
       <div className="mb-4">
@@ -175,7 +176,11 @@ export default function AdminConsultaDetailPage() {
           <dl className="mt-4 space-y-3 text-sm">
             <div>
               <dt className="text-xs uppercase tracking-wide text-graphite/45">Paciente</dt>
-              <dd className="mt-1 font-medium">{appointment.patients?.full_name || "—"}</dd>
+              <dd className="mt-1">
+                <Link href={`/admin/pacientes/${appointment.patient_id}`} className="font-semibold text-olive-800 underline-offset-2 hover:underline">
+                  {appointment.patients?.full_name || "—"}
+                </Link>
+              </dd>
             </div>
             <div>
               <dt className="text-xs uppercase tracking-wide text-graphite/45">Data</dt>
@@ -192,7 +197,11 @@ export default function AdminConsultaDetailPage() {
               <dt className="text-xs uppercase tracking-wide text-graphite/45">Valor</dt>
               <dd className="mt-1 font-medium">{formatCurrency(appointment.amount_cents)}</dd>
             </div>
-            {appointment.meet_link ? (
+            <div>
+              <dt className="text-xs uppercase tracking-wide text-graphite/45">Modalidade</dt>
+              <dd className="mt-1 font-medium">{appointment.modality === "in_person" ? "Presencial" : "Online"}</dd>
+            </div>
+            {appointment.meet_link && appointment.modality !== "in_person" ? (
               <div>
                 <a
                   href={appointment.meet_link}
@@ -205,6 +214,34 @@ export default function AdminConsultaDetailPage() {
               </div>
             ) : null}
           </dl>
+
+          {appointment.modality === "in_person" ? (
+            <div className="mt-5 overflow-hidden rounded-2xl border border-olive-900/10">
+              <div className="px-4 py-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-graphite/45">Consulta presencial</p>
+                <p className="mt-1 break-words text-sm text-graphite">{appointment.location || "Endereço a confirmar"}</p>
+                {appointment.location ? (
+                  <a
+                    href={googleMapsLink(appointment.location)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-2 inline-block text-sm font-semibold text-olive-800 hover:underline"
+                  >
+                    Abrir no Google Maps
+                  </a>
+                ) : null}
+              </div>
+              {appointment.location ? (
+                <iframe
+                  title="Mapa do local da consulta"
+                  src={googleMapsEmbedUrl(appointment.location)}
+                  className="block h-56 w-full border-0"
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                />
+              ) : null}
+            </div>
+          ) : null}
 
           <div className="mt-6 flex flex-wrap gap-2">
             <button

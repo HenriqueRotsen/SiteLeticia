@@ -124,8 +124,24 @@ export async function createGoogleCalendarEvent({
   startIso,
   endIso,
   attendeeEmail,
-  requestId
+  requestId,
+  location = null,
+  withMeet = true
 }) {
+  // Consulta presencial: evento com endereço e sem Meet.
+  if (!withMeet) {
+    return createGoogleCalendarEventWithoutMeet({
+      accessToken,
+      calendarId,
+      summary,
+      description,
+      startIso,
+      endIso,
+      attendeeEmail,
+      location
+    });
+  }
+
   const url = new URL(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`);
   url.searchParams.set("conferenceDataVersion", "1");
   url.searchParams.set("sendUpdates", "all");
@@ -163,7 +179,8 @@ export async function createGoogleCalendarEvent({
         description,
         startIso,
         endIso,
-        attendeeEmail
+        attendeeEmail,
+        location
       });
     }
     throw new Error(`Google Calendar error: ${err}`);
@@ -195,7 +212,8 @@ async function createGoogleCalendarEventWithoutMeet({
   description,
   startIso,
   endIso,
-  attendeeEmail
+  attendeeEmail,
+  location = null
 }) {
   const url = new URL(
     `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`
@@ -213,6 +231,7 @@ async function createGoogleCalendarEventWithoutMeet({
       description,
       start: { dateTime: startIso, timeZone: TIMEZONE },
       end: { dateTime: endIso, timeZone: TIMEZONE },
+      ...(location ? { location } : {}),
       attendees: attendeeEmail ? [{ email: attendeeEmail, responseStatus: "needsAction" }] : [],
       reminders: { useDefault: true }
     })

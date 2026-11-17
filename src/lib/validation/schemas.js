@@ -66,11 +66,21 @@ export const appointmentCreateSchema = z.object({
   type: z.enum(["consultation", "return"]).default("consultation")
 });
 
+export const adminAppointmentCreateSchema = z.object({
+  patientId: z.string().min(1),
+  startsAt: z.string().datetime(),
+  type: z.enum(["consultation", "return"]).default("consultation"),
+  modality: z.enum(["online", "in_person"]).default("online"),
+  notes: z.string().max(1000).optional()
+});
+
 export const paymentSettingsSchema = z.object({
   consultationPriceCents: z.number().int().min(0),
   returnPriceCents: z.number().int().min(0).nullable().optional(),
   instructions: z.string().max(2000).optional(),
-  cancellationPolicy: z.string().max(2000).optional()
+  cancellationPolicy: z.string().max(2000).optional(),
+  consultationPixCode: z.string().max(600).nullable().optional(),
+  returnPixCode: z.string().max(600).nullable().optional()
 });
 
 export const paymentMethodSchema = z.object({

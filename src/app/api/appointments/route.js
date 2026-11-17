@@ -19,6 +19,7 @@ import {
 import { writeAuditLog, getClientIp } from "@/lib/audit";
 import { preconsultEmail, sendEmail } from "@/lib/email/resend";
 import { getSiteUrl } from "@/lib/site-url";
+import { packageAppointmentFields, releasePackageCredit, reservePackageCredit } from "@/lib/packages/credits";
 
 export async function POST(request) {
   const auth = await requirePatient();
@@ -73,6 +74,9 @@ export async function POST(request) {
     return NextResponse.json({ message: "Horário indisponível." }, { status: 409 });
   }
 
+  // Paciente com pacote pago e saldo: a consulta usa um crédito (sai paga, valor 0).
+  const usedPackage = await reservePackageCredit(supabase, auth.ctx.patient.id);
+
   const { data: appointment, error } = await supabase
     .from("appointments")
     .insert({
@@ -84,12 +88,14 @@ export async function POST(request) {
       type: body.type,
       status: "scheduled",
       payment_status: "pending",
-      amount_cents: priceCents
+      amount_cents: priceCents,
+      ...packageAppointmentFields(usedPackage)
     })
     .select("*")
     .single();
 
   if (error) {
+    await releasePackageCredit(supabase, usedPackage?.id);
     return NextResponse.json({ message: "Não foi possível agendar." }, { status: 500 });
   }
 
@@ -172,7 +178,8 @@ export async function POST(request) {
   return NextResponse.json({
     appointment: { ...appointment, meet_link: meetLink, google_event_id: googleEventId },
     calendarWarning,
-    preconsultPending: preconsultInvite
+    preconsultPending: preconsultInvite,
+    usedPackage: usedPackage ? { name: usedPackage.name } : null
   });
 }
 

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import AdminShell from "@/components/layout/AdminShell";
 import { Card } from "@/components/layout/AppShell";
 import { centsToReais, formatReais, parseReaisInput, reaisToCents } from "@/lib/money";
+import PixCodeField from "@/components/ui/PixCodeField";
 
 function MoneyReaisField({ label, value, onChange, placeholder }) {
   return (
@@ -38,7 +39,9 @@ export default function PagamentoConfigPage() {
     consultationPriceReais: 0,
     returnPriceReais: null,
     instructions: "",
-    cancellationPolicy: ""
+    cancellationPolicy: "",
+    consultationPixCode: "",
+    returnPixCode: ""
   });
   const [methods, setMethods] = useState([]);
   const [methodForm, setMethodForm] = useState({
@@ -63,7 +66,9 @@ export default function PagamentoConfigPage() {
             ? null
             : centsToReais(s.settings.return_price_cents),
         instructions: s.settings.instructions || "",
-        cancellationPolicy: s.settings.cancellation_policy || ""
+        cancellationPolicy: s.settings.cancellation_policy || "",
+        consultationPixCode: s.settings.consultation_pix_code || "",
+        returnPixCode: s.settings.return_pix_code || ""
       });
     }
     setMethods(m.methods || []);
@@ -84,10 +89,13 @@ export default function PagamentoConfigPage() {
             ? null
             : reaisToCents(settings.returnPriceReais),
         instructions: settings.instructions,
-        cancellationPolicy: settings.cancellationPolicy
+        cancellationPolicy: settings.cancellationPolicy,
+        consultationPixCode: settings.consultationPixCode || null,
+        returnPixCode: settings.returnPixCode || null
       })
     });
-    setFeedback(res.ok ? "Configurações salvas." : "Erro ao salvar.");
+    const data = await res.json().catch(() => ({}));
+    setFeedback(res.ok ? "Configurações salvas." : data.message || "Erro ao salvar.");
   }
 
   async function addMethod() {
@@ -121,6 +129,28 @@ export default function PagamentoConfigPage() {
             }
             placeholder="R$ 0"
           />
+        </div>
+        <div className="mt-5 rounded-2xl border border-olive-900/10 bg-white/60 p-4">
+          <h3 className="text-sm font-semibold text-graphite">PIX copia e cola</h3>
+          <p className="mt-1 text-xs leading-5 text-graphite/55">
+            No app do banco, gere um PIX com o valor exato e cole o código aqui. O paciente vê o QR code e o código
+            para copiar, já com o valor certo. Os códigos dos pacotes ficam em Pacotes.
+          </p>
+          <div className="mt-3 grid gap-4 lg:grid-cols-2">
+            <PixCodeField
+              label="Consulta avulsa"
+              value={settings.consultationPixCode}
+              onChange={(value) => setSettings((c) => ({ ...c, consultationPixCode: value }))}
+              expectedCents={reaisToCents(settings.consultationPriceReais)}
+            />
+            <PixCodeField
+              label="Retorno"
+              value={settings.returnPixCode}
+              onChange={(value) => setSettings((c) => ({ ...c, returnPixCode: value }))}
+              expectedCents={settings.returnPriceReais ? reaisToCents(settings.returnPriceReais) : null}
+              hint="Opcional. Só se o retorno tiver valor diferente."
+            />
+          </div>
         </div>
         <textarea
           value={settings.instructions}

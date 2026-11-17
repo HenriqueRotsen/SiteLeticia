@@ -2,8 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { CalendarPlus } from "lucide-react";
+import ScheduleAppointmentModal from "@/components/ui/ScheduleAppointmentModal";
 import AdminShell from "@/components/layout/AdminShell";
-import { Card, formatCurrency } from "@/components/layout/AppShell";
+import { Card, btnPrimary, formatCurrency } from "@/components/layout/AppShell";
 import Badge, { appointmentBadge, paymentBadge } from "@/components/ui/Badge";
 import AppointmentsToolbar from "@/components/ui/AppointmentsToolbar";
 import SortableTh from "@/components/ui/SortableTh";
@@ -30,12 +32,17 @@ export default function AdminConsultasPage() {
   const [sortDir, setSortDir] = useState("desc");
   const [page, setPage] = useState(1);
   const [error, setError] = useState("");
+  const [scheduling, setScheduling] = useState(false);
 
-  useEffect(() => {
-    fetch("/api/admin/appointments")
+  function load() {
+    return fetch("/api/admin/appointments")
       .then((r) => r.json())
       .then((data) => setAppointments(data.appointments || []))
       .catch(() => setError("Não foi possível carregar as consultas."));
+  }
+
+  useEffect(() => {
+    load();
   }, []);
 
   useEffect(() => {
@@ -68,6 +75,13 @@ export default function AdminConsultasPage() {
 
   return (
     <AdminShell title="Consultas" breadcrumbs={["Admin", "Consultas"]} userName="Letícia">
+      <div className="mb-4 flex justify-end">
+        <button type="button" onClick={() => setScheduling(true)} className={btnPrimary()}>
+          <CalendarPlus className="h-4 w-4" strokeWidth={1.75} />
+          Marcar consulta
+        </button>
+      </div>
+      <ScheduleAppointmentModal open={scheduling} onClose={() => setScheduling(false)} onScheduled={load} />
       {error ? (
         <p className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
           {error}
@@ -143,10 +157,14 @@ export default function AdminConsultasPage() {
                     return (
                       <tr key={appt.id} className="border-t border-olive-900/5 hover:bg-linen/50">
                         <td className="py-3 pr-3 font-medium text-graphite">
-                          {appt.patients?.full_name || "—"}
+                          <Link href={`/admin/pacientes/${appt.patient_id}`} className="font-medium text-graphite underline-offset-2 hover:text-olive-800 hover:underline">
+                            {appt.patients?.full_name || "—"}
+                          </Link>
                         </td>
                         <td className="py-3 pr-3 whitespace-nowrap text-graphite/70">
-                          {formatAppointmentDateTime(appt.starts_at)}
+                          <Link href={`/admin/consultas/${appt.id}`} className="underline-offset-2 hover:text-olive-800 hover:underline">
+                            {formatAppointmentDateTime(appt.starts_at)}
+                          </Link>
                         </td>
                         <td className="py-3 pr-3">
                           <Badge variant={status.variant}>{status.label}</Badge>

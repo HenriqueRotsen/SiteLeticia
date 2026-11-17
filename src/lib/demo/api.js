@@ -16,8 +16,45 @@ import {
 } from "@/lib/demo/data";
 import { getSeedPresetsAsRows } from "@/lib/presets/seed";
 import { extractDietPlanFromCsvBuffer } from "@/lib/diets/fatsecret-csv";
+import { formatAddress, isAddressComplete, sanitizeAddress } from "@/lib/appointments/location";
+import { appointmentWhatsappLink } from "@/lib/appointments/whatsapp";
+import { pickUsablePackage } from "@/lib/packages/pricing";
+import { patientPackageRow } from "@/lib/packages/schema";
 
 let state = createInitialDemoState();
+
+function demoPackages() {
+  if (!state.packages) {
+    state.packages = [
+      {
+        id: "pkg-demo-4",
+        name: "Acompanhamento trimestral",
+        description: "1 consulta + 3 retornos, um por mês.",
+        sessions: 4,
+        price_cents: 85000,
+        active: true,
+        sort_order: 0,
+        pix_code:
+          "00020126580014br.gov.bcb.pix013600000000-demo-0000-0000-0000000000005204000053039865406850.005802BR5918LETICIA CUNHA DEMO6014BELO HORIZONTE62080504DEMO6304A5BB"
+      }
+    ];
+  }
+  if (!state.patientPackages) state.patientPackages = [];
+  return state.packages;
+}
+
+function demoUsePackageCredit(patient) {
+  demoPackages();
+  const usable = pickUsablePackage(state.patientPackages.filter((item) => item.patient_id === patient));
+  if (!usable) return {};
+  usable.sessions_used += 1;
+  return { patient_package_id: usable.id, amount_cents: 0, payment_status: "paid", usedPackage: { name: usable.name } };
+}
+
+function demoReleasePackageCredit(appt) {
+  const pkg = (state.patientPackages || []).find((item) => item.id === appt.patient_package_id);
+  if (pkg && pkg.sessions_used > 0) pkg.sessions_used -= 1;
+}
 
 function json(body, status = 200) {
   return NextResponse.json(body, { status });
@@ -218,6 +255,8 @@ export async function handleDemoApi(request) {
       amount_cents: state.paymentSettings.consultation_price_cents,
       meet_link: state.googleConnected ? "https://meet.google.com/demo-nova-consulta" : null
     };
+    const { usedPackage, ...credit } = demoUsePackageCredit(patientId);
+    Object.assign(appt, credit);
     state.appointments.push(appt);
     const preconsultDone = (state.preconsultForms || []).some(
       (item) => item.patient_id === patientId && item.status === "submitted"
@@ -225,7 +264,8 @@ export async function handleDemoApi(request) {
     return json({
       appointment: appt,
       calendarWarning: state.googleConnected ? null : "Modo demo: Meet simulado se Google conectado.",
-      preconsultPending: priorCount === 0 && !preconsultDone
+      preconsultPending: priorCount === 0 && !preconsultDone,
+      usedPackage: usedPackage || null
     });
   }
 
@@ -235,6 +275,7 @@ export async function handleDemoApi(request) {
     if (body.status !== "cancelled") return json({ message: "Ação inválida." }, 400);
     const appt = state.appointments.find((a) => a.id === patientCancelMatch[1]);
     if (!appt) return json({ message: "Consulta não encontrada." }, 404);
+    if (appt.status === "scheduled") demoReleasePackageCredit(appt);
     appt.status = "cancelled";
     return json({ appointment: appt });
   }
@@ -245,6 +286,7 @@ export async function handleDemoApi(request) {
     if (body.status !== "cancelled") return json({ message: "Ação inválida." }, 400);
     const appt = state.appointments.find((a) => a.id === adminCancelMatch[1]);
     if (!appt) return json({ message: "Consulta não encontrada." }, 404);
+    if (appt.status === "scheduled") demoReleasePackageCredit(appt);
     appt.status = "cancelled";
     return json({ appointment: appt });
   }
@@ -958,6 +1000,149 @@ export async function handleDemoApi(request) {
     return json({ ok: true });
   }
 
+  if (path === "/api/admin/packages" && method === "GET") {
+    return json({ packages: demoPackages(), regularPriceCents: state.paymentSettings.consultation_price_cents });
+  }
+
+  if (path === "/api/admin/packages" && method === "POST") {
+    const body = await request.json().catch(() => ({}));
+    const pkg = {
+      id: `pkg-${Date.now()}`,
+      name: String(body.name || "").trim(),
+      description: body.description || null,
+      sessions: Number(body.sessions) || 0,
+      price_cents: Number(body.priceCents) || 0,
+      active: body.active !== false,
+      sort_order: 0,
+      pix_code: body.pixCode || null
+    };
+    if (pkg.name.length < 2 || pkg.sessions < 2) return json({ message: "Confira nome, quantidade de consultas e preço." }, 400);
+    demoPackages().push(pkg);
+    return json({ package: pkg });
+  }
+
+  const demoPackageMatch = path.match(/^\/api\/admin\/packages\/([^/]+)$/);
+  if (demoPackageMatch && method === "PATCH") {
+    const body = await request.json().catch(() => ({}));
+    const pkg = demoPackages().find((item) => item.id === demoPackageMatch[1]);
+    if (!pkg) return json({ message: "Pacote não encontrado." }, 404);
+    Object.assign(pkg, {
+      name: body.name,
+      description: body.description || null,
+      sessions: Number(body.sessions),
+      price_cents: Number(body.priceCents),
+      active: body.active !== false,
+      pix_code: body.pixCode || null
+    });
+    return json({ package: pkg });
+  }
+  if (demoPackageMatch && method === "DELETE") {
+    state.packages = demoPackages().filter((item) => item.id !== demoPackageMatch[1]);
+    return json({ ok: true });
+  }
+
+  const demoPatientPackagesMatch = path.match(/^\/api\/admin\/patients\/([^/]+)\/packages$/);
+  if (demoPatientPackagesMatch && method === "GET") {
+    const catalog = demoPackages().filter((item) => item.active);
+    return json({
+      packages: state.patientPackages.filter((item) => item.patient_id === demoPatientPackagesMatch[1]),
+      catalog
+    });
+  }
+  if (demoPatientPackagesMatch && method === "POST") {
+    const body = await request.json().catch(() => ({}));
+    const pkg = demoPackages().find((item) => item.id === body.packageId);
+    if (!pkg) return json({ message: "Pacote não encontrado." }, 404);
+    const row = { id: `ppkg-${Date.now()}`, created_at: new Date().toISOString(), ...patientPackageRow(pkg, demoPatientPackagesMatch[1], { paid: Boolean(body.paid) }) };
+    state.patientPackages.unshift(row);
+    return json({ package: row });
+  }
+
+  const demoPatientPackageMatch = path.match(/^\/api\/admin\/patient-packages\/([^/]+)$/);
+  if (demoPatientPackageMatch && method === "PATCH") {
+    const body = await request.json().catch(() => ({}));
+    demoPackages();
+    const row = state.patientPackages.find((item) => item.id === demoPatientPackageMatch[1]);
+    if (!row) return json({ message: "Pacote não encontrado." }, 404);
+    row.payment_status = body.paymentStatus;
+    row.paid_at = body.paymentStatus === "paid" ? new Date().toISOString() : null;
+    return json({ package: row });
+  }
+
+  if (path === "/api/packages" && method === "GET") {
+    return json({
+      catalog: demoPackages().filter((item) => item.active),
+      mine: state.patientPackages.filter((item) => item.patient_id === patientId),
+      regularPriceCents: state.paymentSettings.consultation_price_cents
+    });
+  }
+  if (path === "/api/packages" && method === "POST") {
+    const body = await request.json().catch(() => ({}));
+    const pkg = demoPackages().find((item) => item.id === body.packageId && item.active);
+    if (!pkg) return json({ message: "Pacote indisponível." }, 404);
+    if (state.patientPackages.some((item) => item.patient_id === patientId && item.payment_status === "pending")) {
+      return json({ message: "Você já tem um pacote aguardando pagamento." }, 409);
+    }
+    const row = { id: `ppkg-${Date.now()}`, created_at: new Date().toISOString(), ...patientPackageRow(pkg, patientId) };
+    state.patientPackages.unshift(row);
+    return json({ package: row });
+  }
+
+  if (path === "/api/admin/clinic-address" && method === "GET") {
+    return json({ address: state.paymentSettings.clinic_address || null });
+  }
+
+  if (path === "/api/admin/clinic-address" && method === "PUT") {
+    const body = await request.json().catch(() => ({}));
+    const address = sanitizeAddress(body.address || {});
+    if (!isAddressComplete(address)) {
+      return json({ message: "Preencha pelo menos rua, número, cidade e estado." }, 400);
+    }
+    state.paymentSettings.clinic_address = address;
+    return json({ address });
+  }
+
+  if (path === "/api/admin/appointments" && method === "POST") {
+    const body = await request.json().catch(() => ({}));
+    const person = demoPatientsList.find((item) => item.id === body.patientId);
+    if (!person) return json({ message: "Paciente não encontrado." }, 404);
+    const inPerson = body.modality === "in_person";
+    if (inPerson && !isAddressComplete(state.paymentSettings.clinic_address)) {
+      return json({ message: "Cadastre o endereço de atendimento antes de marcar consulta presencial." }, 400);
+    }
+    const startsAt = new Date(body.startsAt);
+    const appt = {
+      id: `appt-${Date.now()}`,
+      patient_id: person.id,
+      starts_at: startsAt.toISOString(),
+      ends_at: new Date(startsAt.getTime() + 60 * 60 * 1000).toISOString(),
+      duration_min: 60,
+      buffer_min: 15,
+      type: body.type || "consultation",
+      status: "scheduled",
+      payment_status: "pending",
+      amount_cents:
+        body.type === "return"
+          ? state.paymentSettings.return_price_cents
+          : state.paymentSettings.consultation_price_cents,
+      modality: inPerson ? "in_person" : "online",
+      location: inPerson ? formatAddress(state.paymentSettings.clinic_address) : null,
+      meet_link: !inPerson && state.googleConnected ? "https://meet.google.com/demo-marcada-pela-nutri" : null,
+      patients: { full_name: person.full_name, phone: person.phone }
+    };
+    const { usedPackage, ...credit } = demoUsePackageCredit(person.id);
+    Object.assign(appt, credit);
+    state.appointments.push(appt);
+    return json({
+      appointment: appt,
+      calendarWarning: state.googleConnected ? null : "Modo demo: Google Agenda simulado.",
+      emailSent: false,
+      hasAccount: Boolean(person.has_account),
+      usedPackage: usedPackage || null,
+      whatsappHref: appointmentWhatsappLink({ phone: person.phone, fullName: person.full_name, appointment: appt })
+    });
+  }
+
   if (path === "/api/admin/appointments" && method === "GET") {
     const filterPatientId = url.searchParams.get("patientId");
     const appointments = filterPatientId
@@ -1062,7 +1247,9 @@ export async function handleDemoApi(request) {
       consultation_price_cents: body.consultationPriceCents,
       return_price_cents: body.returnPriceCents,
       instructions: body.instructions,
-      cancellation_policy: body.cancellationPolicy
+      cancellation_policy: body.cancellationPolicy,
+      ...(body.consultationPixCode !== undefined ? { consultation_pix_code: body.consultationPixCode } : {}),
+      ...(body.returnPixCode !== undefined ? { return_pix_code: body.returnPixCode } : {})
     };
     return json({ settings: state.paymentSettings });
   }

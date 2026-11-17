@@ -9,6 +9,9 @@ import Badge, { appointmentBadge, paymentBadge } from "@/components/ui/Badge";
 import PaymentDocUploadZone from "@/components/ui/PaymentDocUploadZone";
 import { formatAppointmentDateTime, resolveAppointmentAmountCents } from "@/lib/datetime";
 import { labelPaymentDocType } from "@/lib/labels";
+import { googleMapsEmbedUrl, googleMapsLink } from "@/lib/appointments/location";
+import { pixCodeForAmount } from "@/lib/payments/pix-brcode";
+import PixPayment from "@/components/ui/PixPayment";
 import { useDialog } from "@/components/ui/ConfirmDialog";
 
 function formatExtractedAmount(cents) {
@@ -132,6 +135,13 @@ export default function PatientConsultaDetailPage() {
   const isPaid = appointment.payment_status === "paid" || appointment.payment_status === "waived";
   const amountCents = resolveAppointmentAmountCents(appointment, payment.settings);
   const showCancel = canCancelAppointment(appointment);
+  const pixCode =
+    !isPaid && appointment.status !== "cancelled" && amountCents > 0
+      ? pixCodeForAmount(
+          (appointment.type === "return" && payment.settings?.return_pix_code) || payment.settings?.consultation_pix_code,
+          amountCents
+        )
+      : null;
 
   return (
     <PatientShell title="Detalhe da consulta" breadcrumbs={["Paciente", "Consultas", "Detalhe"]}>
@@ -167,8 +177,36 @@ export default function PatientConsultaDetailPage() {
             Valor: {formatCurrency(amountCents)}
           </p>
 
+          {appointment.modality === "in_person" ? (
+            <div className="mt-5 overflow-hidden rounded-2xl border border-olive-900/10">
+              <div className="px-4 py-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-graphite/45">Consulta presencial</p>
+                <p className="mt-1 break-words text-sm text-graphite">{appointment.location || "Endereço a confirmar"}</p>
+                {appointment.location ? (
+                  <a
+                    href={googleMapsLink(appointment.location)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-2 inline-block text-sm font-semibold text-olive-800 hover:underline"
+                  >
+                    Abrir no Google Maps
+                  </a>
+                ) : null}
+              </div>
+              {appointment.location ? (
+                <iframe
+                  title="Mapa do local da consulta"
+                  src={googleMapsEmbedUrl(appointment.location)}
+                  className="block h-56 w-full border-0"
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                />
+              ) : null}
+            </div>
+          ) : null}
+
           <div className="mt-6 flex flex-wrap gap-2">
-            {appointment.meet_link && showCancel ? (
+            {appointment.meet_link && appointment.modality !== "in_person" && showCancel ? (
               <a
                 href={appointment.meet_link}
                 target="_blank"
@@ -241,6 +279,12 @@ export default function PatientConsultaDetailPage() {
           )}
         </Card>
       </div>
+
+      {pixCode ? (
+        <div className="mt-4">
+          <PixPayment code={pixCode} amountCents={amountCents} title="Pague esta consulta com PIX" />
+        </div>
+      ) : null}
 
       <Card className="mt-4">
         <h3 className="font-semibold">Instruções de pagamento</h3>

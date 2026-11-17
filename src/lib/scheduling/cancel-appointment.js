@@ -1,5 +1,6 @@
 import { createSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { deleteGoogleCalendarEvent, getGoogleAccessToken } from "@/lib/google/calendar";
+import { releasePackageCredit } from "@/lib/packages/credits";
 
 export async function cancelAppointmentRecord(appointment) {
   const supabase = createSupabaseAdmin();
@@ -16,6 +17,15 @@ export async function cancelAppointmentRecord(appointment) {
 
   if (error) {
     throw new Error(error.message || "Não foi possível cancelar.");
+  }
+
+  // Consulta paga com pacote: o crédito volta para o paciente.
+  if (appointment.patient_package_id && appointment.status === "scheduled") {
+    try {
+      await releasePackageCredit(supabase, appointment.patient_package_id);
+    } catch (err) {
+      console.error("Failed to release package credit:", err?.message || err);
+    }
   }
 
   if (appointment.google_event_id && process.env.GOOGLE_CLIENT_ID) {

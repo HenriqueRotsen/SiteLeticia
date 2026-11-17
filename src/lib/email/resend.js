@@ -229,3 +229,35 @@ export function preconsultEmail({ kind = "invite", fullName, startsAt, siteUrl }
     })
   };
 }
+
+// Consulta marcada pela nutricionista: avisa o paciente com data, modalidade e, se presencial, o endereço.
+export function appointmentScheduledEmail({ fullName, startsAt, modality = "online", location, mapsUrl, siteUrl } = {}) {
+  const resolvedSiteUrl = siteUrl || getSiteUrl();
+  const when = formatAppointmentWhen(startsAt);
+  const name = firstName(fullName);
+  const greeting = name ? `Olá, ${name}!` : "Olá!";
+  const inPerson = modality === "in_person";
+  const subject = `${inPerson ? "Consulta presencial" : "Consulta online"} marcada — ${when} | ${brand.name}`;
+  const intro = `A ${brand.name} marcou a sua consulta ${inPerson ? "presencial" : "online"} para ${when}.`;
+  const place = inPerson
+    ? `Endereço: ${location || "a confirmar com a Letícia"}.`
+    : "O link do Google Meet aparece na sua área do paciente e no convite da agenda.";
+  const appUrl = `${resolvedSiteUrl}/app/consultas`;
+
+  const text = `${greeting}\n\n${intro}\n\n${place}${mapsUrl ? `\nComo chegar: ${mapsUrl}` : ""}\n\nVer a consulta: ${appUrl}\n\n— ${brand.name}`;
+  const bodyHtml = `
+    ${emailTitle(inPerson ? "Consulta presencial marcada" : "Consulta online marcada")}
+    ${emailParagraph(`${greeting} ${intro}`)}
+    ${emailParagraph(place)}
+    <div style="margin:8px 0 24px;">
+      ${mapsUrl ? emailCtaButton({ href: mapsUrl, label: "Abrir no Google Maps" }) : emailCtaButton({ href: appUrl, label: "Ver a consulta" })}
+    </div>
+    ${emailMuted(`Detalhes e pagamento na sua área: ${escapeHtml(appUrl)}`)}
+  `;
+
+  return {
+    subject,
+    text,
+    html: wrapEmailDocument({ title: subject, preheader: `${when}${inPerson && location ? ` · ${location}` : ""}`, bodyHtml, siteUrl: resolvedSiteUrl })
+  };
+}
