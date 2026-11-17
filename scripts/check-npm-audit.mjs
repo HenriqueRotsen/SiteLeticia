@@ -9,7 +9,7 @@ import { dirname, join } from "path";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const allowlist = JSON.parse(readFileSync(join(root, ".github/audit-allowlist.json"), "utf8"));
-const allowed = new Set(Object.keys(allowlist.packages || {}));
+const allowedAdvisories = new Set(Object.keys(allowlist.advisories || {}));
 
 const chunks = [];
 for await (const chunk of process.stdin) chunks.push(chunk);
@@ -27,10 +27,25 @@ const vulns = report.vulnerabilities || {};
 const blocking = [];
 const allowedHits = [];
 
+function advisoryId(via) {
+  return String(via.url || "").match(/GHSA-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}/i)?.[0];
+}
+
+// Um pacote é aceito quando todos os alertas que chegam nele estão na allowlist.
+function onlyAllowedAdvisories(name, seen = new Set()) {
+  if (seen.has(name)) return true;
+  seen.add(name);
+  const info = vulns[name];
+  if (!info) return true;
+  return (info.via || []).every((via) =>
+    typeof via === "string" ? onlyAllowedAdvisories(via, seen) : allowedAdvisories.has(advisoryId(via))
+  );
+}
+
 for (const [name, info] of Object.entries(vulns)) {
   const severity = info.severity;
   if (severity !== "high" && severity !== "critical") continue;
-  if (allowed.has(name)) {
+  if (onlyAllowedAdvisories(name)) {
     allowedHits.push(`${severity.toUpperCase()} ${name} (allowlisted)`);
     continue;
   }

@@ -1,19 +1,7 @@
-# Exceções do OSV scanner. Revisar a cada atualização de Next/ESLint.
+# Exceções do OSV scanner, por alerta (não por pacote), para que alertas novos
+# nos mesmos pacotes continuem bloqueando. Revisar até a data de ignoreUntil.
 
-[[PackageOverrides]]
-name = "braces"
-ecosystem = "npm"
-vulnerability.ignore = true
-reason = "Sem versão corrigida publicada. Entra via micromatch -> fast-glob em @next/eslint-plugin-next (só lint)."
-
-[[PackageOverrides]]
-name = "micromatch"
-ecosystem = "npm"
-vulnerability.ignore = true
-reason = "Transitivo de fast-glob -> braces (sem correção). Só lint."
-
-[[PackageOverrides]]
-name = "fast-glob"
-ecosystem = "npm"
-vulnerability.ignore = true
-reason = "Fixado em 3.3.1 por @next/eslint-plugin-next. Só lint."
+[[IgnoredVulns]]
+id = "GHSA-fc5q-39xc-vjpf"
+ignoreUntil = 2027-02-17
+reason = "ReDoS no picomatch (<=4.0.7, sem versão corrigida publicada). Só entra por ferramentas de desenvolvimento (vite, vitest, eslint/typescript-eslint, fast-glob) que processam padrões do próprio repositório; não vai para o bundle de produção nem recebe entrada de usuário."
