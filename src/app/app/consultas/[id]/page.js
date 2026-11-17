@@ -9,6 +9,7 @@ import Badge, { appointmentBadge, paymentBadge } from "@/components/ui/Badge";
 import PaymentDocUploadZone from "@/components/ui/PaymentDocUploadZone";
 import { formatAppointmentDateTime, resolveAppointmentAmountCents } from "@/lib/datetime";
 import { labelPaymentDocType } from "@/lib/labels";
+import { useDialog } from "@/components/ui/ConfirmDialog";
 
 function formatExtractedAmount(cents) {
   if (cents == null) return "—";
@@ -24,6 +25,7 @@ function canCancelAppointment(appt) {
 
 export default function PatientConsultaDetailPage() {
   const params = useParams();
+  const { confirm } = useDialog();
   const appointmentId = params?.id;
   const [appointment, setAppointment] = useState(null);
   const [payment, setPayment] = useState({ settings: {} });
@@ -76,7 +78,14 @@ export default function PatientConsultaDetailPage() {
   }
 
   async function cancelAppointment() {
-    if (!window.confirm("Deseja cancelar esta consulta?")) return;
+    const ok = await confirm({
+      title: "Cancelar esta consulta?",
+      message: "O horário será liberado. Se quiser, você pode agendar outro depois.",
+      confirmLabel: "Cancelar consulta",
+      cancelLabel: "Manter",
+      tone: "danger"
+    });
+    if (!ok) return;
     setError("");
     setFeedback("");
     const res = await fetch(`/api/appointments/${appointmentId}`, {
@@ -87,9 +96,11 @@ export default function PatientConsultaDetailPage() {
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
       setError(data.message || "Não foi possível cancelar a consulta.");
+      window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
     setFeedback("Consulta cancelada.");
+    window.scrollTo({ top: 0, behavior: "smooth" });
     await load();
   }
 

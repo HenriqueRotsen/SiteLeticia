@@ -3,6 +3,7 @@ import { Gentium_Plus } from "next/font/google";
 import "./globals.css";
 import DemoBanner from "@/components/layout/DemoBanner";
 import PwaSetup from "@/components/pwa/PwaSetup";
+import { DialogProvider } from "@/components/ui/ConfirmDialog";
 import SplashIntro, { SplashIntroScript } from "@/components/pwa/SplashIntro";
 import { splashStartupImages } from "@/lib/pwa/splash-screens";
 
@@ -42,13 +43,14 @@ export const metadata = {
   appleWebApp: {
     capable: true,
     title: "Letícia Cunha",
-    statusBarStyle: "default",
+    // Barra de status transparente: o app (e a abertura) ocupam a tela inteira, sem faixa no topo.
+    statusBarStyle: "black-translucent",
     startupImage: splashStartupImages()
   }
 };
 
 export const viewport = {
-  themeColor: "#2F2A27",
+  themeColor: "#FFFFFF",
   viewportFit: "cover"
 };
 
@@ -59,10 +61,11 @@ export default function RootLayout({ children }) {
         <SplashIntroScript />
       </head>
       <body className={`${gotham.variable} ${gentiumPlus.variable} font-sans antialiased`}>
+        <div className="lc-statusbar-scrim" aria-hidden="true" />
         <SplashIntro />
         <PwaSetup />
         <DemoBanner />
-        {children}
+        <DialogProvider>{children}</DialogProvider>
       </body>
     </html>
   );

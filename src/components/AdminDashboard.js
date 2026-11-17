@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import PasswordInput from "@/components/ui/PasswordInput";
+import { useDialog } from "@/components/ui/ConfirmDialog";
 
 const initialLogin = {
   username: "",
@@ -31,6 +32,7 @@ function formatDate(value) {
 }
 
 export default function AdminDashboard() {
+  const { confirm } = useDialog();
   const [login, setLogin] = useState(initialLogin);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [waitlist, setWaitlist] = useState([]);
@@ -129,7 +131,12 @@ export default function AdminDashboard() {
   }
 
   async function removePatient(id) {
-    const confirmed = window.confirm("Remover este cadastro da lista?");
+    const confirmed = await confirm({
+      title: "Remover este cadastro da lista?",
+      message: "A pessoa sai da lista de espera.",
+      confirmLabel: "Remover",
+      tone: "danger"
+    });
     if (!confirmed) return;
 
     setSavingId(id);
