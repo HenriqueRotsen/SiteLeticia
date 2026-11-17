@@ -783,6 +783,18 @@ export async function handleDemoApi(request) {
     state.photos.unshift(photo);
     return json({ photo });
   }
+  const adminPhotosMatch = path.match(/^\/api\/patients\/([^/]+)\/photos$/);
+  if (adminPhotosMatch && adminPhotosMatch[1] !== "me" && method === "GET") {
+    const photos = adminPhotosMatch[1] === patientId ? state.photos : [];
+    return json({
+      patient: { id: adminPhotosMatch[1], full_name: demoPatient.full_name },
+      photos: photos.map(({ storage_path: _path, ...photo }) => ({
+        ...photo,
+        url: photo.url || `https://picsum.photos/seed/${photo.id}/800/1000`
+      })),
+      expiresInSeconds: 300
+    });
+  }
   if (path === "/api/patients/me/measurements" && method === "GET") {
     return json({ measurements: demoMeasurements });
   }
