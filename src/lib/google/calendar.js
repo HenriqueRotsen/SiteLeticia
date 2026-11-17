@@ -22,6 +22,14 @@ export function getGoogleAuthUrl(state) {
   return `${GOOGLE_AUTH_URL}?${params.toString()}`;
 }
 
+// Conexão salva que não serve mais: a Letícia precisa reconectar em Integrações.
+export class GoogleReconnectError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "GoogleReconnectError";
+  }
+}
+
 async function refreshAccessToken(refreshToken) {
   const response = await fetch(GOOGLE_TOKEN_URL, {
     method: "POST",
@@ -34,7 +42,14 @@ async function refreshAccessToken(refreshToken) {
     })
   });
 
-  if (!response.ok) throw new Error("Failed to refresh Google token");
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    // invalid_grant: acesso revogado, senha trocada ou token expirado (app em modo de teste expira em 7 dias).
+    if (data.error === "invalid_grant") {
+      throw new GoogleReconnectError("O Google recusou o acesso salvo (revogado ou expirado).");
+    }
+    throw new Error(`Failed to refresh Google token: ${data.error || response.status}`);
+  }
   const data = await response.json();
   return data.access_token;
 }
@@ -48,8 +63,30 @@ export async function getGoogleAccessToken(nutritionistId) {
     .maybeSingle();
 
   if (!data?.refresh_token_encrypted) return null;
-  const refreshToken = decryptText(data.refresh_token_encrypted);
+
+  let refreshToken;
+  try {
+    refreshToken = decryptText(data.refresh_token_encrypted);
+  } catch {
+    // Token cifrado com outro TOKEN_ENCRYPTION_SECRET (ex.: conectado em outro ambiente).
+    throw new GoogleReconnectError(
+      "O acesso salvo não pode ser lido com a chave de criptografia atual do servidor."
+    );
+  }
   return refreshAccessToken(refreshToken);
+}
+
+// Usado pela tela de Integrações para mostrar se a conexão ainda funciona.
+export async function checkGoogleConnection(nutritionistId) {
+  try {
+    const token = await getGoogleAccessToken(nutritionistId);
+    return token ? { status: "ok" } : { status: "not_connected" };
+  } catch (error) {
+    if (error instanceof GoogleReconnectError) {
+      return { status: "needs_reconnect", reason: error.message };
+    }
+    return { status: "error", reason: "Não foi possível verificar a conexão com o Google agora." };
+  }
 }
 
 export async function fetchGoogleFreeBusy(accessToken, timeMin, timeMax, calendarId = "primary") {

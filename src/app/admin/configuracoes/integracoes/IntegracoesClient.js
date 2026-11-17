@@ -9,13 +9,17 @@ export default function IntegracoesPage() {
   const searchParams = useSearchParams();
   const [connected, setConnected] = useState(false);
   const [connectedAt, setConnectedAt] = useState(null);
+  const [health, setHealth] = useState(null);
 
   async function loadStatus() {
     const res = await fetch("/api/admin/integrations/google-calendar");
     const data = await res.json();
     setConnected(data.connected);
     setConnectedAt(data.connection?.connected_at);
+    setHealth(data.health || null);
   }
+
+  const needsReconnect = connected && health?.status === "needs_reconnect";
 
   useEffect(() => {
     loadStatus();
@@ -36,8 +40,17 @@ export default function IntegracoesPage() {
           Não foi possível conectar o Google Calendar.
         </Card>
       ) : null}
-      {success ? (
+      {success && !needsReconnect ? (
         <Card className="mb-4 border-olive-200 bg-olive-50 text-olive-900">Google Calendar conectado.</Card>
+      ) : null}
+      {needsReconnect ? (
+        <Card className="mb-4 border-red-200 bg-red-50 text-red-900">
+          A conexão com o Google parou de funcionar: {health.reason} Novas consultas estão sendo agendadas sem
+          evento no calendário e sem link do Meet. Clique em Reconectar.
+        </Card>
+      ) : null}
+      {connected && health?.status === "error" ? (
+        <Card className="mb-4 border-amber-200 bg-amber-50 text-amber-900">{health.reason}</Card>
       ) : null}
 
       <Card>
@@ -46,7 +59,12 @@ export default function IntegracoesPage() {
           Ao agendar consultas, cria evento de 60 min com Google Meet e convite por e-mail para o paciente.
         </p>
         <p className="mt-3 text-sm">
-          Status: {connected ? `Conectado${connectedAt ? ` em ${new Date(connectedAt).toLocaleString("pt-BR")}` : ""}` : "Não conectado"}
+          Status:{" "}
+          {!connected
+            ? "Não conectado"
+            : needsReconnect
+              ? "Precisa reconectar"
+              : `Conectado${connectedAt ? ` em ${new Date(connectedAt).toLocaleString("pt-BR")}` : ""}`}
         </p>
         <div className="mt-4 flex gap-3">
           <a
