@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import {
   CalendarClock,
+  Camera,
   ClipboardList,
   FileSpreadsheet,
   FileText,
@@ -227,6 +228,10 @@ export default function AdminPatientDetailPage() {
             <Link href={`/admin/pacientes/${params.id}/exames`} className={btnSecondary()}>
               <FlaskConical className="h-4 w-4" strokeWidth={1.75} />
               Exames
+            </Link>
+            <Link href={`/admin/pacientes/${params.id}/fotos`} className={btnSecondary()}>
+              <Camera className="h-4 w-4" strokeWidth={1.75} />
+              Fotos
             </Link>
           </div>
         </div>
