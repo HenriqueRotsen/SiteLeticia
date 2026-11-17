@@ -3,6 +3,8 @@ import { Gentium_Plus } from "next/font/google";
 import "./globals.css";
 import DemoBanner from "@/components/layout/DemoBanner";
 import PwaSetup from "@/components/pwa/PwaSetup";
+import SplashIntro, { SplashIntroScript } from "@/components/pwa/SplashIntro";
+import { splashStartupImages } from "@/lib/pwa/splash-screens";
 
 // Gotham Book = Regular (corpo). Gotham Bold = Negrito (destaques).
 const gotham = localFont({
@@ -40,7 +42,8 @@ export const metadata = {
   appleWebApp: {
     capable: true,
     title: "Letícia Cunha",
-    statusBarStyle: "default"
+    statusBarStyle: "default",
+    startupImage: splashStartupImages()
   }
 };
 
@@ -51,8 +54,12 @@ export const viewport = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="pt-BR">
+    <html lang="pt-BR" suppressHydrationWarning>
+      <head>
+        <SplashIntroScript />
+      </head>
       <body className={`${gotham.variable} ${gentiumPlus.variable} font-sans antialiased`}>
+        <SplashIntro />
         <PwaSetup />
         <DemoBanner />
         {children}
