@@ -118,6 +118,12 @@ export async function generateGeminiContent({
       const { response, details } = await callGeminiModel(model, body, apiKey);
 
       if (!response.ok) {
+        // Chave inválida ou sem permissão vale para todos os modelos: não adianta tentar os próximos.
+        if (response.status === 401 || response.status === 403) {
+          throw new Error(
+            `Chave da API do Gemini inválida ou sem permissão (${response.status}). Atualize GEMINI_API_KEY no servidor.`
+          );
+        }
         errors.push(`${model}: ${response.status} ${details.slice(0, 160)}`);
         // modelo descontinuado / não encontrado → tenta próximo
         if (response.status === 404 || response.status === 400) continue;
@@ -140,6 +146,7 @@ export async function generateGeminiContent({
         continue;
       }
     } catch (error) {
+      if (error?.message?.startsWith("Chave da API do Gemini")) throw error;
       if (error?.name === "TimeoutError" || error?.name === "AbortError") {
         errors.push(`${model}: timeout`);
         continue;
