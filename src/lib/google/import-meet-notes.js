@@ -13,9 +13,13 @@ const MINUTE = 60 * 1000;
 export const MEET_NOTES_MIN_DELAY_MS = 15 * MINUTE;
 // Depois disso a rotina para de procurar (consultas sem ata não ficam em loop para sempre).
 export const MEET_NOTES_GIVE_UP_MS = 3 * 24 * 60 * MINUTE;
+// Botão manual: também olha consultas que ainda não chegaram ao horário de término
+// (reunião adiantada, encerrada antes do previsto ou feita no link de uma consulta futura).
+export const MEET_NOTES_MANUAL_UPCOMING_MS = 7 * 24 * 60 * MINUTE;
 
 /**
  * Procura a ata das consultas encerradas e salva como rascunho no prontuário.
+ * Com includeUpcomingMs > 0 inclui consultas que começam até esse tempo à frente.
  * Dependências injetáveis para teste.
  */
 export async function importMeetNotes({
@@ -23,24 +27,34 @@ export async function importMeetNotes({
   accessToken,
   now = new Date(),
   calendarId = "primary",
+  includeUpcomingMs = 0,
   getEvent = fetchCalendarEvent,
   getDoc = fetchGoogleDoc
 }) {
   const nowMs = now.getTime();
-  const { data: appointments, error } = await supabase
+  let query = supabase
     .from("appointments")
     .select("id, patient_id, starts_at, ends_at, status, google_event_id")
     .in("status", ["scheduled", "completed"])
     .not("google_event_id", "is", null)
     .is("meet_notes_imported_at", null)
-    .gte("ends_at", new Date(nowMs - MEET_NOTES_GIVE_UP_MS).toISOString())
-    .lte("ends_at", new Date(nowMs - MEET_NOTES_MIN_DELAY_MS).toISOString())
-    .order("ends_at", { ascending: true })
-    .limit(20);
+    .gte("ends_at", new Date(nowMs - MEET_NOTES_GIVE_UP_MS).toISOString());
+
+  query =
+    includeUpcomingMs > 0
+      ? query.lte("starts_at", new Date(nowMs + includeUpcomingMs).toISOString())
+      : query.lte("ends_at", new Date(nowMs - MEET_NOTES_MIN_DELAY_MS).toISOString());
+
+  const { data: appointments, error } = await query.order("ends_at", { ascending: true }).limit(20);
 
   if (error) throw new Error(`Não foi possível ler as consultas: ${error.message}`);
 
-  const result = { checked: 0, imported: 0, pending: 0, failures: [] };
+  // pending: consultas já encerradas sem ata; waiting: ainda não terminaram no horário marcado.
+  const result = { checked: 0, imported: 0, pending: 0, waiting: 0, failures: [] };
+  const markMissing = (appt) => {
+    if (new Date(appt.ends_at).getTime() > nowMs - MEET_NOTES_MIN_DELAY_MS) result.waiting += 1;
+    else result.pending += 1;
+  };
 
   for (const appt of appointments || []) {
     result.checked += 1;
@@ -48,14 +62,14 @@ export async function importMeetNotes({
       const event = await getEvent(accessToken, appt.google_event_id, calendarId);
       const attachment = pickNotesAttachment(event?.attachments);
       if (!attachment) {
-        result.pending += 1;
+        markMissing(appt);
         continue;
       }
 
       const doc = await getDoc(accessToken, attachment.documentId);
       const text = doc ? googleDocToPlainText(doc) : "";
       if (!text) {
-        result.pending += 1;
+        markMissing(appt);
         continue;
       }
 

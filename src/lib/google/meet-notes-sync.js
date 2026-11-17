@@ -7,7 +7,7 @@ import { importMeetNotes } from "@/lib/google/import-meet-notes";
  * e pelo botão "Buscar atas do Meet" do prontuário.
  * Retorna { httpStatus, body } para a rota responder.
  */
-export async function syncMeetNotes({ supabase, nutritionistId, deps = {} }) {
+export async function syncMeetNotes({ supabase, nutritionistId, importOptions = {}, deps = {} }) {
   const getToken = deps.getToken || getGoogleAccessToken;
   const runImport = deps.runImport || importMeetNotes;
 
@@ -39,7 +39,7 @@ export async function syncMeetNotes({ supabase, nutritionistId, deps = {} }) {
   }
 
   try {
-    const result = await runImport({ supabase, accessToken });
+    const result = await runImport({ supabase, accessToken, ...importOptions });
     return { httpStatus: 200, body: { ok: result.failures.length === 0, ...result } };
   } catch (err) {
     if (err instanceof GoogleScopeError) {
