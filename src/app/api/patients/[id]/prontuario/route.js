@@ -131,6 +131,13 @@ export async function PATCH(request, { params: paramsPromise }) {
   if (body.appointmentId !== undefined || body.appointment_id !== undefined) {
     updates.appointment_id = body.appointmentId ?? body.appointment_id ?? null;
   }
+  // Rascunhos importados (ex.: ata do Meet) só viram prontuário quando a nutricionista confirma.
+  if (body.status !== undefined) {
+    if (!["draft", "final"].includes(body.status)) {
+      return NextResponse.json({ message: "Status inválido." }, { status: 400 });
+    }
+    updates.status = body.status;
+  }
 
   const { data: record, error } = await auth.ctx.supabase
     .from("clinical_records")
@@ -146,7 +153,7 @@ export async function PATCH(request, { params: paramsPromise }) {
 
   await writeAuditLog({
     actorId: auth.ctx.user.id,
-    action: "clinical_record_update",
+    action: updates.status === "final" ? "clinical_record_confirm" : "clinical_record_update",
     resourceType: "clinical_record",
     resourceId: recordId,
     ip: getClientIp(request)

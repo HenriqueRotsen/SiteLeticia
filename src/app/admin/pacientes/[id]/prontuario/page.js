@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
-import { CheckCircle2, Eye, FileText, Pencil, Plus, Trash2 } from "lucide-react";
+import { CheckCircle2, Eye, FileText, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
 import AdminShell from "@/components/layout/AdminShell";
 import { Card, btnPrimary, btnSecondary, inputClassName } from "@/components/layout/AppShell";
 import Modal from "@/components/ui/Modal";
@@ -35,6 +35,10 @@ function appointmentLabel(appt) {
 
 function recordBody(record) {
   return record?.body_text ?? record?.body_md ?? "";
+}
+
+function isDraft(record) {
+  return record?.status === "draft";
 }
 
 function emptyDraft() {
@@ -181,6 +185,33 @@ export default function AdminProntuarioPage() {
     });
   }
 
+  async function confirmRecord(recordId) {
+    setSaving(true);
+    setError("");
+    const res = await fetch(`/api/patients/${patientId}/prontuario`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        recordId,
+        status: "final",
+        title: (records.find((item) => item.id === recordId)?.title || "").replace(/\s*\(rascunho\)\s*$/i, "")
+      })
+    });
+    const data = await res.json().catch(() => ({}));
+    setSaving(false);
+
+    if (!res.ok) {
+      setError(data.message || "Erro ao confirmar prontuário.");
+      return;
+    }
+
+    await load(recordId);
+    setSuccessModal({
+      title: "Prontuário confirmado",
+      message: "O rascunho revisado agora faz parte do histórico do paciente."
+    });
+  }
+
   async function deleteRecord(recordId) {
     setSaving(true);
     setError("");
@@ -258,6 +289,12 @@ export default function AdminProntuarioPage() {
                   <p className="truncate text-sm font-semibold text-graphite">
                     {record.title || "Registro de sessão"}
                   </p>
+                  {isDraft(record) ? (
+                    <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-800 ring-1 ring-inset ring-amber-600/20">
+                      <Sparkles className="h-3 w-3" />
+                      Rascunho para revisar
+                    </span>
+                  ) : null}
                   <p className="mt-0.5 text-xs text-graphite/45">
                     {formatDateTime(record.session_at)}
                   </p>
@@ -393,11 +430,30 @@ export default function AdminProntuarioPage() {
               </div>
             </Card>
           ) : selected ? (
-            <Card title="Prontuário">
-              <div className="whitespace-pre-wrap rounded-2xl border border-olive-900/8 bg-white px-4 py-4 text-sm leading-relaxed text-graphite/80 sm:px-5">
-                {recordBody(selected) || "—"}
-              </div>
-            </Card>
+            <>
+              {isDraft(selected) ? (
+                <div className="flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50/80 p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-sm text-amber-900">
+                    Rascunho importado automaticamente do Google Meet. Revise e edite o texto antes de
+                    confirmar: ele só entra no histórico como prontuário depois da confirmação.
+                  </p>
+                  <button
+                    type="button"
+                    className={`${btnPrimary()} shrink-0`}
+                    disabled={saving}
+                    onClick={() => confirmRecord(selected.id)}
+                  >
+                    <CheckCircle2 className="h-4 w-4" strokeWidth={1.75} />
+                    {saving ? "Confirmando..." : "Confirmar prontuário"}
+                  </button>
+                </div>
+              ) : null}
+              <Card title="Prontuário">
+                <div className="whitespace-pre-wrap rounded-2xl border border-olive-900/8 bg-white px-4 py-4 text-sm leading-relaxed text-graphite/80 sm:px-5">
+                  {recordBody(selected) || "—"}
+                </div>
+              </Card>
+            </>
           ) : (
             <Card>
               <div className="flex flex-col items-center py-12 text-center">

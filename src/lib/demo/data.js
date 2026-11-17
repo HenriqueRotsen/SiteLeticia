@@ -442,6 +442,29 @@ export function createInitialDemoState() {
     dietPlans: [{ ...demoDietPlan }],
     clinicalRecords: [
       {
+        id: "clinical-meet-draft",
+        patient_id: patientId,
+        appointment_id: "appt-0",
+        session_at: pastDate(14, 10),
+        title: "Ata do Meet (rascunho)",
+        body_text: `Rascunho importado da ata do Gemini no Google Meet. Revise antes de confirmar.
+
+Resumo
+Maria contou que o café da manhã estruturado funcionou bem; o jantar continua irregular.
+
+Próximos passos
+- Letícia vai enviar sugestões de jantar rápido.
+- Maria vai registrar o jantar por duas semanas.`,
+        notes: null,
+        storage_path: null,
+        mime_type: "text/plain",
+        file_name: null,
+        status: "draft",
+        source: "google_meet_notes",
+        created_at: pastDate(14, 11),
+        updated_at: pastDate(14, 11)
+      },
+      {
         id: "clinical-1",
         patient_id: patientId,
         appointment_id: "appt-0",
