@@ -50,6 +50,17 @@ describe("syncMeetNotes", () => {
     expect(runImport).toHaveBeenCalledWith({ supabase: { tag: "db" }, accessToken: "tok" });
     expect(body).toEqual({ ok: true, checked: 2, imported: 1, pending: 1, failures: [] });
   });
+
+  it("repassa as opções da importação (botão manual)", async () => {
+    const runImport = vi.fn().mockResolvedValue({ checked: 0, imported: 0, pending: 0, failures: [] });
+    await syncMeetNotes({
+      supabase: {},
+      nutritionistId: "n1",
+      importOptions: { includeUpcomingMs: 5 },
+      deps: { getToken: async () => "tok", runImport }
+    });
+    expect(runImport).toHaveBeenCalledWith({ supabase: {}, accessToken: "tok", includeUpcomingMs: 5 });
+  });
 });
 
 describe("describeSyncResult", () => {

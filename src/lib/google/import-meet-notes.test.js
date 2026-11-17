@@ -69,6 +69,36 @@ describe("importMeetNotes", () => {
     expect(db.filters).toContainEqual(["lte", "ends_at", "2026-11-17T11:45:00.000Z"]);
   });
 
+  it("botão manual: importa a ata de consulta que ainda não chegou ao horário de término", async () => {
+    const future = { ...appt, starts_at: "2026-11-18T18:00:00.000Z", ends_at: "2026-11-18T19:00:00.000Z" };
+    const db = fakeSupabase({ appointments: [future] });
+    const result = await importMeetNotes({
+      supabase: db.supabase,
+      accessToken: "tok",
+      now,
+      includeUpcomingMs: 7 * 24 * 60 * 60 * 1000,
+      getEvent: async () => ({ attachments: [{ title: "Anotações do Gemini", mimeType: DOC, fileId: "n1" }] }),
+      getDoc: async () => docWithText
+    });
+    expect(result).toMatchObject({ imported: 1 });
+    expect(db.filters).toContainEqual(["lte", "starts_at", "2026-11-24T12:00:00.000Z"]);
+    expect(db.filters.some(([op, col]) => op === "lte" && col === "ends_at")).toBe(false);
+  });
+
+  it("consulta futura sem ata conta como aguardando, não como pendente", async () => {
+    const future = { ...appt, starts_at: "2026-11-18T18:00:00.000Z", ends_at: "2026-11-18T19:00:00.000Z" };
+    const db = fakeSupabase({ appointments: [future] });
+    const result = await importMeetNotes({
+      supabase: db.supabase,
+      accessToken: "tok",
+      now,
+      includeUpcomingMs: 1,
+      getEvent: async () => ({ attachments: [] }),
+      getDoc: vi.fn()
+    });
+    expect(result).toMatchObject({ pending: 0, waiting: 1 });
+  });
+
   it("deixa pendente quando a ata ainda não foi anexada", async () => {
     const db = fakeSupabase({ appointments: [appt] });
     const result = await importMeetNotes({

@@ -3,6 +3,7 @@ import { requireNutritionist } from "@/lib/auth";
 import { createSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { writeAuditLog, getClientIp } from "@/lib/audit";
 import { syncMeetNotes } from "@/lib/google/meet-notes-sync";
+import { MEET_NOTES_MANUAL_UPCOMING_MS } from "@/lib/google/import-meet-notes";
 
 /** Botão "Buscar atas do Meet": mesma rotina do cron, disparada pela nutricionista. */
 export async function POST(request) {
@@ -11,7 +12,8 @@ export async function POST(request) {
 
   const { httpStatus, body } = await syncMeetNotes({
     supabase: createSupabaseAdmin(),
-    nutritionistId: auth.ctx.user.id
+    nutritionistId: auth.ctx.user.id,
+    importOptions: { includeUpcomingMs: MEET_NOTES_MANUAL_UPCOMING_MS }
   });
 
   await writeAuditLog({
