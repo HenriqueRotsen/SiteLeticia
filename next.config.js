@@ -36,7 +36,17 @@ const nextConfig = {
     minimumCacheTTL: process.env.NODE_ENV === "production" ? 60 * 60 * 24 * 30 : 60
   },
   async headers() {
-    return [{ source: "/(.*)", headers: securityHeaders }];
+    return [
+      { source: "/(.*)", headers: securityHeaders },
+      // O navegador precisa buscar a versão nova do service worker a cada deploy.
+      {
+        source: "/sw.js",
+        headers: [
+          { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+          { key: "Content-Type", value: "application/javascript; charset=utf-8" }
+        ]
+      }
+    ];
   },
   serverExternalPackages: ["pdf-parse", "sharp"]
 };

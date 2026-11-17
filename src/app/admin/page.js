@@ -13,6 +13,7 @@ import {
 } from "recharts";
 import { CalendarDays, CircleDollarSign, FlaskConical, Users } from "lucide-react";
 import AdminShell from "@/components/layout/AdminShell";
+import InstallAppCard from "@/components/pwa/InstallAppCard";
 import { Card, DataTable, formatCurrency } from "@/components/layout/AppShell";
 import Badge, { appointmentBadge, paymentBadge } from "@/components/ui/Badge";
 import StatCard from "@/components/ui/StatCard";
@@ -56,6 +57,7 @@ export default function AdminDashboardPage() {
       breadcrumbs={["Admin", "Dashboard"]}
       userName="Letícia"
     >
+      <InstallAppCard />
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatCard
           label="Pacientes ativos"
