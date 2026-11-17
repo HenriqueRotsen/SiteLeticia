@@ -16,6 +16,7 @@ import AdminShell from "@/components/layout/AdminShell";
 import { Card, DataTable, formatCurrency } from "@/components/layout/AppShell";
 import Badge, { appointmentBadge, paymentBadge } from "@/components/ui/Badge";
 import StatCard from "@/components/ui/StatCard";
+import { MeetJoinButton } from "@/components/ui/UpcomingAppointments";
 
 const weekdayLabels = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
@@ -163,7 +164,9 @@ export default function AdminDashboardPage() {
               key: "patient",
               label: "Paciente",
               render: (row) => (
-                <span className="font-medium text-graphite">{row.patients?.full_name || "—"}</span>
+                <Link href={`/admin/consultas/${row.id}`} className="font-medium text-graphite hover:text-olive-800">
+                  {row.patients?.full_name || "—"}
+                </Link>
               )
             },
             {
@@ -191,6 +194,11 @@ export default function AdminDashboardPage() {
               key: "amount",
               label: "Valor",
               render: (row) => formatCurrency(row.amount_cents)
+            },
+            {
+              key: "meet",
+              label: "Meet",
+              render: (row) => <MeetJoinButton link={row.meet_link} size="sm" />
             }
           ]}
           rows={(data.upcoming || []).map((appt) => ({ ...appt, id: appt.id }))}
