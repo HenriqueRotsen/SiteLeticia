@@ -3,10 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
-import { CheckCircle2, Eye, FileText, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
+import { CheckCircle2, Eye, FileText, Pencil, Plus, RefreshCw, Sparkles, Trash2 } from "lucide-react";
 import AdminShell from "@/components/layout/AdminShell";
 import { Card, btnPrimary, btnSecondary, inputClassName } from "@/components/layout/AppShell";
 import Modal from "@/components/ui/Modal";
+import { describeSyncResult } from "@/lib/google/meet-notes-format";
 
 function formatDateTime(value) {
   if (!value) return "—";
@@ -66,6 +67,8 @@ export default function AdminProntuarioPage() {
   const [error, setError] = useState("");
   const [successModal, setSuccessModal] = useState(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [syncing, setSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState("");
 
   const pastAppointments = useMemo(() => {
     return [...appointments]
@@ -185,6 +188,22 @@ export default function AdminProntuarioPage() {
     });
   }
 
+  async function syncMeetNotes() {
+    setSyncing(true);
+    setSyncMessage("");
+    setError("");
+    try {
+      const res = await fetch("/api/admin/meet-notes/sync", { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      setSyncMessage(describeSyncResult(data));
+      if (res.ok && data.imported) await load();
+    } catch {
+      setSyncMessage("Não foi possível buscar as atas agora.");
+    } finally {
+      setSyncing(false);
+    }
+  }
+
   async function confirmRecord(recordId) {
     setSaving(true);
     setError("");
@@ -251,6 +270,17 @@ export default function AdminProntuarioPage() {
       ]}
       userName="Letícia"
     >
+      <div className="mb-4 flex flex-col gap-3 rounded-2xl border border-olive-900/10 bg-porcelain/95 px-4 py-3 shadow-card sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm text-graphite/60">
+          {syncMessage ||
+            "As atas do Gemini no Google Meet entram aqui como rascunho para você revisar e confirmar."}
+        </p>
+        <button type="button" className={`${btnSecondary()} shrink-0`} disabled={syncing} onClick={syncMeetNotes}>
+          <RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} strokeWidth={1.75} />
+          {syncing ? "Buscando..." : "Buscar atas do Meet"}
+        </button>
+      </div>
+
       {error ? (
         <p className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
           {error}
