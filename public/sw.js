@@ -1,7 +1,7 @@
 // Service worker mínimo: deixa o app instalável e mostra uma tela amigável sem internet.
 // Não guarda páginas nem respostas da API em cache (são dados de saúde do paciente).
-const CACHE = "lc-shell-v1";
-const SHELL = ["/offline.html", "/icons/icon-192.png", "/icons/apple-touch-icon.png"];
+const CACHE = "lc-shell-v2";
+const SHELL = ["/offline.html", "/icons/icon-192.png", "/icons/apple-touch-icon.png", "/brand-mark-cream.png"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL)));
