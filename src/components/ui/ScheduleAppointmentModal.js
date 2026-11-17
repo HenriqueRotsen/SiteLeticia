@@ -148,6 +148,7 @@ export default function ScheduleAppointmentModal({ open, onClose, patient = null
             </p>
             <ul className="mt-3 list-disc space-y-1 pl-5 text-graphite/65">
               <li>Já aparece na área do paciente.</li>
+              {result.usedPackage ? <li>Paga com o pacote “{result.usedPackage.name}”.</li> : null}
               {result.calendarWarning ? (
                 <li className="text-amber-800">{result.calendarWarning}</li>
               ) : (

@@ -19,7 +19,7 @@ const methodIcons = {
   card: CreditCard
 };
 
-function PaymentMethodCard({ method }) {
+export function PaymentMethodCard({ method }) {
   const [copied, setCopied] = useState(false);
   const Icon = methodIcons[method.type] || CreditCard;
   const pixKey = method.details?.pixKey;

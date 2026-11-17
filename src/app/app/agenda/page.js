@@ -8,6 +8,8 @@ import BookingPaymentPanel from "@/components/ui/BookingPaymentPanel";
 import { TIMEZONE } from "@/lib/constants";
 import { zonedDateKey } from "@/lib/scheduling/timezone";
 import { site, whatsappLink } from "@/lib/marketing/content";
+import Link from "next/link";
+import { pickUsablePackage, remainingSessions } from "@/lib/packages/pricing";
 
 const IN_PERSON_MESSAGE = `Olá, ${site.name}! Gostaria de marcar uma consulta presencial. Quais horários você tem disponíveis?`;
 
@@ -82,6 +84,7 @@ export default function AgendaPage() {
   const [slotNotice, setSlotNotice] = useState("");
   const [loadingAgenda, setLoadingAgenda] = useState(true);
   const [modality, setModality] = useState(null);
+  const [packages, setPackages] = useState({ catalog: [], mine: [] });
 
   const slotGroups = useMemo(() => {
     const visible = slots.slice(0, 40);
@@ -92,6 +95,15 @@ export default function AgendaPage() {
     return groupSlotsByDay(visible);
   }, [slots, selected]);
   const selectedDate = selected ? new Date(selected) : null;
+
+  useEffect(() => {
+    fetch("/api/packages")
+      .then((r) => r.json())
+      .then((data) => setPackages({ catalog: data.catalog || [], mine: data.mine || [] }))
+      .catch(() => {});
+  }, []);
+
+  const usablePackage = pickUsablePackage(packages.mine);
 
   useEffect(() => {
     const from = new Date();
@@ -159,7 +171,9 @@ export default function AgendaPage() {
       setFeedback(data.message || "Não foi possível agendar.");
       return;
     }
-    setFeedback(data.calendarWarning || "Consulta agendada com sucesso!");
+    setFeedback(
+      data.calendarWarning || (data.usedPackage ? `Consulta agendada pelo pacote “${data.usedPackage.name}”.` : "Consulta agendada com sucesso!")
+    );
     window.location.href = "/app/consultas";
   }
 
@@ -204,6 +218,22 @@ export default function AgendaPage() {
           />
         </div>
       </Card>
+
+      {modality === "online" && usablePackage ? (
+        <p className="mb-4 rounded-xl border border-olive-200 bg-olive-50 px-4 py-3 text-sm leading-6 text-olive-900">
+          Você tem {remainingSessions(usablePackage)}{" "}
+          {remainingSessions(usablePackage) === 1 ? "consulta disponível" : "consultas disponíveis"} no pacote “
+          {usablePackage.name}”. Esta consulta já sai paga pelo pacote.
+        </p>
+      ) : modality === "online" && packages.catalog.length ? (
+        <p className="mb-4 text-sm text-graphite/60">
+          Vai fazer acompanhamento?{" "}
+          <Link href="/app/financeiro" className="font-semibold text-olive-800 hover:underline">
+            Veja os pacotes com desconto
+          </Link>
+          .
+        </p>
+      ) : null}
 
       {modality === null ? null : modality === "in_person" ? (
         <Card>

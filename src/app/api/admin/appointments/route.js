@@ -11,6 +11,7 @@ import { appointmentScheduledEmail, sendEmail } from "@/lib/email/resend";
 import { getSiteUrl } from "@/lib/site-url";
 import { formatAddress, googleMapsLink, isAddressComplete } from "@/lib/appointments/location";
 import { appointmentWhatsappLink } from "@/lib/appointments/whatsapp";
+import { packageAppointmentFields, releasePackageCredit, reservePackageCredit } from "@/lib/packages/credits";
 
 export async function GET(request) {
   const auth = await requireNutritionist();
@@ -103,6 +104,9 @@ export async function POST(request) {
       ? settings.return_price_cents
       : settings?.consultation_price_cents || 0;
 
+  // Paciente com pacote pago e saldo: a consulta usa um crédito (sai paga, valor 0).
+  const usedPackage = await reservePackageCredit(supabase, patient.id);
+
   const insert = {
     patient_id: patient.id,
     starts_at: startsAt.toISOString(),
@@ -115,11 +119,13 @@ export async function POST(request) {
     amount_cents: priceCents,
     notes: body.notes || null,
     // Só manda as colunas novas quando precisa: consulta online funciona mesmo antes da migração.
-    ...(inPerson ? { modality: "in_person", location } : {})
+    ...(inPerson ? { modality: "in_person", location } : {}),
+    ...packageAppointmentFields(usedPackage)
   };
 
   const { data: appointment, error } = await supabase.from("appointments").insert(insert).select("*").single();
   if (error) {
+    await releasePackageCredit(supabase, usedPackage?.id);
     if (/modality|location/.test(String(error.message || ""))) {
       return NextResponse.json({ message: MIGRATION_MESSAGE }, { status: 503 });
     }
@@ -214,6 +220,7 @@ export async function POST(request) {
     calendarWarning,
     emailSent,
     hasAccount: Boolean(patient.user_id),
+    usedPackage: usedPackage ? { name: usedPackage.name } : null,
     whatsappHref: appointmentWhatsappLink({ phone: patient.phone, fullName: patient.full_name, appointment: saved })
   });
 }

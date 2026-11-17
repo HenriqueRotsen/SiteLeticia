@@ -7,6 +7,7 @@ import { Card, formatCurrency } from "@/components/layout/AppShell";
 import Badge, { paymentBadge } from "@/components/ui/Badge";
 import { labelPaymentDocType } from "@/lib/labels";
 import { formatAppointmentDateTime } from "@/lib/datetime";
+import PatientPackagesSection from "@/components/ui/PatientPackagesSection";
 
 export default function PatientFinanceiroPage() {
   const [data, setData] = useState(null);
@@ -39,7 +40,9 @@ export default function PatientFinanceiroPage() {
         </Card>
       </div>
 
-      <Card title="Histórico">
+      <PatientPackagesSection />
+
+      <Card title="Histórico" className="mt-4">
         {loading ? (
           <p className="text-sm text-graphite/55">Carregando...</p>
         ) : !appointments.length ? (

@@ -22,6 +22,7 @@ import Badge, { appointmentBadge } from "@/components/ui/Badge";
 import { Card, btnPrimary, btnSecondary } from "@/components/layout/AppShell";
 import { labelDietStatus } from "@/lib/labels";
 import ScheduleAppointmentModal from "@/components/ui/ScheduleAppointmentModal";
+import PatientPackagesCard from "@/components/ui/PatientPackagesCard";
 
 function formatPhone(phone) {
   const digits = String(phone || "").replace(/\D/g, "");
@@ -90,6 +91,7 @@ export default function AdminPatientDetailPage() {
   const [preconsult, setPreconsult] = useState(null);
   const [loading, setLoading] = useState(true);
   const [scheduling, setScheduling] = useState(false);
+  const [packagesVersion, setPackagesVersion] = useState(0);
 
   function reloadAppointments() {
     return fetch(`/api/admin/appointments?patientId=${params.id}`)
@@ -267,6 +269,8 @@ export default function AdminPatientDetailPage() {
         </div>
       </Card>
 
+      <PatientPackagesCard patientId={params.id} version={packagesVersion} />
+
       <div className="mt-5 grid items-start gap-5 xl:grid-cols-2">
         <Card className="overflow-hidden p-0 sm:p-0">
           <div className="flex items-center justify-between border-b border-olive-900/10 bg-gradient-to-r from-sky-50/80 to-porcelain px-5 py-4">
@@ -294,7 +298,10 @@ export default function AdminPatientDetailPage() {
             open={scheduling}
             onClose={() => setScheduling(false)}
             patient={patient}
-            onScheduled={reloadAppointments}
+            onScheduled={() => {
+              reloadAppointments();
+              setPackagesVersion((v) => v + 1);
+            }}
           />
 
           <div className="space-y-5 p-5">
