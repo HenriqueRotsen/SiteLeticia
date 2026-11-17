@@ -2,6 +2,7 @@ import localFont from "next/font/local";
 import { Gentium_Plus } from "next/font/google";
 import "./globals.css";
 import DemoBanner from "@/components/layout/DemoBanner";
+import PwaSetup from "@/components/pwa/PwaSetup";
 
 // Gotham Book = Regular (corpo). Gotham Bold = Negrito (destaques).
 const gotham = localFont({
@@ -34,14 +35,25 @@ export const metadata = {
     "Nutrição com método, história e cuidado. Letícia Cunha une enfermagem, nutrição e pesquisa clínica para construir estratégias alimentares individualizadas.",
   icons: {
     icon: "/brand-mark.png",
-    apple: "/brand-seal.png"
+    apple: "/icons/apple-touch-icon.png"
+  },
+  appleWebApp: {
+    capable: true,
+    title: "Letícia Cunha",
+    statusBarStyle: "default"
   }
+};
+
+export const viewport = {
+  themeColor: "#2F2A27",
+  viewportFit: "cover"
 };
 
 export default function RootLayout({ children }) {
   return (
     <html lang="pt-BR">
       <body className={`${gotham.variable} ${gentiumPlus.variable} font-sans antialiased`}>
+        <PwaSetup />
         <DemoBanner />
         {children}
       </body>

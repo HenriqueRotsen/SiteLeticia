@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Calendar, FlaskConical, LineChart, Salad, Sparkles } from "lucide-react";
 import PatientShell from "@/components/layout/PatientShell";
+import InstallAppCard from "@/components/pwa/InstallAppCard";
 import WaitlistPositionCard from "@/components/waitlist/WaitlistPositionCard";
 import { Card, formatCurrency } from "@/components/layout/AppShell";
 import { paymentBadge } from "@/components/ui/Badge";
@@ -64,6 +65,7 @@ export default function PatientHomePage() {
       subtitle="Acompanhe sua jornada nutricional"
       breadcrumbs={["Paciente", "Início"]}
     >
+      <InstallAppCard />
       <WaitlistPositionCard waitlist={data.waitlist} loading={waitlistLoading} />
 
       {next ? (

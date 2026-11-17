@@ -1,10 +1,6 @@
 {
-  "$comment": "Exceções de npm audit (high/critical). Revisar a cada atualização de Next/ESLint.",
-  "packages": {
-    "braces": "Sem versão corrigida publicada (3.0.3 é a última e está em <=3.0.3). Entra via micromatch -> fast-glob (fixado em 3.3.1) em @next/eslint-plugin-next, usado só no lint do próprio repositório.",
-    "micromatch": "Transitivo de fast-glob -> braces (sem correção disponível). Só no lint.",
-    "fast-glob": "Fixado em 3.3.1 por @next/eslint-plugin-next (inclusive na 16.4.2). Só no lint.",
-    "@next/eslint-plugin-next": "Dependência de lint; herda o alerta de braces via fast-glob até o plugin atualizar o fast-glob.",
-    "eslint-config-next": "Dependência de lint; herda o alerta de braces via @next/eslint-plugin-next."
+  "$comment": "Exceções de npm audit (high/critical) por alerta. Um pacote só passa se TODOS os alertas que chegam nele (diretos ou via dependências) estiverem aqui. Revisar a cada atualização de dependências.",
+  "advisories": {
+    "GHSA-fc5q-39xc-vjpf": "ReDoS no picomatch (<=4.0.7, sem versão corrigida publicada). Só entra por ferramentas de desenvolvimento (vite, vitest, eslint/typescript-eslint, fast-glob) que processam padrões do próprio repositório; não vai para produção. Revisar até 2027-02-17."
   }
 }
