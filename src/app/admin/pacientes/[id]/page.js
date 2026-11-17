@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import {
   CalendarClock,
+  CalendarPlus,
   Camera,
   ClipboardList,
   FileSpreadsheet,
@@ -20,6 +21,7 @@ import AdminShell from "@/components/layout/AdminShell";
 import Badge, { appointmentBadge } from "@/components/ui/Badge";
 import { Card, btnPrimary, btnSecondary } from "@/components/layout/AppShell";
 import { labelDietStatus } from "@/lib/labels";
+import ScheduleAppointmentModal from "@/components/ui/ScheduleAppointmentModal";
 
 function formatPhone(phone) {
   const digits = String(phone || "").replace(/\D/g, "");
@@ -87,6 +89,13 @@ export default function AdminPatientDetailPage() {
   const [clinicalRecords, setClinicalRecords] = useState([]);
   const [preconsult, setPreconsult] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [scheduling, setScheduling] = useState(false);
+
+  function reloadAppointments() {
+    return fetch(`/api/admin/appointments?patientId=${params.id}`)
+      .then((r) => r.json())
+      .then((data) => setAppointments(data.appointments || []));
+  }
 
   useEffect(() => {
     setLoading(true);
@@ -272,7 +281,21 @@ export default function AdminPatientDetailPage() {
                 </p>
               </div>
             </div>
+            <button
+              type="button"
+              onClick={() => setScheduling(true)}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-olive-700 hover:text-olive-800"
+            >
+              <CalendarPlus className="h-4 w-4" strokeWidth={1.75} />
+              Marcar
+            </button>
           </div>
+          <ScheduleAppointmentModal
+            open={scheduling}
+            onClose={() => setScheduling(false)}
+            patient={patient}
+            onScheduled={reloadAppointments}
+          />
 
           <div className="space-y-5 p-5">
             <div>
@@ -296,6 +319,7 @@ export default function AdminPatientDetailPage() {
                             </p>
                             <p className="mt-0.5 text-xs text-graphite/50">
                               {appointmentTypeLabel(appt.type)}
+                              {appt.modality === "in_person" ? " · Presencial" : " · Online"}
                             </p>
                           </div>
                           <Badge variant={badge.variant}>{badge.label}</Badge>
@@ -331,6 +355,7 @@ export default function AdminPatientDetailPage() {
                             </p>
                             <p className="mt-0.5 text-xs text-graphite/45">
                               {appointmentTypeLabel(appt.type)}
+                              {appt.modality === "in_person" ? " · Presencial" : " · Online"}
                             </p>
                           </div>
                           <Badge variant={badge.variant}>{badge.label}</Badge>

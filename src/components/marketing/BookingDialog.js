@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarDays, Check, Clock, MessageCircle, X } from "lucide-react";
+import { Check, Clock, MapPin, MessageCircle, Video, X } from "lucide-react";
 import { TIMEZONE } from "@/lib/constants";
 import { zonedDateKey } from "@/lib/scheduling/timezone";
 import { site, whatsappLink } from "@/lib/marketing/content";
@@ -14,6 +14,7 @@ export function useBooking() {
 }
 
 const WHATSAPP_MESSAGE = `Olá, ${site.name}! Gostaria de marcar uma consulta. Pode me orientar sobre horários e valores?`;
+const IN_PERSON_MESSAGE = `Olá, ${site.name}! Gostaria de marcar uma consulta presencial. Quais horários você tem disponíveis?`;
 const DAYS_AHEAD = 21;
 
 function formatTime(iso) {
@@ -126,9 +127,9 @@ function ChoiceDialog({ onClose, onAgenda }) {
           <span aria-hidden className="h-px w-8 bg-gold-500/60" />
           Consulta
         </p>
-        <h2 className="mt-3 font-display text-3xl leading-[1.1] text-graphite">Como prefere marcar?</h2>
+        <h2 className="mt-3 font-display text-3xl leading-[1.1] text-graphite">Como prefere a consulta?</h2>
         <p className="mt-2 text-sm leading-6 text-graphite/60">
-          Escolha um horário na agenda ou converse direto com a Letícia.
+          Online você escolhe o horário na agenda. Presencial você combina direto com a Letícia.
         </p>
 
         <div className="mt-6 grid gap-3">
@@ -138,30 +139,43 @@ function ChoiceDialog({ onClose, onAgenda }) {
             className="group flex items-center gap-4 rounded-2xl border border-gold-500/40 bg-gradient-to-br from-white to-cream p-5 text-left shadow-card transition hover:-translate-y-0.5 hover:border-gold-500"
           >
             <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-gold-500 to-gold-600 text-white shadow-[0_10px_24px_rgba(165,125,78,0.35)]">
-              <CalendarDays className="h-5 w-5" strokeWidth={1.75} />
+              <Video className="h-5 w-5" strokeWidth={1.75} />
             </span>
             <span>
-              <span className="block font-semibold text-graphite">Escolher horário na agenda</span>
-              <span className="mt-0.5 block text-sm text-graphite/55">Veja os horários livres e reserve o seu.</span>
+              <span className="block font-semibold text-graphite">Online</span>
+              <span className="mt-0.5 block text-sm text-graphite/55">Por vídeo. Escolha o horário na agenda e reserve.</span>
             </span>
           </button>
 
           <a
-            href={whatsappLink(site.whatsapp, WHATSAPP_MESSAGE)}
+            href={whatsappLink(site.whatsapp, IN_PERSON_MESSAGE)}
             target="_blank"
             rel="noopener noreferrer"
             onClick={onClose}
             className="group flex items-center gap-4 rounded-2xl border border-graphite/10 bg-white p-5 text-left transition hover:-translate-y-0.5 hover:border-[#25D366]/60"
           >
-            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#25D366] text-white shadow-[0_10px_24px_rgba(37,211,102,0.35)]">
-              <MessageCircle className="h-5 w-5" strokeWidth={1.75} />
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-graphite text-white shadow-[0_10px_24px_rgba(47,42,39,0.25)]">
+              <MapPin className="h-5 w-5" strokeWidth={1.75} />
             </span>
             <span>
-              <span className="block font-semibold text-graphite">Falar com a Letícia</span>
-              <span className="mt-0.5 block text-sm text-graphite/55">Tire dúvidas e combine pelo WhatsApp.</span>
+              <span className="block font-semibold text-graphite">Presencial</span>
+              <span className="mt-0.5 flex items-center gap-1.5 text-sm text-graphite/55">
+                <MessageCircle className="h-3.5 w-3.5 text-[#25D366]" strokeWidth={2} />
+                Combine o horário com a Letícia pelo WhatsApp.
+              </span>
             </span>
           </a>
         </div>
+
+        <a
+          href={whatsappLink(site.whatsapp, WHATSAPP_MESSAGE)}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={onClose}
+          className="mt-5 inline-block text-sm font-medium text-graphite/55 underline-offset-4 transition hover:text-graphite hover:underline"
+        >
+          Ainda tem dúvidas? Fale com a Letícia
+        </a>
       </div>
     </ModalFrame>
   );

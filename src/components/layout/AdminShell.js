@@ -10,6 +10,7 @@ import {
   LayoutDashboard,
   Library,
   Link2,
+  MapPin,
   Stethoscope,
   Users
 } from "lucide-react";
@@ -39,6 +40,7 @@ const navSections = [
     items: [
       { href: "/admin/configuracoes/presets", label: "Presets", icon: Library },
       { href: "/admin/configuracoes/pagamento", label: "Pagamento", icon: CreditCard },
+      { href: "/admin/configuracoes/atendimento", label: "Endereço de atendimento", icon: MapPin },
       { href: "/admin/configuracoes/integracoes", label: "Integrações", icon: Link2 }
     ]
   }
@@ -58,7 +60,8 @@ const ADMIN_CRUMB_HREFS = {
   Configurações: "/admin/configuracoes/presets",
   Presets: "/admin/configuracoes/presets",
   Pagamento: "/admin/configuracoes/pagamento",
-  Integrações: "/admin/configuracoes/integracoes"
+  Integrações: "/admin/configuracoes/integracoes",
+  "Endereço de atendimento": "/admin/configuracoes/atendimento"
 };
 
 function resolveAdminBreadcrumbs(breadcrumbs = []) {

@@ -1,12 +1,40 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { CalendarDays, Check, Clock } from "lucide-react";
+import { CalendarDays, Check, Clock, MapPin, MessageCircle, Video } from "lucide-react";
 import PatientShell from "@/components/layout/PatientShell";
 import { Card } from "@/components/layout/AppShell";
 import BookingPaymentPanel from "@/components/ui/BookingPaymentPanel";
 import { TIMEZONE } from "@/lib/constants";
 import { zonedDateKey } from "@/lib/scheduling/timezone";
+import { site, whatsappLink } from "@/lib/marketing/content";
+
+const IN_PERSON_MESSAGE = `Olá, ${site.name}! Gostaria de marcar uma consulta presencial. Quais horários você tem disponíveis?`;
+
+function ModalityCard({ active, icon: Icon, title, description, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`flex items-start gap-3 rounded-2xl border p-4 text-left transition ${
+        active ? "border-olive-700 bg-olive-50 ring-2 ring-olive-200" : "border-olive-900/10 bg-white hover:border-olive-400"
+      }`}
+    >
+      <span
+        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${
+          active ? "bg-olive-700 text-white" : "bg-linen text-olive-800"
+        }`}
+      >
+        <Icon className="h-5 w-5" strokeWidth={1.75} />
+      </span>
+      <span className="min-w-0">
+        <span className="block font-semibold text-graphite">{title}</span>
+        <span className="mt-0.5 block text-sm leading-5 text-graphite/55">{description}</span>
+      </span>
+    </button>
+  );
+}
 
 function formatSlotTime(iso) {
   return new Date(iso).toLocaleTimeString("pt-BR", {
@@ -53,6 +81,7 @@ export default function AgendaPage() {
   const [bookingMessage, setBookingMessage] = useState("");
   const [slotNotice, setSlotNotice] = useState("");
   const [loadingAgenda, setLoadingAgenda] = useState(true);
+  const [modality, setModality] = useState(null);
 
   const slotGroups = useMemo(() => {
     const visible = slots.slice(0, 40);
@@ -94,6 +123,7 @@ export default function AgendaPage() {
 
         // Horário escolhido no pop-up do site (?slot=...): já deixa selecionado.
         const wanted = new URLSearchParams(window.location.search).get("slot");
+        if (wanted) setModality("online");
         if (wanted && enabled) {
           const wantedTime = new Date(wanted).getTime();
           const match = list.find((slot) => new Date(slot.startsAt).getTime() === wantedTime);
@@ -155,7 +185,44 @@ export default function AgendaPage() {
         </p>
       ) : null}
 
-      {loadingAgenda ? (
+      <Card className="mb-4">
+        <h2 className="font-semibold text-graphite">Como prefere a consulta?</h2>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <ModalityCard
+            active={modality === "online"}
+            icon={Video}
+            title="Online"
+            description="Por vídeo, pelo Google Meet. Escolha o horário aqui."
+            onClick={() => setModality("online")}
+          />
+          <ModalityCard
+            active={modality === "in_person"}
+            icon={MapPin}
+            title="Presencial"
+            description="No consultório. O horário é combinado com a Letícia pelo WhatsApp."
+            onClick={() => setModality("in_person")}
+          />
+        </div>
+      </Card>
+
+      {modality === null ? null : modality === "in_person" ? (
+        <Card>
+          <h2 className="font-semibold text-graphite">Consulta presencial</h2>
+          <p className="mt-2 max-w-xl text-sm leading-6 text-graphite/60">
+            Para consultas presenciais, fale com a Letícia pelo WhatsApp. Ela confirma o horário e marca a consulta
+            no sistema. Depois ela aparece aqui na sua área, com o endereço e o mapa.
+          </p>
+          <a
+            href={whatsappLink(site.whatsapp, IN_PERSON_MESSAGE)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[#25D366] px-4 py-2.5 text-sm font-semibold text-white shadow-xs transition hover:bg-[#1fb457]"
+          >
+            <MessageCircle className="h-4 w-4" strokeWidth={2} />
+            Combinar pelo WhatsApp
+          </a>
+        </Card>
+      ) : loadingAgenda ? (
         <Card>
           <p className="text-sm text-graphite/55">Carregando agenda…</p>
         </Card>

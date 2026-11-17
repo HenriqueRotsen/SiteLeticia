@@ -9,7 +9,7 @@ import WaitlistPositionCard from "@/components/waitlist/WaitlistPositionCard";
 import { Card, formatCurrency } from "@/components/layout/AppShell";
 import { paymentBadge } from "@/components/ui/Badge";
 import StatCard from "@/components/ui/StatCard";
-import UpcomingAppointmentsList, { MeetJoinButton } from "@/components/ui/UpcomingAppointments";
+import UpcomingAppointmentsList, { AppointmentJoinButton } from "@/components/ui/UpcomingAppointments";
 import { safeMeetLink, selectUpcomingAppointments } from "@/lib/appointments/upcoming";
 import { usePatientProfile } from "@/lib/hooks/usePatientProfile";
 
@@ -72,7 +72,9 @@ export default function PatientHomePage() {
         <div className="mb-6 overflow-hidden rounded-2xl border border-olive-200/80 bg-gradient-to-r from-olive-700 to-olive-800 p-6 text-white shadow-card sm:p-8">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="flex min-w-0 flex-col items-start">
-              <p className="text-sm font-medium text-olive-100">Próxima consulta</p>
+              <p className="text-sm font-medium text-olive-100">
+                Próxima consulta{next.modality === "in_person" ? " · presencial" : " · online"}
+              </p>
               <Link
                 href={`/app/consultas/${next.id}`}
                 className="mt-2 text-xl font-semibold tracking-tight underline-offset-4 hover:underline sm:text-2xl"
@@ -95,9 +97,12 @@ export default function PatientHomePage() {
                   {formatCurrency(next.amount_cents)}
                 </span>
               </p>
+              {next.modality === "in_person" && next.location ? (
+                <p className="mt-3 max-w-md text-sm leading-6 text-olive-50/90">{next.location}</p>
+              ) : null}
             </div>
-            {safeMeetLink(next.meet_link) ? (
-              <MeetJoinButton link={next.meet_link} variant="light" />
+            {next.modality === "in_person" || safeMeetLink(next.meet_link) ? (
+              <AppointmentJoinButton appointment={next} variant="light" />
             ) : (
               <span className="inline-flex shrink-0 items-center rounded-xl bg-white/10 px-4 py-2.5 text-xs font-medium text-olive-100">
                 Link do Meet ainda não gerado

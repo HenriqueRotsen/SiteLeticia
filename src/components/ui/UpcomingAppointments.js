@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { CalendarClock, Video } from "lucide-react";
+import { CalendarClock, MapPin, Video } from "lucide-react";
 import Badge, { paymentBadge } from "@/components/ui/Badge";
 import { formatCurrency } from "@/components/layout/AppShell";
 import { formatAppointmentWhen, safeMeetLink } from "@/lib/appointments/upcoming";
+import { googleMapsLink, isInPerson } from "@/lib/appointments/location";
 
 export function MeetJoinButton({ link, size = "md", variant = "gold", className = "" }) {
   const href = safeMeetLink(link);
@@ -33,6 +34,32 @@ export function MeetJoinButton({ link, size = "md", variant = "gold", className 
     >
       <Video className={size === "sm" ? "h-3.5 w-3.5" : "h-4 w-4"} />
       Entrar no Meet
+    </a>
+  );
+}
+
+// Presencial: "Como chegar" (Google Maps). Online: botão do Meet.
+export function AppointmentJoinButton({ appointment, size = "md", variant = "gold", className = "" }) {
+  if (!isInPerson(appointment)) {
+    return <MeetJoinButton link={appointment?.meet_link} size={size} variant={variant} className={className} />;
+  }
+  const href = googleMapsLink(appointment.location);
+  const sizing = size === "sm" ? "px-3 py-2 text-xs" : "px-4 py-2.5 text-sm";
+  const colors =
+    variant === "light"
+      ? "bg-white text-olive-800 hover:bg-olive-50"
+      : "bg-[#BD9B72] text-white shadow-xs hover:bg-[#A8875F]";
+  if (!href) return null;
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer noopener"
+      title={appointment.location}
+      className={`inline-flex shrink-0 items-center gap-2 rounded-xl font-semibold transition focus:outline-none focus:ring-2 focus:ring-[#BD9B72]/30 ${sizing} ${colors} ${className}`}
+    >
+      <MapPin className={size === "sm" ? "h-3.5 w-3.5" : "h-4 w-4"} />
+      Como chegar
     </a>
   );
 }
@@ -76,12 +103,13 @@ export default function UpcomingAppointmentsList({
                 )}
                 <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-graphite/55">
                   {showPatient ? <span>{formatAppointmentWhen(appt.starts_at)}</span> : null}
+                  {isInPerson(appt) ? <Badge variant="info">Presencial</Badge> : null}
                   <Badge variant={payment.variant}>Pagamento: {payment.label}</Badge>
                   {appt.amount_cents ? <span>{formatCurrency(appt.amount_cents)}</span> : null}
                 </p>
               </div>
             </div>
-            <MeetJoinButton link={appt.meet_link} size="sm" />
+            <AppointmentJoinButton appointment={appt} size="sm" />
           </li>
         );
       })}

@@ -17,7 +17,7 @@ import InstallAppCard from "@/components/pwa/InstallAppCard";
 import { Card, DataTable, formatCurrency } from "@/components/layout/AppShell";
 import Badge, { appointmentBadge, paymentBadge } from "@/components/ui/Badge";
 import StatCard from "@/components/ui/StatCard";
-import { MeetJoinButton } from "@/components/ui/UpcomingAppointments";
+import { AppointmentJoinButton } from "@/components/ui/UpcomingAppointments";
 
 const weekdayLabels = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
@@ -203,8 +203,8 @@ export default function AdminDashboardPage() {
             },
             {
               key: "meet",
-              label: "Meet",
-              render: (row) => <MeetJoinButton link={row.meet_link} size="sm" />
+              label: "Local",
+              render: (row) => <AppointmentJoinButton appointment={row} size="sm" />
             }
           ]}
           rows={(data.upcoming || []).map((appt) => ({ ...appt, id: appt.id }))}

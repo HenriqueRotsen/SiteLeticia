@@ -16,6 +16,8 @@ import {
 } from "@/lib/demo/data";
 import { getSeedPresetsAsRows } from "@/lib/presets/seed";
 import { extractDietPlanFromCsvBuffer } from "@/lib/diets/fatsecret-csv";
+import { formatAddress, isAddressComplete, sanitizeAddress } from "@/lib/appointments/location";
+import { appointmentWhatsappLink } from "@/lib/appointments/whatsapp";
 
 let state = createInitialDemoState();
 
@@ -956,6 +958,58 @@ export async function handleDemoApi(request) {
       return json({ message: "Preset não encontrado." }, 404);
     }
     return json({ ok: true });
+  }
+
+  if (path === "/api/admin/clinic-address" && method === "GET") {
+    return json({ address: state.paymentSettings.clinic_address || null });
+  }
+
+  if (path === "/api/admin/clinic-address" && method === "PUT") {
+    const body = await request.json().catch(() => ({}));
+    const address = sanitizeAddress(body.address || {});
+    if (!isAddressComplete(address)) {
+      return json({ message: "Preencha pelo menos rua, número, cidade e estado." }, 400);
+    }
+    state.paymentSettings.clinic_address = address;
+    return json({ address });
+  }
+
+  if (path === "/api/admin/appointments" && method === "POST") {
+    const body = await request.json().catch(() => ({}));
+    const person = demoPatientsList.find((item) => item.id === body.patientId);
+    if (!person) return json({ message: "Paciente não encontrado." }, 404);
+    const inPerson = body.modality === "in_person";
+    if (inPerson && !isAddressComplete(state.paymentSettings.clinic_address)) {
+      return json({ message: "Cadastre o endereço de atendimento antes de marcar consulta presencial." }, 400);
+    }
+    const startsAt = new Date(body.startsAt);
+    const appt = {
+      id: `appt-${Date.now()}`,
+      patient_id: person.id,
+      starts_at: startsAt.toISOString(),
+      ends_at: new Date(startsAt.getTime() + 60 * 60 * 1000).toISOString(),
+      duration_min: 60,
+      buffer_min: 15,
+      type: body.type || "consultation",
+      status: "scheduled",
+      payment_status: "pending",
+      amount_cents:
+        body.type === "return"
+          ? state.paymentSettings.return_price_cents
+          : state.paymentSettings.consultation_price_cents,
+      modality: inPerson ? "in_person" : "online",
+      location: inPerson ? formatAddress(state.paymentSettings.clinic_address) : null,
+      meet_link: !inPerson && state.googleConnected ? "https://meet.google.com/demo-marcada-pela-nutri" : null,
+      patients: { full_name: person.full_name, phone: person.phone }
+    };
+    state.appointments.push(appt);
+    return json({
+      appointment: appt,
+      calendarWarning: state.googleConnected ? null : "Modo demo: Google Agenda simulado.",
+      emailSent: false,
+      hasAccount: Boolean(person.has_account),
+      whatsappHref: appointmentWhatsappLink({ phone: person.phone, fullName: person.full_name, appointment: appt })
+    });
   }
 
   if (path === "/api/admin/appointments" && method === "GET") {

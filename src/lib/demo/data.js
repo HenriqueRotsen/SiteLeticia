@@ -61,6 +61,16 @@ export const demoPaymentSettings = {
   return_price_cents: 18000,
   currency: "BRL",
   booking_enabled: true,
+  clinic_address: {
+    placeName: "Consultório Letícia Cunha",
+    cep: "30130100",
+    street: "Avenida Afonso Pena",
+    number: "1500",
+    complement: "Sala 801",
+    district: "Centro",
+    city: "Belo Horizonte",
+    state: "MG"
+  },
   instructions:
     "Após agendar, envie o comprovante (PDF ou foto) em Minhas consultas. A prescrição só libera após a validação.",
   cancellation_policy: "Cancelamentos com pelo menos 24h de antecedência."

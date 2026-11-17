@@ -2,8 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { CalendarPlus } from "lucide-react";
+import ScheduleAppointmentModal from "@/components/ui/ScheduleAppointmentModal";
 import AdminShell from "@/components/layout/AdminShell";
-import { Card } from "@/components/layout/AppShell";
+import { Card, btnPrimary } from "@/components/layout/AppShell";
 import Badge, { appointmentBadge } from "@/components/ui/Badge";
 import BookingToggleCard from "@/components/ui/BookingToggleCard";
 import { useDialog } from "@/components/ui/ConfirmDialog";
@@ -14,6 +16,7 @@ export default function AdminAgendaPage() {
   const [cancellingId, setCancellingId] = useState("");
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
+  const [scheduling, setScheduling] = useState(false);
 
   const load = useCallback(async () => {
     const res = await fetch("/api/admin/appointments");
@@ -56,6 +59,13 @@ export default function AdminAgendaPage() {
 
   return (
     <AdminShell title="Agenda" breadcrumbs={["Admin", "Agenda"]} userName="Letícia">
+      <div className="mb-4 flex justify-end">
+        <button type="button" onClick={() => setScheduling(true)} className={btnPrimary()}>
+          <CalendarPlus className="h-4 w-4" strokeWidth={1.75} />
+          Marcar consulta
+        </button>
+      </div>
+      <ScheduleAppointmentModal open={scheduling} onClose={() => setScheduling(false)} onScheduled={load} />
       <BookingToggleCard onFeedback={setFeedback} onError={setError} />
       {error ? (
         <p className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
@@ -95,7 +105,10 @@ export default function AdminAgendaPage() {
                     </Link>
                   </td>
                   <td className="py-3">
-                    <Badge variant={badge.variant}>{badge.label}</Badge>
+                    <div className="flex flex-wrap gap-1">
+                      <Badge variant={badge.variant}>{badge.label}</Badge>
+                      {appt.modality === "in_person" ? <Badge variant="info">Presencial</Badge> : null}
+                    </div>
                   </td>
                   <td className="py-3">
                     {appt.meet_link && appt.status === "scheduled" ? (
