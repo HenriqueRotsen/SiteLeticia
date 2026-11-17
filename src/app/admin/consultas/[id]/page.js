@@ -9,10 +9,12 @@ import Badge, { appointmentBadge, paymentBadge } from "@/components/ui/Badge";
 import PaymentDocUploadZone from "@/components/ui/PaymentDocUploadZone";
 import { formatAppointmentDateTime } from "@/lib/datetime";
 import { labelPaymentDocType } from "@/lib/labels";
+import { useDialog } from "@/components/ui/ConfirmDialog";
 
 export default function AdminConsultaDetailPage() {
   const params = useParams();
   const appointmentId = params?.id;
+  const { confirm } = useDialog();
   const [appointment, setAppointment] = useState(null);
   const [documents, setDocuments] = useState([]);
   const [summary, setSummary] = useState({});
@@ -90,7 +92,14 @@ export default function AdminConsultaDetailPage() {
   }
 
   async function cancelAppointment() {
-    if (!window.confirm("Cancelar esta consulta?")) return;
+    const ok = await confirm({
+      title: "Cancelar esta consulta?",
+      message: "O horário volta a ficar livre na agenda.",
+      confirmLabel: "Cancelar consulta",
+      cancelLabel: "Manter",
+      tone: "danger"
+    });
+    if (!ok) return;
     setCancelling(true);
     setError("");
     setFeedback("");
@@ -103,9 +112,11 @@ export default function AdminConsultaDetailPage() {
     setCancelling(false);
     if (!res.ok) {
       setError(data.message || "Não foi possível cancelar.");
+      window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
     setFeedback("Consulta cancelada.");
+    window.scrollTo({ top: 0, behavior: "smooth" });
     await load();
   }
 

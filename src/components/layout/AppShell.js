@@ -281,7 +281,7 @@ export default function AppShell({
           sidebarCollapsed ? "lg:pl-20" : "lg:pl-[272px]"
         }`}
       >
-        <header className="sticky top-[var(--demo-banner-height,0px)] z-20 border-b border-olive-900/10 bg-porcelain/90 backdrop-blur-md">
+        <header className="sticky top-[var(--demo-banner-height,0px)] z-20 pt-[env(safe-area-inset-top)] border-b border-olive-900/10 bg-porcelain/90 backdrop-blur-md">
           <div className="flex h-16 items-center gap-2 px-4 sm:h-24 sm:gap-4 sm:px-6 lg:px-8">
             <div className="min-w-0 flex-1">
               {breadcrumbs.length ? (

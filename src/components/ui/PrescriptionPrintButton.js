@@ -2,6 +2,7 @@
 
 import { Printer } from "lucide-react";
 import { btnSecondary } from "@/components/layout/AppShell";
+import { useDialog } from "@/components/ui/ConfirmDialog";
 import { brand, escapeHtml, wrapPrintDocument } from "@/lib/branding/shell";
 
 function printViaIframe(html) {
@@ -249,6 +250,8 @@ export default function PrescriptionPrintButton({
   bodyHtml,
   label = "Imprimir / Salvar"
 }) {
+  const { alert } = useDialog();
+
   return (
     <button
       type="button"
@@ -261,9 +264,10 @@ export default function PrescriptionPrintButton({
           bodyHtml
         });
         if (!ok) {
-          window.alert(
-            "Não foi possível abrir a impressão. Permita pop-ups para este site e tente de novo."
-          );
+          alert({
+            title: "Não foi possível abrir a impressão",
+            message: "Permita pop-ups para este site e tente de novo."
+          });
         }
       }}
     >

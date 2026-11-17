@@ -5,9 +5,11 @@ import AdminShell from "@/components/layout/AdminShell";
 import { Card } from "@/components/layout/AppShell";
 import Badge, { appointmentBadge } from "@/components/ui/Badge";
 import BookingToggleCard from "@/components/ui/BookingToggleCard";
+import { useDialog } from "@/components/ui/ConfirmDialog";
 
 export default function AdminAgendaPage() {
   const [appointments, setAppointments] = useState([]);
+  const { confirm } = useDialog();
   const [cancellingId, setCancellingId] = useState("");
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
@@ -23,7 +25,14 @@ export default function AdminAgendaPage() {
   }, [load]);
 
   async function cancelAppointment(appointmentId) {
-    if (!window.confirm("Cancelar esta consulta?")) return;
+    const ok = await confirm({
+      title: "Cancelar esta consulta?",
+      message: "O horário volta a ficar livre na agenda.",
+      confirmLabel: "Cancelar consulta",
+      cancelLabel: "Manter",
+      tone: "danger"
+    });
+    if (!ok) return;
     setCancellingId(appointmentId);
     setError("");
     setFeedback("");
@@ -36,9 +45,11 @@ export default function AdminAgendaPage() {
     setCancellingId("");
     if (!res.ok) {
       setError(data.message || "Não foi possível cancelar.");
+      window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
     setFeedback("Consulta cancelada.");
+    window.scrollTo({ top: 0, behavior: "smooth" });
     await load();
   }
 

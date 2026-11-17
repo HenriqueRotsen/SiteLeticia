@@ -17,6 +17,7 @@ import Badge, { labReportBadge } from "@/components/ui/Badge";
 import ExamOrderStatusList from "@/components/ui/ExamOrderStatusList";
 import HelpTooltip from "@/components/ui/HelpTooltip";
 import Modal from "@/components/ui/Modal";
+import { useDialog } from "@/components/ui/ConfirmDialog";
 import PdfUploadZone from "@/components/ui/PdfUploadZone";
 import { countExamProgress } from "@/lib/labs/exam-status";
 
@@ -75,6 +76,7 @@ function warningFromAnalysis(analyzed, verb = "enviado") {
 }
 
 export default function ExamesPage() {
+  const { confirm } = useDialog();
   const [reports, setReports] = useState([]);
   const [examOrders, setExamOrders] = useState([]);
   const [feedback, setFeedback] = useState("");
@@ -257,7 +259,13 @@ export default function ExamesPage() {
   }
 
   async function deleteReport(reportId) {
-    if (!window.confirm("Excluir este envio de exame?")) return;
+    const ok = await confirm({
+      title: "Excluir este envio de exame?",
+      message: "Os arquivos enviados serão removidos.",
+      confirmLabel: "Excluir",
+      tone: "danger"
+    });
+    if (!ok) return;
     setBusyId(reportId);
     setError("");
     setFeedback("");
