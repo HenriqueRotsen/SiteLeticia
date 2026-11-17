@@ -1312,6 +1312,7 @@ export async function handleDemoApi(request) {
     if (body.appointmentId !== undefined || body.appointment_id !== undefined) {
       record.appointment_id = body.appointmentId ?? body.appointment_id ?? null;
     }
+    if (body.status === "draft" || body.status === "final") record.status = body.status;
     record.updated_at = new Date().toISOString();
     return json({ record });
   }

@@ -1,20 +1,26 @@
 import { decryptText } from "@/lib/crypto";
 import { createSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { TIMEZONE } from "@/lib/constants";
+import { meetNotesScopes } from "@/lib/google/meet-notes";
 
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
-const CALENDAR_SCOPE = [
+const CALENDAR_SCOPES = [
   "https://www.googleapis.com/auth/calendar.events",
   "https://www.googleapis.com/auth/calendar.freebusy"
-].join(" ");
+];
+
+// Escopos extras (ex.: leitura da ata do Meet) só entram quando o recurso está ligado.
+export function googleOAuthScopes() {
+  return [...CALENDAR_SCOPES, ...meetNotesScopes()].join(" ");
+}
 
 export function getGoogleAuthUrl(state) {
   const params = new URLSearchParams({
     client_id: process.env.GOOGLE_CLIENT_ID,
     redirect_uri: process.env.GOOGLE_REDIRECT_URI,
     response_type: "code",
-    scope: CALENDAR_SCOPE,
+    scope: googleOAuthScopes(),
     access_type: "offline",
     prompt: "consent",
     state
