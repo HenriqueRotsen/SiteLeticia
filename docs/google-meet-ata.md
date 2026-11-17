@@ -59,7 +59,7 @@ acrescentar a transcrição como plano B (o código já aceita um Doc de transcr
 
 Arquivos: `src/lib/google/meet-notes.js`, `src/lib/google/import-meet-notes.js`,
 `src/app/api/cron/meet-notes/route.js`, `supabase/migrate-meet-notes-drafts.sql`,
-`docs/meet-notes.workflow.yml`.
+`.github/workflows/meet-notes.yml`.
 
 ## Para ligar
 
@@ -74,8 +74,10 @@ Arquivos: `src/lib/google/meet-notes.js`, `src/lib/google/import-meet-notes.js`,
    Em modo de teste, o acesso expira a cada 7 dias.
 4. Definir `GOOGLE_MEET_NOTES_ENABLED=true` na Vercel e fazer novo deploy.
 5. A Letícia reconecta o Google em **Configurações → Integrações** e aceita o novo acesso.
-6. Copiar `docs/meet-notes.workflow.yml` para `.github/workflows/` (os mesmos secrets
-   `SITE_URL` e `CRON_SECRET` dos lembretes).
+6. A busca automática roda a cada 30 minutos pelo GitHub Actions
+   (`.github/workflows/meet-notes.yml`, com o secret `CRON_SECRET` que o keep-alive já usa).
+   No prontuário, o botão **Buscar atas do Meet** faz a mesma busca na hora, com o login da
+   nutricionista (rota `POST /api/admin/meet-notes/sync`).
 
 Cuidados: a ata é gerada por IA a partir de dados de saúde. Fica como rascunho, visível só para
 a nutricionista (RLS de `clinical_records`), e só vira prontuário depois de revisada. O

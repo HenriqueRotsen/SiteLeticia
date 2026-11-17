@@ -1,0 +1,38 @@
+name: Atas do Meet no prontuário
+
+# A cada 30 minutos procura a ata do Gemini das consultas encerradas (15 min a 3 dias atrás)
+# e salva como rascunho no prontuário. Usa o mesmo secret CRON_SECRET do keep-alive.
+# A rota não faz nada enquanto GOOGLE_MEET_NOTES_ENABLED não estiver ligada na Vercel.
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Chamar a rota de importação
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -euo pipefail
+          if [ -z "${CRON_SECRET:-}" ]; then
+            echo "::error::Secret CRON_SECRET não configurado."
+            exit 1
+          fi
+          HTTP_CODE=$(curl -sS -L -o /tmp/meet-notes.json -w "%{http_code}" --max-time 60 \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            "https://www.leticiavrcunha.com.br/api/cron/meet-notes")
+          echo "HTTP ${HTTP_CODE}"
+          cat /tmp/meet-notes.json; echo
+          if [ "$HTTP_CODE" != "200" ]; then
+            exit 1
+          fi
+          if grep -q '"needsReconnect":true' /tmp/meet-notes.json; then
+            echo "::warning::O Google precisa ser reconectado em Configurações → Integrações."
+          fi

@@ -1257,6 +1257,10 @@ export async function handleDemoApi(request) {
     return json({ ok: true });
   }
 
+  if (path === "/api/admin/meet-notes/sync" && method === "POST") {
+    return json({ ok: true, checked: 1, imported: 0, pending: 1, failures: [] });
+  }
+
   if (path.match(/^\/api\/patients\/[^/]+\/prontuario$/) && method === "GET") {
     const patient = path.split("/")[3];
     if (!state.clinicalRecords) state.clinicalRecords = [];
