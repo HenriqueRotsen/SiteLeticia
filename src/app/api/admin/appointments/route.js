@@ -35,7 +35,7 @@ export async function GET(request) {
 }
 
 const MIGRATION_MESSAGE =
-  "Para marcar consultas presenciais é preciso rodar o SQL migrate-in-person-appointments.sql no Supabase.";
+  "Para marcar consultas presenciais é preciso rodar o SQL migrate-presencial-pacotes-pix.sql no Supabase.";
 
 // A nutricionista marca a consulta para o paciente (online com Meet, ou presencial com endereço).
 export async function POST(request) {

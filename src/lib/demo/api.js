@@ -33,7 +33,9 @@ function demoPackages() {
         sessions: 4,
         price_cents: 85000,
         active: true,
-        sort_order: 0
+        sort_order: 0,
+        pix_code:
+          "00020126580014br.gov.bcb.pix013600000000-demo-0000-0000-0000000000005204000053039865406850.005802BR5918LETICIA CUNHA DEMO6014BELO HORIZONTE62080504DEMO6304A5BB"
       }
     ];
   }
@@ -1011,7 +1013,8 @@ export async function handleDemoApi(request) {
       sessions: Number(body.sessions) || 0,
       price_cents: Number(body.priceCents) || 0,
       active: body.active !== false,
-      sort_order: 0
+      sort_order: 0,
+      pix_code: body.pixCode || null
     };
     if (pkg.name.length < 2 || pkg.sessions < 2) return json({ message: "Confira nome, quantidade de consultas e preço." }, 400);
     demoPackages().push(pkg);
@@ -1028,7 +1031,8 @@ export async function handleDemoApi(request) {
       description: body.description || null,
       sessions: Number(body.sessions),
       price_cents: Number(body.priceCents),
-      active: body.active !== false
+      active: body.active !== false,
+      pix_code: body.pixCode || null
     });
     return json({ package: pkg });
   }
@@ -1243,7 +1247,9 @@ export async function handleDemoApi(request) {
       consultation_price_cents: body.consultationPriceCents,
       return_price_cents: body.returnPriceCents,
       instructions: body.instructions,
-      cancellation_policy: body.cancellationPolicy
+      cancellation_policy: body.cancellationPolicy,
+      ...(body.consultationPixCode !== undefined ? { consultation_pix_code: body.consultationPixCode } : {}),
+      ...(body.returnPixCode !== undefined ? { return_pix_code: body.returnPixCode } : {})
     };
     return json({ settings: state.paymentSettings });
   }

@@ -10,6 +10,8 @@ import { PaymentMethodCard } from "@/components/ui/BookingPaymentPanel";
 import { useDialog } from "@/components/ui/ConfirmDialog";
 import { packageSavings, packageStatusLabel, perSessionCents, remainingSessions } from "@/lib/packages/pricing";
 import { site, whatsappLink } from "@/lib/marketing/content";
+import { pixCodeForAmount } from "@/lib/payments/pix-brcode";
+import PixPayment from "@/components/ui/PixPayment";
 
 export default function PatientPackagesSection() {
   const { confirm } = useDialog();
@@ -61,6 +63,7 @@ export default function PatientPackagesSection() {
   const { catalog, mine, regularPriceCents } = data;
   const visibleMine = mine.filter((pkg) => pkg.payment_status !== "cancelled");
   const pending = visibleMine.find((pkg) => pkg.payment_status === "pending");
+  const pendingPix = pending ? pixCodeForAmount(pending.pix_code, pending.price_cents) : null;
   if (!catalog.length && !visibleMine.length) return null;
 
   return (
@@ -94,10 +97,14 @@ export default function PatientPackagesSection() {
         <div className="mb-5 rounded-2xl border border-amber-200 bg-amber-50/70 p-4">
           <p className="font-semibold text-amber-950">Falta o pagamento do pacote</p>
           <p className="mt-1 text-sm leading-6 text-amber-900/80">
-            Pague {formatCurrency(pending.price_cents)} por uma das formas abaixo e envie o comprovante para a Letícia.
-            Assim que ela confirmar, suas consultas já saem pagas pelo pacote.
+            Pague {formatCurrency(pending.price_cents)} {pendingPix ? "com o PIX abaixo" : "por uma das formas abaixo"} e
+            envie o comprovante para a Letícia. Assim que ela confirmar, suas consultas já saem pagas pelo pacote.
           </p>
-          {methods.length ? (
+          {pendingPix ? (
+            <div className="mt-3">
+              <PixPayment code={pendingPix} amountCents={pending.price_cents} title="PIX do pacote" />
+            </div>
+          ) : methods.length ? (
             <div className="mt-3 space-y-2">
               {methods.map((method) => (
                 <PaymentMethodCard key={method.id} method={method} />

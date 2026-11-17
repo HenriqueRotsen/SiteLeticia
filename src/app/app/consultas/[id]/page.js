@@ -10,6 +10,8 @@ import PaymentDocUploadZone from "@/components/ui/PaymentDocUploadZone";
 import { formatAppointmentDateTime, resolveAppointmentAmountCents } from "@/lib/datetime";
 import { labelPaymentDocType } from "@/lib/labels";
 import { googleMapsEmbedUrl, googleMapsLink } from "@/lib/appointments/location";
+import { pixCodeForAmount } from "@/lib/payments/pix-brcode";
+import PixPayment from "@/components/ui/PixPayment";
 import { useDialog } from "@/components/ui/ConfirmDialog";
 
 function formatExtractedAmount(cents) {
@@ -133,6 +135,13 @@ export default function PatientConsultaDetailPage() {
   const isPaid = appointment.payment_status === "paid" || appointment.payment_status === "waived";
   const amountCents = resolveAppointmentAmountCents(appointment, payment.settings);
   const showCancel = canCancelAppointment(appointment);
+  const pixCode =
+    !isPaid && appointment.status !== "cancelled" && amountCents > 0
+      ? pixCodeForAmount(
+          (appointment.type === "return" && payment.settings?.return_pix_code) || payment.settings?.consultation_pix_code,
+          amountCents
+        )
+      : null;
 
   return (
     <PatientShell title="Detalhe da consulta" breadcrumbs={["Paciente", "Consultas", "Detalhe"]}>
@@ -270,6 +279,12 @@ export default function PatientConsultaDetailPage() {
           )}
         </Card>
       </div>
+
+      {pixCode ? (
+        <div className="mt-4">
+          <PixPayment code={pixCode} amountCents={amountCents} title="Pague esta consulta com PIX" />
+        </div>
+      ) : null}
 
       <Card className="mt-4">
         <h3 className="font-semibold">Instruções de pagamento</h3>

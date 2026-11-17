@@ -3,6 +3,7 @@ import { requireNutritionist } from "@/lib/auth";
 import { createSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { writeAuditLog, getClientIp } from "@/lib/audit";
 import { packageInputSchema, packageRow } from "@/lib/packages/schema";
+import { parsePixCode } from "@/lib/payments/pix-brcode";
 
 export async function PATCH(request, { params: paramsPromise }) {
   const params = await paramsPromise;
@@ -14,6 +15,9 @@ export async function PATCH(request, { params: paramsPromise }) {
     input = packageInputSchema.parse(await request.json());
   } catch {
     return NextResponse.json({ message: "Confira nome, quantidade de consultas e preço." }, { status: 400 });
+  }
+  if (input.pixCode && !parsePixCode(input.pixCode).valid) {
+    return NextResponse.json({ message: "O PIX copia e cola do pacote está inválido." }, { status: 400 });
   }
 
   const supabase = createSupabaseAdmin();

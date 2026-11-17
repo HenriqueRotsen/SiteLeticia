@@ -10,6 +10,7 @@ import { zonedDateKey } from "@/lib/scheduling/timezone";
 import { site, whatsappLink } from "@/lib/marketing/content";
 import Link from "next/link";
 import { pickUsablePackage, remainingSessions } from "@/lib/packages/pricing";
+import { pixCodeForAmount } from "@/lib/payments/pix-brcode";
 
 const IN_PERSON_MESSAGE = `Olá, ${site.name}! Gostaria de marcar uma consulta presencial. Quais horários você tem disponíveis?`;
 
@@ -349,6 +350,11 @@ export default function AgendaPage() {
               feedback={feedback}
               onConfirm={book}
               confirmLabel={bookingEnabled ? "Confirmar agendamento" : "Agendamentos pausados"}
+              pixCode={
+                usablePackage
+                  ? null
+                  : pixCodeForAmount(payment.settings?.consultation_pix_code, payment.settings?.consultation_price_cents)
+              }
             />
           </Card>
         </div>

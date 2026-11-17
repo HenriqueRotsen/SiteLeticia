@@ -9,11 +9,13 @@ import Modal from "@/components/ui/Modal";
 import { useDialog } from "@/components/ui/ConfirmDialog";
 import { centsToReais, formatReais, parseReaisInput, reaisToCents } from "@/lib/money";
 import { packageSavings, perSessionCents, priceFromDiscount } from "@/lib/packages/pricing";
+import PixCodeField from "@/components/ui/PixCodeField";
+import { describePixCode } from "@/lib/payments/pix-brcode";
 
 const inputClass =
   "mt-1 w-full rounded-xl border border-olive-900/15 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-olive-500 focus:ring-2 focus:ring-olive-200";
 
-const EMPTY_FORM = { id: null, name: "", description: "", sessions: 4, priceReais: 0, active: true };
+const EMPTY_FORM = { id: null, name: "", description: "", sessions: 4, priceReais: 0, active: true, pixCode: "" };
 
 function PackageForm({ initial, regularPriceCents, onCancel, onSaved }) {
   const [form, setForm] = useState(initial);
@@ -68,7 +70,8 @@ function PackageForm({ initial, regularPriceCents, onCancel, onSaved }) {
         description: form.description,
         sessions: Number(form.sessions),
         priceCents,
-        active: form.active
+        active: form.active,
+        pixCode: form.pixCode || null
       })
     });
     const data = await res.json().catch(() => ({}));
@@ -152,6 +155,14 @@ function PackageForm({ initial, regularPriceCents, onCancel, onSaved }) {
         )}
       </div>
 
+      <PixCodeField
+        label="PIX copia e cola do pacote"
+        value={form.pixCode}
+        onChange={(value) => setForm((current) => ({ ...current, pixCode: value }))}
+        expectedCents={priceCents}
+        hint="Opcional. Gere no banco um PIX com o valor do pacote e cole aqui."
+      />
+
       <label className="flex items-center gap-2 text-sm text-graphite">
         <input type="checkbox" checked={form.active} onChange={(e) => setForm({ ...form, active: e.target.checked })} />
         Disponível para os pacientes contratarem
@@ -163,7 +174,7 @@ function PackageForm({ initial, regularPriceCents, onCancel, onSaved }) {
         <button type="button" onClick={onCancel} className={btnSecondary()}>
           Cancelar
         </button>
-        <button type="submit" disabled={saving || !form.name.trim() || form.sessions < 2} className={btnPrimary()}>
+        <button type="submit" disabled={saving || !form.name.trim() || form.sessions < 2 || describePixCode(form.pixCode, priceCents).tone === "error"} className={btnPrimary()}>
           {saving ? "Salvando…" : form.id ? "Salvar pacote" : "Criar pacote"}
         </button>
       </div>
@@ -209,7 +220,8 @@ export default function PacotesConfigPage() {
       description: pkg.description || "",
       sessions: pkg.sessions,
       priceReais: centsToReais(pkg.price_cents),
-      active: pkg.active
+      active: pkg.active,
+      pixCode: pkg.pix_code || ""
     });
   }
 
@@ -284,6 +296,13 @@ export default function PacotesConfigPage() {
                   <div className="flex shrink-0 flex-wrap justify-end gap-1">
                     {savings.discountPercent ? <Badge variant="success">-{savings.discountPercent}%</Badge> : null}
                     {!pkg.active ? <Badge variant="neutral">Oculto</Badge> : null}
+                    {pkg.pix_code ? (
+                      describePixCode(pkg.pix_code, pkg.price_cents).tone === "success" ? (
+                        <Badge variant="info">PIX</Badge>
+                      ) : (
+                        <Badge variant="warning">PIX com valor errado</Badge>
+                      )
+                    ) : null}
                   </div>
                 </div>
                 {pkg.description ? <p className="mt-3 text-sm leading-6 text-graphite/65">{pkg.description}</p> : null}

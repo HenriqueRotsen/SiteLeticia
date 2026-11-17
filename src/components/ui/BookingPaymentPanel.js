@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import PixPayment from "@/components/ui/PixPayment";
 import {
   Banknote,
   Check,
@@ -89,7 +90,8 @@ export default function BookingPaymentPanel({
   disabled,
   feedback,
   onConfirm,
-  confirmLabel = "Confirmar agendamento"
+  confirmLabel = "Confirmar agendamento",
+  pixCode = null
 }) {
   const settings = payment.settings || {};
   const methods = payment.methods || [];
@@ -123,6 +125,10 @@ export default function BookingPaymentPanel({
           <p className="mt-1 text-xs text-graphite/50">O resumo aparecerá aqui antes de confirmar.</p>
         </div>
       )}
+
+      {pixCode ? (
+        <PixPayment code={pixCode} amountCents={settings.consultation_price_cents} title="PIX da consulta" compact />
+      ) : null}
 
       <div>
         <p className="mb-3 text-sm font-semibold text-graphite">Formas de pagamento</p>

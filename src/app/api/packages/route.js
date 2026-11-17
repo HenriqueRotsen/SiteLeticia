@@ -13,7 +13,7 @@ export async function GET() {
 
   const supabase = createSupabaseAdmin();
   const [{ data: catalog, error }, { data: mine }, { data: settings }] = await Promise.all([
-    supabase.from("consultation_packages").select("id, name, description, sessions, price_cents").eq("active", true).order("sort_order").order("sessions"),
+    supabase.from("consultation_packages").select("id, name, description, sessions, price_cents, pix_code").eq("active", true).order("sort_order").order("sessions"),
     supabase.from("patient_packages").select("*").eq("patient_id", auth.ctx.patient.id).order("created_at", { ascending: false }),
     supabase.from("payment_settings").select("consultation_price_cents").limit(1).maybeSingle()
   ]);

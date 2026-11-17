@@ -5,7 +5,7 @@ import { writeAuditLog, getClientIp } from "@/lib/audit";
 import { isAddressComplete, sanitizeAddress } from "@/lib/appointments/location";
 
 const MIGRATION_MESSAGE =
-  "É preciso rodar o SQL migrate-in-person-appointments.sql no Supabase antes de salvar o endereço.";
+  "É preciso rodar o SQL migrate-presencial-pacotes-pix.sql no Supabase antes de salvar o endereço.";
 
 function missingColumn(error) {
   return String(error?.message || "").includes("clinic_address");
