@@ -173,7 +173,9 @@ export default function AdminPatientsPage() {
               label: "Nome",
               render: (row) => (
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-medium text-graphite">{row.full_name}</span>
+                  <Link href={`/admin/pacientes/${row.id}`} className="font-medium text-graphite underline-offset-2 hover:text-olive-800 hover:underline">
+                    {row.full_name}
+                  </Link>
                   {row.from_waitlist ? <Badge variant="warning">Fila de espera</Badge> : null}
                   {!row.has_account ? <Badge variant="neutral">Sem conta</Badge> : null}
                 </div>

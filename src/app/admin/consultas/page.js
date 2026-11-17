@@ -143,10 +143,14 @@ export default function AdminConsultasPage() {
                     return (
                       <tr key={appt.id} className="border-t border-olive-900/5 hover:bg-linen/50">
                         <td className="py-3 pr-3 font-medium text-graphite">
-                          {appt.patients?.full_name || "—"}
+                          <Link href={`/admin/pacientes/${appt.patient_id}`} className="font-medium text-graphite underline-offset-2 hover:text-olive-800 hover:underline">
+                            {appt.patients?.full_name || "—"}
+                          </Link>
                         </td>
                         <td className="py-3 pr-3 whitespace-nowrap text-graphite/70">
-                          {formatAppointmentDateTime(appt.starts_at)}
+                          <Link href={`/admin/consultas/${appt.id}`} className="underline-offset-2 hover:text-olive-800 hover:underline">
+                            {formatAppointmentDateTime(appt.starts_at)}
+                          </Link>
                         </td>
                         <td className="py-3 pr-3">
                           <Badge variant={status.variant}>{status.label}</Badge>

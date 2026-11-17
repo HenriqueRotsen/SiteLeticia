@@ -541,7 +541,7 @@ export default function PacienteDietaPage() {
       title="Prescrição"
       breadcrumbs={[
         "Admin",
-        "Pacientes",
+        { label: "Pacientes", href: "/admin/pacientes" },
         {
           label: patient?.full_name || "...",
           href: `/admin/pacientes/${patientId}`

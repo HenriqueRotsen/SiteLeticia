@@ -73,7 +73,10 @@ export default function PatientHomePage() {
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="flex min-w-0 flex-col items-start">
               <p className="text-sm font-medium text-olive-100">Próxima consulta</p>
-              <p className="mt-2 text-xl font-semibold tracking-tight sm:text-2xl">
+              <Link
+                href={`/app/consultas/${next.id}`}
+                className="mt-2 text-xl font-semibold tracking-tight underline-offset-4 hover:underline sm:text-2xl"
+              >
                 {new Date(next.starts_at).toLocaleString("pt-BR", {
                   weekday: "long",
                   day: "numeric",
@@ -81,7 +84,7 @@ export default function PatientHomePage() {
                   hour: "2-digit",
                   minute: "2-digit"
                 })}
-              </p>
+              </Link>
               <p className="mt-3">
                 {payment ? (
                   <span className="mr-2 inline-block rounded-full bg-white/15 px-3 py-1 text-xs font-medium">

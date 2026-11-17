@@ -121,7 +121,7 @@ export default function AdminLabsPage() {
       subtitle="Upload, revisão com análise automática e publicação"
       breadcrumbs={[
         "Admin",
-        "Pacientes",
+        { label: "Pacientes", href: "/admin/pacientes" },
         {
           label: patientName || "...",
           href: `/admin/pacientes/${patientId}`

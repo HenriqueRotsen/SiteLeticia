@@ -62,9 +62,12 @@ export default function AdminPendingLabsPage() {
                     </div>
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <p className="font-semibold text-graphite">
+                        <Link
+                          href={`/admin/pacientes/${report.patient_id}`}
+                          className="font-semibold text-graphite underline-offset-2 hover:text-olive-800 hover:underline"
+                        >
                           {report.patients?.full_name || "Paciente"}
-                        </p>
+                        </Link>
                         <Badge variant={badge.variant}>{badge.label}</Badge>
                       </div>
                       <p className="mt-1 text-sm text-graphite/55">

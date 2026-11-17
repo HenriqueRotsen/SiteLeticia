@@ -149,7 +149,7 @@ export default function AdminConsultaDetailPage() {
   return (
     <AdminShell
       title="Detalhe da consulta"
-      breadcrumbs={["Admin", "Consultas", appointment.patients?.full_name || "Detalhe"]}
+      breadcrumbs={["Admin", { label: "Consultas", href: "/admin/consultas" }, appointment.patients?.full_name || "Detalhe"]}
       userName="Letícia"
     >
       <div className="mb-4">
@@ -175,7 +175,11 @@ export default function AdminConsultaDetailPage() {
           <dl className="mt-4 space-y-3 text-sm">
             <div>
               <dt className="text-xs uppercase tracking-wide text-graphite/45">Paciente</dt>
-              <dd className="mt-1 font-medium">{appointment.patients?.full_name || "—"}</dd>
+              <dd className="mt-1">
+                <Link href={`/admin/pacientes/${appointment.patient_id}`} className="font-semibold text-olive-800 underline-offset-2 hover:underline">
+                  {appointment.patients?.full_name || "—"}
+                </Link>
+              </dd>
             </div>
             <div>
               <dt className="text-xs uppercase tracking-wide text-graphite/45">Data</dt>

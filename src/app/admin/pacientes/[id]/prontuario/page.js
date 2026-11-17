@@ -264,7 +264,7 @@ export default function AdminProntuarioPage() {
       subtitle="Cole o texto gerado a partir da transcrição da sessão"
       breadcrumbs={[
         "Admin",
-        "Pacientes",
+        { label: "Pacientes", href: "/admin/pacientes" },
         { label: patientName || "...", href: `/admin/pacientes/${patientId}` },
         "Prontuário"
       ]}

@@ -31,7 +31,7 @@ export default function AdminPatientPreconsultPage() {
   return (
     <AdminShell
       title="Ficha pré-consulta"
-      breadcrumbs={["Admin", "Pacientes", patient?.full_name || "…", "Pré-consulta"]}
+      breadcrumbs={["Admin", { label: "Pacientes", href: "/admin/pacientes" }, { label: patient?.full_name || "…", href: `/admin/pacientes/${params.id}` }, "Pré-consulta"]}
       userName="Letícia"
     >
       <div className="mb-4">

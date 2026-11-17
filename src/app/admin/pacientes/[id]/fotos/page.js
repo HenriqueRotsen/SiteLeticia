@@ -93,7 +93,7 @@ export default function AdminPatientPhotosPage() {
     <AdminShell
       title="Fotos de evolução"
       subtitle={patientName || "Paciente"}
-      breadcrumbs={["Admin", "Pacientes", patientName || "Paciente", "Fotos"]}
+      breadcrumbs={["Admin", { label: "Pacientes", href: "/admin/pacientes" }, { label: patientName || "Paciente", href: `/admin/pacientes/${patientId}` }, "Fotos"]}
       userName="Letícia"
     >
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">

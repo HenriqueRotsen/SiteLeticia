@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import AdminShell from "@/components/layout/AdminShell";
 import { Card } from "@/components/layout/AppShell";
 import Badge, { appointmentBadge } from "@/components/ui/Badge";
@@ -83,8 +84,16 @@ export default function AdminAgendaPage() {
 
               return (
                 <tr key={appt.id} className="border-t border-olive-900/5">
-                  <td className="py-3">{appt.patients?.full_name}</td>
-                  <td className="py-3">{new Date(appt.starts_at).toLocaleString("pt-BR")}</td>
+                  <td className="py-3">
+                    <Link href={`/admin/pacientes/${appt.patient_id}`} className="font-medium text-graphite underline-offset-2 hover:text-olive-800 hover:underline">
+                      {appt.patients?.full_name || "—"}
+                    </Link>
+                  </td>
+                  <td className="py-3">
+                    <Link href={`/admin/consultas/${appt.id}`} className="underline-offset-2 hover:text-olive-800 hover:underline">
+                      {new Date(appt.starts_at).toLocaleString("pt-BR")}
+                    </Link>
+                  </td>
                   <td className="py-3">
                     <Badge variant={badge.variant}>{badge.label}</Badge>
                   </td>

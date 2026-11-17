@@ -146,11 +146,11 @@ export default function AdminPatientDetailPage() {
   return (
     <AdminShell
       title={patient.full_name}
-      breadcrumbs={["Admin", "Pacientes", patient.full_name]}
+      breadcrumbs={["Admin", { label: "Pacientes", href: "/admin/pacientes" }, patient.full_name]}
       userName="Letícia"
     >
       <section className="overflow-hidden rounded-3xl border border-olive-900/10 bg-gradient-to-br from-olive-50 via-porcelain to-linen shadow-card">
-        <div className="flex flex-col gap-5 p-5 sm:p-6 lg:flex-row lg:items-end lg:justify-between">
+        <div className="flex flex-col gap-5 p-5 sm:p-6">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-olive-700 text-white shadow-xs">
@@ -173,8 +173,8 @@ export default function AdminPatientDetailPage() {
               </div>
             </div>
 
-            <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="rounded-2xl bg-white/70 px-3.5 py-3 ring-1 ring-olive-900/8">
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="min-w-0 rounded-2xl bg-white/70 px-3.5 py-3 ring-1 ring-olive-900/8">
                 <p className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-graphite/40">
                   <Phone className="h-3.5 w-3.5" /> WhatsApp
                 </p>
@@ -183,7 +183,7 @@ export default function AdminPatientDetailPage() {
                     href={whatsappHref(patient.phone)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="mt-1 inline-block text-sm font-semibold text-olive-800 underline-offset-2 transition hover:text-olive-900 hover:underline"
+                    className="mt-1 inline-block break-words text-sm font-semibold text-olive-800 underline-offset-2 transition hover:text-olive-900 hover:underline"
                   >
                     {formatPhone(patient.phone)}
                   </a>
@@ -191,13 +191,13 @@ export default function AdminPatientDetailPage() {
                   <p className="mt-1 text-sm font-semibold text-graphite">—</p>
                 )}
               </div>
-              <div className="rounded-2xl bg-white/70 px-3.5 py-3 ring-1 ring-olive-900/8">
+              <div className="min-w-0 rounded-2xl bg-white/70 px-3.5 py-3 ring-1 ring-olive-900/8">
                 <p className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-graphite/40">
                   <Target className="h-3.5 w-3.5" /> Objetivo
                 </p>
-                <p className="mt-1 text-sm font-semibold text-graphite">{patient.goal || "—"}</p>
+                <p className="mt-1 break-words text-sm font-semibold text-graphite">{patient.goal || "—"}</p>
               </div>
-              <div className="rounded-2xl bg-white/70 px-3.5 py-3 ring-1 ring-olive-900/8">
+              <div className="min-w-0 rounded-2xl bg-white/70 px-3.5 py-3 ring-1 ring-olive-900/8">
                 <p className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-graphite/40">
                   <Scale className="h-3.5 w-3.5" /> Peso
                 </p>
@@ -205,9 +205,9 @@ export default function AdminPatientDetailPage() {
                   {patient.latest_weight_kg != null ? `${patient.latest_weight_kg} kg` : "—"}
                 </p>
               </div>
-              <div className="rounded-2xl bg-white/70 px-3.5 py-3 ring-1 ring-olive-900/8">
+              <div className="min-w-0 rounded-2xl bg-white/70 px-3.5 py-3 ring-1 ring-olive-900/8">
                 <p className="text-[11px] font-medium uppercase tracking-wide text-graphite/40">CPF</p>
-                <p className="mt-1 text-sm font-semibold text-graphite">{patient.cpf_masked || "—"}</p>
+                <p className="mt-1 whitespace-nowrap text-sm font-semibold text-graphite">{patient.cpf_masked || "—"}</p>
               </div>
             </div>
           </div>
@@ -284,10 +284,11 @@ export default function AdminPatientDetailPage() {
                   {upcoming.map((appt) => {
                     const badge = appointmentBadge(appt.status);
                     return (
-                      <li
-                        key={appt.id}
-                        className="rounded-2xl border border-sky-100 bg-sky-50/40 px-4 py-3"
-                      >
+                      <li key={appt.id}>
+                        <Link
+                          href={`/admin/consultas/${appt.id}`}
+                          className="block rounded-2xl border border-sky-100 bg-sky-50/40 px-4 py-3 transition hover:border-olive-300 hover:bg-olive-50/40"
+                        >
                         <div className="flex flex-wrap items-start justify-between gap-2">
                           <div>
                             <p className="text-sm font-semibold text-graphite">
@@ -299,6 +300,7 @@ export default function AdminPatientDetailPage() {
                           </div>
                           <Badge variant={badge.variant}>{badge.label}</Badge>
                         </div>
+                        </Link>
                       </li>
                     );
                   })}
@@ -317,10 +319,11 @@ export default function AdminPatientDetailPage() {
                   {past.slice(0, 8).map((appt) => {
                     const badge = appointmentBadge(appt.status);
                     return (
-                      <li
-                        key={appt.id}
-                        className="rounded-2xl border border-olive-900/8 bg-white px-4 py-3"
-                      >
+                      <li key={appt.id}>
+                        <Link
+                          href={`/admin/consultas/${appt.id}`}
+                          className="block rounded-2xl border border-olive-900/8 bg-white px-4 py-3 transition hover:border-olive-300 hover:bg-olive-50/40"
+                        >
                         <div className="flex flex-wrap items-start justify-between gap-2">
                           <div>
                             <p className="text-sm font-medium text-graphite">
@@ -332,6 +335,7 @@ export default function AdminPatientDetailPage() {
                           </div>
                           <Badge variant={badge.variant}>{badge.label}</Badge>
                         </div>
+                        </Link>
                       </li>
                     );
                   })}

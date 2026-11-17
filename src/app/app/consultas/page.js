@@ -142,7 +142,9 @@ export default function ConsultasPage() {
                     return (
                       <tr key={appt.id} className="border-t border-olive-900/5 hover:bg-linen/50">
                         <td className="py-3 pr-3 whitespace-nowrap font-medium text-graphite">
-                          {formatAppointmentDateTime(appt.starts_at)}
+                          <Link href={`/app/consultas/${appt.id}`} className="underline-offset-2 hover:text-olive-800 hover:underline">
+                            {formatAppointmentDateTime(appt.starts_at)}
+                          </Link>
                         </td>
                         <td className="py-3 pr-3">
                           <Badge variant={status.variant}>{status.label}</Badge>
