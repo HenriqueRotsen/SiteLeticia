@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Calendar, FlaskConical, LineChart, Salad, Sparkles, Video } from "lucide-react";
+import { ArrowRight, Calendar, FlaskConical, LineChart, Salad, Sparkles } from "lucide-react";
 import PatientShell from "@/components/layout/PatientShell";
 import WaitlistPositionCard from "@/components/waitlist/WaitlistPositionCard";
 import { Card, formatCurrency } from "@/components/layout/AppShell";
 import { paymentBadge } from "@/components/ui/Badge";
 import StatCard from "@/components/ui/StatCard";
+import UpcomingAppointmentsList, { MeetJoinButton } from "@/components/ui/UpcomingAppointments";
+import { safeMeetLink, selectUpcomingAppointments } from "@/lib/appointments/upcoming";
 import { usePatientProfile } from "@/lib/hooks/usePatientProfile";
 
 function insightHref(title) {
@@ -41,7 +43,7 @@ export default function PatientHomePage() {
     ])
       .then(([appts, insightsRes, profileRes]) => {
         setData({
-          appointments: appts.appointments?.filter((a) => a.status === "scheduled") || [],
+          appointments: selectUpcomingAppointments(appts.appointments),
           insights: insightsRes.insights || [],
           waitlist: profileRes.waitlist || null
         });
@@ -51,7 +53,8 @@ export default function PatientHomePage() {
       });
   }, []);
 
-  const next = data.appointments.find((a) => new Date(a.starts_at) >= new Date());
+  const next = data.appointments[0];
+  const later = data.appointments.slice(1, 6);
   const payment = next ? paymentBadge(next.payment_status) : null;
   const highlights = data.insights.slice(0, 3);
 
@@ -88,19 +91,29 @@ export default function PatientHomePage() {
                 </span>
               </p>
             </div>
-            {next.meet_link ? (
-              <a
-                href={next.meet_link}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-olive-800 transition hover:bg-olive-50"
-              >
-                <Video className="h-4 w-4" />
-                Entrar no Meet
-              </a>
-            ) : null}
+            {safeMeetLink(next.meet_link) ? (
+              <MeetJoinButton link={next.meet_link} variant="light" />
+            ) : (
+              <span className="inline-flex shrink-0 items-center rounded-xl bg-white/10 px-4 py-2.5 text-xs font-medium text-olive-100">
+                Link do Meet ainda não gerado
+              </span>
+            )}
           </div>
         </div>
+      ) : null}
+
+      {later.length ? (
+        <Card
+          className="mb-6"
+          title="Próximas consultas"
+          action={
+            <Link href="/app/consultas" className="text-xs font-semibold text-[#BD9B72] hover:underline">
+              Ver todas →
+            </Link>
+          }
+        >
+          <UpcomingAppointmentsList appointments={later} hrefFor={(appt) => `/app/consultas/${appt.id}`} />
+        </Card>
       ) : null}
 
       <div className="grid gap-4 lg:grid-cols-3">
