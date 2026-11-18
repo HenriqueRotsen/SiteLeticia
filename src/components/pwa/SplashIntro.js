@@ -12,7 +12,9 @@ var s=window.matchMedia('(display-mode: standalone)').matches||navigator.standal
 if(!q&&(!s||sessionStorage.getItem('lc-splash')))return;
 sessionStorage.setItem('lc-splash','1');
 var d=document.documentElement;d.classList.add('lc-splash-on');
-setTimeout(function(){d.classList.add('lc-splash-done')},3900);
+function tc(c){var m=document.querySelectorAll('meta[name="theme-color"]');if(!m.length){var n=document.createElement('meta');n.name='theme-color';document.head.appendChild(n);m=[n];}for(var i=0;i<m.length;i++)m[i].setAttribute('content',c);}
+tc('#2b1e16');var k=setInterval(function(){tc('#2b1e16');},120);
+setTimeout(function(){clearInterval(k);d.classList.add('lc-splash-done');tc('#FFFFFF');},3900);
 }catch(e){}})();`;
 
 export function SplashIntroScript() {

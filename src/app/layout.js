@@ -43,8 +43,9 @@ export const metadata = {
   appleWebApp: {
     capable: true,
     title: "Letícia Cunha",
-    // Barra de status transparente: o app (e a abertura) ocupam a tela inteira, sem faixa no topo.
-    statusBarStyle: "black-translucent",
+    // Barra de status sólida (fundo da cor do tema, relógio legível). Na abertura animada
+    // o SplashIntro troca a cor do tema para o marrom da animação.
+    statusBarStyle: "default",
     startupImage: splashStartupImages()
   }
 };
@@ -61,7 +62,6 @@ export default function RootLayout({ children }) {
         <SplashIntroScript />
       </head>
       <body className={`${gotham.variable} ${gentiumPlus.variable} font-sans antialiased`}>
-        <div className="lc-statusbar-scrim" aria-hidden="true" />
         <SplashIntro />
         <PwaSetup />
         <DemoBanner />
