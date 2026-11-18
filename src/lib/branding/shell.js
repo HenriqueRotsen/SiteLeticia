@@ -278,17 +278,17 @@ export function wrapPrintDocument({
     html, body { margin: 0; background: ${colors.paper}; }
     html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     .macros {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px 14px;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
       margin-top: 10px;
       padding-top: 10px;
       border-top: 1px solid ${colors.hairline};
-      font-size: 11.5px;
-      color: rgba(47, 42, 39, 0.7);
+      text-align: center;
     }
-    .macros strong { color: ${colors.graphite}; font-weight: 600; }
-    .macros .macro-kcal { color: ${colors.olive700}; font-weight: 700; }
+    .macros .v { display: block; font-size: 12.5px; font-weight: 700; color: ${colors.graphite}; white-space: nowrap; }
+    .macros .l { display: block; margin-top: 2px; font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(47, 42, 39, 0.5); }
+    .macros .kcal .v { color: ${colors.olive700}; }
     .totals-card {
       margin-top: 18px;
       padding: 14px 16px;
@@ -487,6 +487,26 @@ export function wrapPrintDocument({
       letter-spacing: 0.14em;
       text-transform: uppercase;
       cursor: pointer;
+    }
+    /* Tela do celular (Ver PDF): uma margem só, letras e espaços mais confortáveis. */
+    @media screen and (max-width: 640px) {
+      .page { padding: 0; background: ${colors.paper}; }
+      .sheet { width: 100%; min-height: 100vh; box-shadow: none; }
+      .content { padding: 0 20px !important; }
+      .pad-top { height: 28px; }
+      .pad-bottom { height: 150px; }
+      .letterhead { padding-bottom: 22px; }
+      .letterhead img { width: 150px; }
+      h1 { font-size: 26px; line-height: 1.15; }
+      .meta { flex-direction: column; gap: 2px; }
+      .section { margin-top: 20px; }
+      .card { padding: 12px 14px; }
+      .list li { font-size: 14px; line-height: 1.45; padding-top: 9px; padding-bottom: 9px; }
+      .macros .l, .totals-grid .l { font-size: 10px; letter-spacing: 0; text-transform: none; }
+      .totals-grid .v { font-size: 14px; }
+      .arcs { height: 70mm; }
+      .contact { left: 20px; bottom: 18px; gap: 12px; }
+      .contact li { font-size: 10px; }
     }
     @media print {
       /* Cada folha A4 tem o mesmo fundo: cor da marca + arcos dourados no rodapé. */

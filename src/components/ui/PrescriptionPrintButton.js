@@ -228,11 +228,10 @@ function macroValue(key, value) {
 
 function macrosLine(totals) {
   if (!totals || totals.kcal == null) return "";
+  const cell = (key, label, extra = "") =>
+    `<div class="${extra}"><span class="v">${macroValue(key, totals[key])}</span><span class="l">${label}</span></div>`;
   return `<div class="macros">
-    <span class="macro-kcal">${macroValue("kcal", totals.kcal)}</span>
-    <span>Proteínas <strong>${macroValue("protein_g", totals.protein_g)}</strong></span>
-    <span>Carboidratos <strong>${macroValue("carbs_g", totals.carbs_g)}</strong></span>
-    <span>Gorduras <strong>${macroValue("fat_g", totals.fat_g)}</strong></span>
+    ${cell("kcal", "Energia", "kcal")}${cell("protein_g", "Proteínas")}${cell("carbs_g", "Carboidratos")}${cell("fat_g", "Gorduras")}
   </div>`;
 }
 
