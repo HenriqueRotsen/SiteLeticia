@@ -1,9 +1,12 @@
 "use client";
 
-import { Printer } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { FileText, Printer, Share2, X } from "lucide-react";
 import { btnSecondary } from "@/components/layout/AppShell";
 import { useDialog } from "@/components/ui/ConfirmDialog";
 import { brand, escapeHtml, wrapPrintDocument } from "@/lib/branding/shell";
+import { formatNutrientValue } from "@/lib/foods/nutrition";
 
 function printViaIframe(html) {
   const iframe = document.createElement("iframe");
@@ -219,6 +222,32 @@ export function buildExamOrdersPrintHtml(orders = []) {
     .join("");
 }
 
+function macroValue(key, value) {
+  return escapeHtml(formatNutrientValue(key, value));
+}
+
+function macrosLine(totals) {
+  if (!totals || totals.kcal == null) return "";
+  return `<div class="macros">
+    <span class="macro-kcal">${macroValue("kcal", totals.kcal)}</span>
+    <span>Proteínas <strong>${macroValue("protein_g", totals.protein_g)}</strong></span>
+    <span>Carboidratos <strong>${macroValue("carbs_g", totals.carbs_g)}</strong></span>
+    <span>Gorduras <strong>${macroValue("fat_g", totals.fat_g)}</strong></span>
+  </div>`;
+}
+
+function totalsCard(totals) {
+  if (!totals || totals.kcal == null) return "";
+  const cell = (key, label) =>
+    `<div><span class="v">${macroValue(key, totals[key])}</span><span class="l">${label}</span></div>`;
+  return `<div class="totals-card">
+    <p class="section-label" style="margin:0">Total da dieta (por dia)</p>
+    <div class="totals-grid">
+      ${cell("kcal", "Energia")}${cell("protein_g", "Proteínas")}${cell("carbs_g", "Carboidratos")}${cell("fat_g", "Gorduras")}
+    </div>
+  </div>`;
+}
+
 export function buildDietPrintHtml(plan) {
   const meals = plan?.meals || [];
   if (!meals.length) return `<p class="muted">Sem refeições.</p>`;
@@ -238,9 +267,62 @@ export function buildDietPrintHtml(plan) {
         .join("");
       return `<div class="section"><p class="section-label">${escapeHtml(
         meal.name
-      )}</p><div class="card"><ul class="list">${items}</ul></div></div>`;
+      )}</p><div class="card"><ul class="list">${items}</ul>${macrosLine(meal.totals)}</div></div>`;
     })
-    .join("");
+    .join("") + totalsCard(plan.totals);
+}
+
+// Visualização do documento no celular (em tela cheia), com botão para salvar/compartilhar como PDF.
+function PdfPreview({ title, html, onClose }) {
+  const frameRef = useRef(null);
+
+  useEffect(() => {
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    function onKey(event) {
+      if (event.key === "Escape") onClose();
+    }
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = previous;
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [onClose]);
+
+  function savePdf() {
+    try {
+      frameRef.current?.contentWindow?.focus();
+      frameRef.current?.contentWindow?.print();
+    } catch {
+      // ignore
+    }
+  }
+
+  return createPortal(
+    <div className="fixed inset-0 z-[65] flex flex-col bg-[#e7dfd3]" role="dialog" aria-modal="true" aria-label={title}>
+      <div className="flex items-center gap-2 border-b border-olive-900/10 bg-porcelain px-3 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))]">
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Fechar"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-graphite/70 hover:bg-linen"
+        >
+          <X className="h-5 w-5" />
+        </button>
+        <p className="min-w-0 flex-1 truncate text-sm font-semibold text-graphite">{title}</p>
+        <button
+          type="button"
+          onClick={savePdf}
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-olive-700 px-3 py-2 text-xs font-semibold text-white"
+        >
+          <Share2 className="h-4 w-4" />
+          Salvar PDF
+        </button>
+      </div>
+      <iframe ref={frameRef} title={title} srcDoc={html} className="min-h-0 w-full flex-1 border-0 bg-white" />
+    </div>,
+    document.body
+  );
 }
 
 export default function PrescriptionPrintButton({
@@ -248,32 +330,45 @@ export default function PrescriptionPrintButton({
   subtitle,
   patientName,
   bodyHtml,
-  label = "Imprimir / Salvar"
+  label = "Imprimir / Salvar",
+  mobileLabel = "Ver PDF"
 }) {
   const { alert } = useDialog();
+  const [preview, setPreview] = useState(null);
 
   return (
-    <button
-      type="button"
-      className={btnSecondary()}
-      onClick={() => {
-        const ok = openPrescriptionPrint({
-          title,
-          subtitle,
-          patientName,
-          bodyHtml
-        });
-        if (!ok) {
-          alert({
-            title: "Não foi possível abrir a impressão",
-            message: "Permita pop-ups para este site e tente de novo."
+    <>
+      <button
+        type="button"
+        className={`${btnSecondary()} !hidden sm:!inline-flex`}
+        onClick={() => {
+          const ok = openPrescriptionPrint({
+            title,
+            subtitle,
+            patientName,
+            bodyHtml
           });
-        }
-      }}
-    >
-      <Printer className="h-4 w-4" strokeWidth={1.75} />
-      {label}
-    </button>
+          if (!ok) {
+            alert({
+              title: "Não foi possível abrir a impressão",
+              message: "Permita pop-ups para este site e tente de novo."
+            });
+          }
+        }}
+      >
+        <Printer className="h-4 w-4" strokeWidth={1.75} />
+        {label}
+      </button>
+      <button
+        type="button"
+        className={`${btnSecondary()} sm:!hidden`}
+        onClick={() => setPreview(wrapPrintDocument({ title, subtitle, patientName, bodyHtml, autoPrint: false }))}
+      >
+        <FileText className="h-4 w-4" strokeWidth={1.75} />
+        {mobileLabel}
+      </button>
+      {preview ? <PdfPreview title={title} html={preview} onClose={() => setPreview(null)} /> : null}
+    </>
   );
 }
 

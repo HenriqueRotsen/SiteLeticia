@@ -6,7 +6,7 @@ import PatientShell from "@/components/layout/PatientShell";
 import { Card } from "@/components/layout/AppShell";
 import Badge from "@/components/ui/Badge";
 import ExamOrderStatusList from "@/components/ui/ExamOrderStatusList";
-import HelpTooltip from "@/components/ui/HelpTooltip";
+import CursorTooltip from "@/components/ui/CursorTooltip";
 import PrescriptionPrintButton, {
   buildDietPrintHtml,
   buildExamOrdersPrintHtml,
@@ -101,9 +101,11 @@ function apiPlanToDietPrint(plan) {
         measureUnit: item.nutrition_snapshot?.measureUnit,
         measureAmount: item.nutrition_snapshot?.measureAmount ?? item.quantity,
         nutritionSnapshot: item.nutrition_snapshot
-      }))
+      })),
+      totals: sumNutrition(mapMealItems(meal))
     }));
-  return { meals };
+  const totals = sumNutrition((plan?.diet_meals || []).flatMap((meal) => mapMealItems(meal)));
+  return { meals, totals };
 }
 
 function apiReferralsToPrint(referrals = []) {
@@ -263,6 +265,7 @@ export default function DietaPage() {
                 {hasMeals ? (
                   <PrescriptionPrintButton
                     label="Imprimir dieta"
+                    mobileLabel="Ver PDF da dieta"
                     title={plan.title || "Plano alimentar"}
                     subtitle="Prescrição dietética"
                     patientName={patientName}
@@ -272,6 +275,7 @@ export default function DietaPage() {
                 {hasSupplements ? (
                   <PrescriptionPrintButton
                     label="Imprimir suplementação"
+                    mobileLabel="Ver PDF da suplementação"
                     title="Prescrição de suplementação"
                     patientName={patientName}
                     bodyHtml={buildSupplementsPrintHtml(supplementEntries)}
@@ -280,6 +284,7 @@ export default function DietaPage() {
                 {hasReferrals ? (
                   <PrescriptionPrintButton
                     label="Imprimir encaminhamentos"
+                    mobileLabel="Ver PDF dos encaminhamentos"
                     title="Encaminhamentos"
                     patientName={patientName}
                     bodyHtml={buildReferralsPrintHtml(apiReferralsToPrint(plan.diet_referrals))}
@@ -288,6 +293,7 @@ export default function DietaPage() {
                 {hasExams ? (
                   <PrescriptionPrintButton
                     label="Imprimir exames"
+                    mobileLabel="Ver PDF dos exames"
                     title="Pedido de exames"
                     patientName={patientName}
                     bodyHtml={buildExamOrdersPrintHtml(apiExamOrdersToPrint(plan.diet_exam_orders))}
@@ -320,9 +326,7 @@ export default function DietaPage() {
 
                         return (
                           <li key={item.id}>
-                            <HelpTooltip
-                              side="top"
-                              contentClassName="z-50 max-w-sm rounded-xl bg-graphite px-3.5 py-3 text-xs leading-5 text-white shadow-soft"
+                            <CursorTooltip
                               content={
                                 <NutritionTooltipContent title={item.label} totals={itemTotals} />
                               }
@@ -336,15 +340,13 @@ export default function DietaPage() {
                                   {quantityLabel}
                                 </span>
                               </button>
-                            </HelpTooltip>
+                            </CursorTooltip>
                           </li>
                         );
                       })}
                     </ul>
                     <div className="mt-3 border-t border-olive-900/8 pt-3">
-                      <HelpTooltip
-                        side="top"
-                        contentClassName="z-50 max-w-sm rounded-xl bg-graphite px-3.5 py-3 text-xs leading-5 text-white shadow-soft"
+                      <CursorTooltip
                         content={
                           <NutritionTooltipContent title={`Total · ${meal.name}`} totals={mealTotals} />
                         }
@@ -352,7 +354,7 @@ export default function DietaPage() {
                         <button type="button" className="text-left transition hover:opacity-80">
                           <MacroSummary totals={mealTotals} label="Total da refeição" />
                         </button>
-                      </HelpTooltip>
+                      </CursorTooltip>
                     </div>
                   </>
                 ) : (
@@ -364,9 +366,7 @@ export default function DietaPage() {
 
           {hasMeals ? (
             <Card>
-              <HelpTooltip
-                side="top"
-                contentClassName="z-50 max-w-sm rounded-xl bg-graphite px-3.5 py-3 text-xs leading-5 text-white shadow-soft"
+              <CursorTooltip
                 content={<NutritionTooltipContent title="Total do plano" totals={planTotals} />}
               >
                 <button type="button" className="w-full text-left transition hover:opacity-80">
@@ -375,7 +375,7 @@ export default function DietaPage() {
                     <MacroSummary totals={planTotals} />
                   </div>
                 </button>
-              </HelpTooltip>
+              </CursorTooltip>
             </Card>
           ) : null}
 
