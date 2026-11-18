@@ -189,3 +189,30 @@ export function summarizeDocuments(documents = []) {
     hasMismatch: documents.some((d) => d.amount_matches === false)
   };
 }
+
+// Remove um anexo da consulta (registro + arquivo). `onlyTypes` limita o que pode ser removido.
+export async function deleteAppointmentDocument(appointmentId, documentId, { onlyTypes = null } = {}) {
+  const supabase = createSupabaseAdmin();
+  const { data: doc } = await supabase
+    .from("appointment_documents")
+    .select("id, doc_type, storage_path")
+    .eq("id", documentId)
+    .eq("appointment_id", appointmentId)
+    .maybeSingle();
+  if (!doc) return { error: "Anexo não encontrado.", status: 404 };
+  if (onlyTypes && !onlyTypes.includes(doc.doc_type)) {
+    return { error: "Você não pode remover este anexo.", status: 403 };
+  }
+
+  const { error } = await supabase.from("appointment_documents").delete().eq("id", doc.id);
+  if (error) return { error: "Não foi possível remover o anexo.", status: 500 };
+
+  if (doc.storage_path) {
+    try {
+      await supabase.storage.from(getPaymentsBucket()).remove([doc.storage_path]);
+    } catch (err) {
+      console.error("Payment doc storage remove failed:", err?.message || err);
+    }
+  }
+  return { error: null, document: doc };
+}

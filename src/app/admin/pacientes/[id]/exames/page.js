@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Trash2 } from "lucide-react";
 import AdminShell from "@/components/layout/AdminShell";
 import { Card, btnSecondary } from "@/components/layout/AppShell";
 import Badge, { labReportBadge } from "@/components/ui/Badge";
 import ExamOrderStatusList from "@/components/ui/ExamOrderStatusList";
 import LabReportReview from "@/components/ui/LabReportReview";
 import PdfUploadZone from "@/components/ui/PdfUploadZone";
+import { useDialog } from "@/components/ui/ConfirmDialog";
 import { labelPublishedBy, labelUploadedBy } from "@/lib/labels";
 
 export default function AdminLabsPage() {
@@ -16,12 +17,33 @@ export default function AdminLabsPage() {
   const patientId = params.id;
   const [patientName, setPatientName] = useState("");
   const [reports, setReports] = useState([]);
+  const { confirm } = useDialog();
   const [examOrders, setExamOrders] = useState([]);
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
   const [uploading, setUploading] = useState(false);
   const [savingId, setSavingId] = useState("");
   const [reviewingId, setReviewingId] = useState("");
+
+  async function deleteReport(report) {
+    const ok = await confirm({
+      title: "Excluir este exame?",
+      message: "O PDF e os resultados lidos são apagados. O paciente também deixa de ver.",
+      confirmLabel: "Excluir",
+      tone: "danger"
+    });
+    if (!ok) return;
+    setError("");
+    setFeedback("");
+    const res = await fetch(`/api/patients/${params.id}/labs?id=${encodeURIComponent(report.id)}`, { method: "DELETE" });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setError(data.message || "Não foi possível excluir o exame.");
+      return;
+    }
+    setFeedback("Exame excluído.");
+    await loadReports();
+  }
 
   async function loadExamOrders() {
     const res = await fetch(`/api/patients/${patientId}/diet`);
@@ -209,6 +231,15 @@ export default function AdminLabsPage() {
                           {isReviewing ? "Fechar revisão" : "Revisar"}
                         </button>
                       ) : null}
+                      <button
+                        type="button"
+                        onClick={() => deleteReport(report)}
+                        aria-label="Excluir exame"
+                        title="Excluir exame"
+                        className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-rose-700 transition hover:bg-rose-50"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
                     </div>
                   </div>
                   {report.status !== "draft" && report.interpretation_summary && !isReviewing ? (

@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, PencilLine } from "lucide-react";
 import PatientShell from "@/components/layout/PatientShell";
 import { Card } from "@/components/layout/AppShell";
 import PreconsultForm from "@/components/ui/PreconsultForm";
+import PreconsultViewer from "@/components/ui/PreconsultViewer";
 
 export default function FichaPage() {
   const [loading, setLoading] = useState(true);
@@ -15,6 +16,7 @@ export default function FichaPage() {
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [done, setDone] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -68,6 +70,7 @@ export default function FichaPage() {
     }
     setForm(data.form);
     setDone(true);
+    setEditing(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -107,12 +110,39 @@ export default function FichaPage() {
               onClick={() => setDone(false)}
               className="inline-flex items-center justify-center rounded-full border border-graphite/15 px-6 py-3 text-xs font-bold uppercase tracking-[0.14em] text-graphite/70 transition hover:border-graphite"
             >
-              Revisar respostas
+              Ver minhas respostas
             </button>
           </div>
         </Card>
+      ) : form?.status === "submitted" && !editing ? (
+        <PreconsultViewer
+          form={form}
+          eyebrow="Sua ficha"
+          title="Pré-consulta enviada"
+          action={
+            <button
+              type="button"
+              onClick={() => {
+                setEditing(true);
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              className="inline-flex w-fit items-center gap-2 rounded-full border border-graphite/15 bg-white px-5 py-2.5 text-xs font-bold uppercase tracking-[0.14em] text-graphite/75 transition hover:border-graphite"
+            >
+              <PencilLine className="h-4 w-4" />
+              Editar respostas
+            </button>
+          }
+        />
       ) : (
         <div className="space-y-4">
+          {form?.status === "submitted" ? (
+            <p className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-olive-200 bg-olive-50 px-4 py-3 text-sm text-olive-900">
+              Você está editando a ficha já enviada. Ao enviar de novo, a Letícia vê as respostas atualizadas.
+              <button type="button" onClick={() => setEditing(false)} className="font-semibold underline">
+                Voltar sem alterar
+              </button>
+            </p>
+          ) : null}
           {feedback ? (
             <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">{feedback}</p>
           ) : null}

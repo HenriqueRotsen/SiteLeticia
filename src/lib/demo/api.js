@@ -484,6 +484,41 @@ export async function handleDemoApi(request) {
     });
   }
 
+  const demoDocDeleteMatch = path.match(/^\/api\/(admin\/)?appointments\/([^/]+)\/documents$/);
+  if (demoDocDeleteMatch && method === "DELETE") {
+    const isAdmin = Boolean(demoDocDeleteMatch[1]);
+    const appointmentId = demoDocDeleteMatch[2];
+    const documentId = url.searchParams.get("documentId");
+    const appt = state.appointments.find((item) => item.id === appointmentId);
+    if (!appt) return json({ message: "Consulta não encontrada." }, 404);
+    if (!isAdmin && ["paid", "waived"].includes(appt.payment_status)) {
+      return json({ message: "O pagamento já foi validado. Se precisar trocar o comprovante, fale com a Letícia." }, 400);
+    }
+    const doc = state.appointmentDocuments.find((item) => item.id === documentId && item.appointment_id === appointmentId);
+    if (!doc) return json({ message: "Anexo não encontrado." }, 404);
+    if (!isAdmin && doc.doc_type !== "payment_proof") return json({ message: "Você não pode remover este anexo." }, 403);
+    state.appointmentDocuments = state.appointmentDocuments.filter((item) => item.id !== doc.id);
+    return json({ ok: true });
+  }
+
+  const demoPhotoDeleteMatch = path.match(/^\/api\/patients\/([^/]+)\/photos$/);
+  if (demoPhotoDeleteMatch && method === "DELETE") {
+    const photoId = url.searchParams.get("id");
+    const before = state.photos.length;
+    state.photos = state.photos.filter((item) => item.id !== photoId);
+    if (state.photos.length === before) return json({ message: "Foto não encontrada." }, 404);
+    return json({ ok: true });
+  }
+
+  const demoLabDeleteMatch = path.match(/^\/api\/patients\/([^/]+)\/labs$/);
+  if (demoLabDeleteMatch && demoLabDeleteMatch[1] !== "me" && method === "DELETE") {
+    const reportId = url.searchParams.get("id");
+    const before = state.labReports.length;
+    state.labReports = state.labReports.filter((item) => item.id !== reportId);
+    if (state.labReports.length === before) return json({ message: "Exame não encontrado." }, 404);
+    return json({ ok: true });
+  }
+
   if (path.match(/^\/api\/appointments\/[^/]+\/documents$/) && method === "GET") {
     const id = path.split("/")[3];
     const appointment = state.appointments.find((a) => a.id === id && a.patient_id === patientId);

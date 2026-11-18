@@ -215,6 +215,12 @@ export function wrapEmailDocument({
  * fundo creme, assinatura centralizada no topo, curvas suaves ao fundo e contatos no rodapé.
  * autoPrint: só use no fallback de popup; no iframe o host dispara print uma vez.
  */
+// Arcos dourados da identidade visual, como imagem de fundo (repete em todas as páginas impressas).
+function printArcsSvg(gold) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="210mm" height="297mm" viewBox="0 0 210 297"><svg x="0" y="177" width="210" height="120" viewBox="0 0 600 480" preserveAspectRatio="xMaxYMax slice"><g fill="none" stroke="${gold}" stroke-linecap="round"><path d="M-40 470 C 120 300, 330 290, 640 130" stroke-width="46" stroke-opacity="0.10"/><path d="M150 520 C 170 330, 330 170, 650 150" stroke-width="30" stroke-opacity="0.10"/><path d="M-40 430 C 140 340, 360 330, 640 190" stroke-width="1.2" stroke-opacity="0.35"/><path d="M210 520 C 210 360, 360 230, 650 215" stroke-width="1.2" stroke-opacity="0.35"/></g></svg></svg>`;
+  return encodeURIComponent(svg);
+}
+
 export function wrapPrintDocument({
   title,
   subtitle,
@@ -270,6 +276,31 @@ export function wrapPrintDocument({
     @page { size: A4; margin: 0; }
     * { box-sizing: border-box; }
     html, body { margin: 0; background: ${colors.paper}; }
+    html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .macros {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 14px;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid ${colors.hairline};
+      font-size: 11.5px;
+      color: rgba(47, 42, 39, 0.7);
+    }
+    .macros strong { color: ${colors.graphite}; font-weight: 600; }
+    .macros .macro-kcal { color: ${colors.olive700}; font-weight: 700; }
+    .totals-card {
+      margin-top: 18px;
+      padding: 14px 16px;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid ${colors.hairline};
+      break-inside: avoid;
+    }
+    .totals-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }
+    .totals-grid div { text-align: center; }
+    .totals-grid .v { display: block; font-size: 16px; font-weight: 700; color: ${colors.graphite}; }
+    .totals-grid .l { display: block; margin-top: 2px; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(47, 42, 39, 0.55); }
     body {
       color: ${colors.graphite};
       font-family: Gotham, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -458,9 +489,21 @@ export function wrapPrintDocument({
       cursor: pointer;
     }
     @media print {
-      .page { padding: 0; background: ${colors.paper}; }
+      /* Cada folha A4 tem o mesmo fundo: cor da marca + arcos dourados no rodapé. */
+      html, body {
+        background-color: ${colors.paper} !important;
+        background-image: url("data:image/svg+xml,${printArcsSvg(colors.gold)}") !important;
+        background-repeat: repeat-y !important;
+        background-position: 0 0 !important;
+        background-size: 210mm 297mm !important;
+      }
+      .sheet > .arcs { display: none; }
+      .section { break-inside: avoid; page-break-inside: avoid; }
+      .section-label { break-after: avoid; page-break-after: avoid; }
+      .page { padding: 0; background: transparent; }
+      .sheet { background: transparent; }
       .sheet { width: 100%; min-height: 0; box-shadow: none; overflow: visible; }
-      .arcs, .contact { position: fixed; }
+      .contact { position: fixed; }
       .no-print { display: none !important; }
     }
   </style>

@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Calendar, Camera, ImageIcon } from "lucide-react";
+import { Calendar, Camera, ImageIcon, Trash2 } from "lucide-react";
 import PatientShell from "@/components/layout/PatientShell";
 import { Card } from "@/components/layout/AppShell";
 import ImageUploadZone from "@/components/ui/ImageUploadZone";
+import { useDialog } from "@/components/ui/ConfirmDialog";
 
-function PhotoCard({ photo }) {
+function PhotoCard({ photo, onDelete }) {
   return (
     <article className="overflow-hidden rounded-2xl border border-olive-900/10 bg-porcelain/95 shadow-card transition hover:shadow-card-hover">
       <div className="relative aspect-[4/5] overflow-hidden bg-gradient-to-br from-olive-100 via-linen to-olive-50">
@@ -31,6 +32,17 @@ function PhotoCard({ photo }) {
           <Calendar className="h-3 w-3 text-olive-700" />
           {new Date(photo.taken_at).toLocaleDateString("pt-BR")}
         </span>
+        {onDelete ? (
+          <button
+            type="button"
+            onClick={() => onDelete(photo)}
+            aria-label="Excluir foto"
+            title="Excluir foto"
+            className="absolute bottom-3 right-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-rose-700 shadow-xs transition hover:bg-white"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        ) : null}
       </div>
       <div className="p-4">
         <p className="font-medium text-graphite">{photo.caption || "Sem legenda"}</p>
@@ -41,6 +53,7 @@ function PhotoCard({ photo }) {
 }
 
 export default function FotosPage() {
+  const { confirm } = useDialog();
   const [photos, setPhotos] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [feedback, setFeedback] = useState("");
@@ -55,6 +68,26 @@ export default function FotosPage() {
   useEffect(() => {
     loadPhotos();
   }, []);
+
+  async function deletePhoto(photo) {
+    const ok = await confirm({
+      title: "Excluir esta foto?",
+      message: "Ela sai da sua timeline e é apagada do sistema.",
+      confirmLabel: "Excluir",
+      tone: "danger"
+    });
+    if (!ok) return;
+    setFeedback("");
+    setSuccess("");
+    const res = await fetch(`/api/patients/me/photos?id=${encodeURIComponent(photo.id)}`, { method: "DELETE" });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setFeedback(data.message || "Não foi possível excluir a foto.");
+      return;
+    }
+    setSuccess("Foto excluída.");
+    await loadPhotos();
+  }
 
   async function handleUpload(file) {
     setUploading(true);
@@ -122,7 +155,7 @@ export default function FotosPage() {
       {photos.length ? (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
           {photos.map((photo) => (
-            <PhotoCard key={photo.id} photo={photo} />
+            <PhotoCard key={photo.id} photo={photo} onDelete={deletePhoto} />
           ))}
         </div>
       ) : (

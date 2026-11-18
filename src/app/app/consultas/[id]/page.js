@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { Trash2 } from "lucide-react";
 import { useParams } from "next/navigation";
 import PatientShell from "@/components/layout/PatientShell";
 import { Card, formatCurrency } from "@/components/layout/AppShell";
@@ -77,6 +78,28 @@ export default function PatientConsultaDetailPage() {
       return;
     }
     setFeedback("Comprovante enviado. Aguarde a validação da nutricionista para liberar a prescrição.");
+    await load();
+  }
+
+  async function removeDocument(doc) {
+    const ok = await confirm({
+      title: "Remover este comprovante?",
+      message: "O arquivo é apagado. Você pode enviar outro depois.",
+      confirmLabel: "Remover",
+      tone: "danger"
+    });
+    if (!ok) return;
+    setError("");
+    setFeedback("");
+    const res = await fetch(`/api/appointments/${appointmentId}/documents?documentId=${encodeURIComponent(doc.id)}`, {
+      method: "DELETE"
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setError(data.message || "Não foi possível remover.");
+      return;
+    }
+    setFeedback("Comprovante removido.");
     await load();
   }
 
@@ -246,16 +269,28 @@ export default function PatientConsultaDetailPage() {
                       {doc.amount_matches === true ? " · confere" : ""}
                     </p>
                   </div>
-                  {doc.url ? (
-                    <a
-                      href={doc.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-sm font-medium text-olive-800 hover:underline"
+                  <div className="flex items-center gap-2">
+                    {doc.url ? (
+                      <a
+                        href={doc.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-sm font-medium text-olive-800 hover:underline"
+                      >
+                        Ver arquivo
+                      </a>
+                    ) : null}
+                    {doc.doc_type === "payment_proof" && !isPaid ? (
+                      <button
+                      type="button"
+                      onClick={() => removeDocument(doc)}
+                      className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-50"
                     >
-                      Ver arquivo
-                    </a>
-                  ) : null}
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Remover
+                    </button>
+                    ) : null}
+                  </div>
                 </div>
               ))}
             </div>

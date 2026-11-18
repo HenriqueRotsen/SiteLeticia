@@ -6,7 +6,7 @@ import { ClipboardList } from "lucide-react";
 
 /**
  * Aviso para preencher a ficha pré-consulta (opcional, mas recomendada).
- * Some sozinho quando a ficha já foi enviada.
+ * Depois de enviada vira um atalho discreto para ver as respostas.
  */
 export default function PreconsultBanner({ className = "" }) {
   const [state, setState] = useState(null); // null | "draft" | "submitted"
@@ -25,7 +25,20 @@ export default function PreconsultBanner({ className = "" }) {
     };
   }, []);
 
-  if (state !== "draft") return null;
+  if (!state) return null;
+
+  if (state === "submitted") {
+    return (
+      <Link
+        href="/app/ficha"
+        className={`flex items-center gap-3 rounded-2xl border border-olive-200/80 bg-olive-50/70 px-4 py-3 text-sm text-olive-900 transition hover:border-olive-300 ${className}`}
+      >
+        <ClipboardList className="h-4 w-4 shrink-0" strokeWidth={1.75} />
+        <span className="min-w-0 flex-1">Ficha pré-consulta enviada</span>
+        <span className="shrink-0 font-semibold">Ver respostas →</span>
+      </Link>
+    );
+  }
 
   return (
     <div

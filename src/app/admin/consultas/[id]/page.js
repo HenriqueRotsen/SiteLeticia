@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { Trash2 } from "lucide-react";
 import { useParams } from "next/navigation";
 import AdminShell from "@/components/layout/AdminShell";
 import { Card, btnPrimary, btnSecondary, formatCurrency } from "@/components/layout/AppShell";
@@ -89,6 +90,28 @@ export default function AdminConsultaDetailPage() {
         ? "Nota fiscal anexada. Atenção: o valor extraído não confere com a consulta."
         : "Nota fiscal anexada."
     );
+    await load();
+  }
+
+  async function removeDocument(doc) {
+    const ok = await confirm({
+      title: "Remover este anexo?",
+      message: "O arquivo é apagado do sistema.",
+      confirmLabel: "Remover",
+      tone: "danger"
+    });
+    if (!ok) return;
+    setError("");
+    setFeedback("");
+    const res = await fetch(`/api/admin/appointments/${appointmentId}/documents?documentId=${encodeURIComponent(doc.id)}`, {
+      method: "DELETE"
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setError(data.message || "Não foi possível remover.");
+      return;
+    }
+    setFeedback("Anexo removido.");
     await load();
   }
 
@@ -305,16 +328,26 @@ export default function AdminConsultaDetailPage() {
                         {doc.amount_matches === false ? " · não confere" : ""}
                       </p>
                     </div>
-                    {doc.url ? (
-                      <a
-                        href={doc.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-sm font-medium text-olive-800 hover:underline"
-                      >
-                        Abrir
-                      </a>
-                    ) : null}
+                    <div className="flex items-center gap-2">
+                      {doc.url ? (
+                        <a
+                          href={doc.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-sm font-medium text-olive-800 hover:underline"
+                        >
+                          Abrir
+                        </a>
+                      ) : null}
+                      <button
+                      type="button"
+                      onClick={() => removeDocument(doc)}
+                      className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-50"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Remover
+                    </button>
+                    </div>
                   </div>
                 </div>
               ))

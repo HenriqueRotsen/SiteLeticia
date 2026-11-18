@@ -3,6 +3,7 @@ import { requireNutritionist } from "@/lib/auth";
 import { createSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { writeAuditLog, getClientIp } from "@/lib/audit";
 import {
+  deleteAppointmentDocument,
   listAppointmentDocuments,
   summarizeDocuments,
   uploadAppointmentDocument
@@ -83,4 +84,26 @@ export async function POST(request, { params: paramsPromise }) {
   });
 
   return NextResponse.json({ document: result.document });
+}
+
+// A nutricionista remove qualquer anexo da consulta (comprovante ou nota fiscal).
+export async function DELETE(request, { params: paramsPromise }) {
+  const params = await paramsPromise;
+  const auth = await requireNutritionist();
+  if (auth.error) return auth.error;
+
+  const documentId = request.nextUrl.searchParams.get("documentId");
+  if (!documentId) return NextResponse.json({ message: "Anexo obrigatório." }, { status: 400 });
+
+  const result = await deleteAppointmentDocument(params.id, documentId);
+  if (result.error) return NextResponse.json({ message: result.error }, { status: result.status });
+
+  await writeAuditLog({
+    actorId: auth.ctx.user.id,
+    action: "payment_doc_delete_admin",
+    resourceType: "appointment_document",
+    resourceId: documentId,
+    ip: getClientIp(request)
+  });
+  return NextResponse.json({ ok: true });
 }

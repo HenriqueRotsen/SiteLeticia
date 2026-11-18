@@ -3,6 +3,7 @@ import { requireNutritionist } from "@/lib/auth";
 import { createSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { writeAuditLog, getClientIp } from "@/lib/audit";
 import { attachPhotoUrls } from "@/lib/storage/signed-url";
+import { deleteProgressPhoto } from "@/lib/storage/delete-photo";
 
 /** URLs curtas: a nutricionista recarrega a lista para gerar novas. */
 const PHOTO_URL_TTL_SECONDS = 5 * 60;
@@ -56,4 +57,25 @@ export async function GET(request, { params: paramsPromise }) {
     },
     { headers: { "Cache-Control": "no-store" } }
   );
+}
+
+export async function DELETE(request, { params: paramsPromise }) {
+  const params = await paramsPromise;
+  const auth = await requireNutritionist();
+  if (auth.error) return auth.error;
+
+  const photoId = request.nextUrl.searchParams.get("id");
+  if (!photoId) return NextResponse.json({ message: "Foto obrigatória." }, { status: 400 });
+
+  const result = await deleteProgressPhoto(params.id, photoId);
+  if (result.error) return NextResponse.json({ message: result.error }, { status: result.status });
+
+  await writeAuditLog({
+    actorId: auth.ctx.user.id,
+    action: "photo_delete_admin",
+    resourceType: "progress_photo",
+    resourceId: photoId,
+    ip: getClientIp(request)
+  });
+  return NextResponse.json({ ok: true });
 }
