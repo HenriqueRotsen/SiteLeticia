@@ -23,6 +23,9 @@ function formatSubmittedAt(value) {
 export default function PreconsultViewer({
   form = null,
   patientName = null,
+  eyebrow = "Ficha do paciente",
+  title = null,
+  action = null,
   emptyMessage = "Este paciente ainda não enviou a ficha pré-consulta."
 }) {
   if (!form || form.status !== "submitted") {
@@ -50,10 +53,10 @@ export default function PreconsultViewer({
             </span>
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-olive-700/70">
-                Ficha do paciente
+                {eyebrow}
               </p>
               <h2 className="mt-1 font-display text-2xl text-graphite">
-                Pré-consulta{patientName ? ` — ${patientName}` : ""}
+                {title || `Pré-consulta${patientName ? ` — ${patientName}` : ""}`}
               </h2>
               <p className="mt-1 text-sm text-graphite/60">
                 {filled} campos preenchidos
@@ -61,9 +64,11 @@ export default function PreconsultViewer({
               </p>
             </div>
           </div>
-          <span className="inline-flex w-fit rounded-full bg-olive-100 px-3 py-1.5 text-xs font-semibold text-olive-800">
-            Enviada
-          </span>
+          {action || (
+            <span className="inline-flex w-fit rounded-full bg-olive-100 px-3 py-1.5 text-xs font-semibold text-olive-800">
+              Enviada
+            </span>
+          )}
         </div>
       </Card>
 

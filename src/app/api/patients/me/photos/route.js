@@ -5,6 +5,8 @@ import { createSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { ALLOWED_IMAGE_TYPES, MAX_PHOTO_BYTES } from "@/lib/constants";
 import { compressImageBuffer } from "@/lib/media/compress-image";
 import { attachPhotoUrls, createStorageSignedUrl } from "@/lib/storage/signed-url";
+import { deleteProgressPhoto } from "@/lib/storage/delete-photo";
+import { writeAuditLog, getClientIp } from "@/lib/audit";
 
 export async function GET() {
   const auth = await requirePatient();
@@ -77,4 +79,24 @@ export async function POST(request) {
 
   const url = await createStorageSignedUrl(bucket, path);
   return NextResponse.json({ photo: { ...data, url } });
+}
+
+export async function DELETE(request) {
+  const auth = await requirePatient();
+  if (auth.error) return auth.error;
+
+  const photoId = request.nextUrl.searchParams.get("id");
+  if (!photoId) return NextResponse.json({ message: "Foto obrigatória." }, { status: 400 });
+
+  const result = await deleteProgressPhoto(auth.ctx.patient.id, photoId);
+  if (result.error) return NextResponse.json({ message: result.error }, { status: result.status });
+
+  await writeAuditLog({
+    actorId: auth.ctx.user.id,
+    action: "photo_delete_patient",
+    resourceType: "progress_photo",
+    resourceId: photoId,
+    ip: getClientIp(request)
+  });
+  return NextResponse.json({ ok: true });
 }

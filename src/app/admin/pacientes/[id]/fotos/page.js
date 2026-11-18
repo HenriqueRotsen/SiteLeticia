@@ -3,16 +3,17 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowLeft, Calendar, ImageIcon, RefreshCw } from "lucide-react";
+import { ArrowLeft, Calendar, ImageIcon, RefreshCw, Trash2 } from "lucide-react";
 import AdminShell from "@/components/layout/AdminShell";
 import { Card, btnSecondary } from "@/components/layout/AppShell";
+import { useDialog } from "@/components/ui/ConfirmDialog";
 
 function formatDate(value) {
   if (!value) return "—";
   return new Date(value).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
 }
 
-function PhotoTile({ photo, expired }) {
+function PhotoTile({ photo, expired, onDelete }) {
   const usable = photo.url && !expired;
   return (
     <article className="overflow-hidden rounded-2xl border border-olive-900/10 bg-porcelain/95 shadow-card">
@@ -38,6 +39,15 @@ function PhotoTile({ photo, expired }) {
           <Calendar className="h-3 w-3" />
           {formatDate(photo.taken_at)}
         </span>
+        <button
+          type="button"
+          onClick={() => onDelete(photo)}
+          aria-label="Excluir foto"
+          title="Excluir foto"
+          className="absolute bottom-3 right-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-rose-700 shadow-xs transition hover:bg-white"
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
         {photo.visibility === "nutritionist_only" ? (
           <span className="absolute right-3 top-3 rounded-full bg-graphite/80 px-2.5 py-1 text-[11px] font-medium text-white">
             Só nutricionista
@@ -52,6 +62,7 @@ function PhotoTile({ photo, expired }) {
 export default function AdminPatientPhotosPage() {
   const params = useParams();
   const patientId = params.id;
+  const { confirm } = useDialog();
   const [patientName, setPatientName] = useState("");
   const [photos, setPhotos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -77,6 +88,23 @@ export default function AdminPatientPhotosPage() {
       setLoading(false);
     }
   }, [patientId]);
+
+  async function deletePhoto(photo) {
+    const ok = await confirm({
+      title: "Excluir esta foto?",
+      message: "A foto é apagada do sistema e some também para o paciente.",
+      confirmLabel: "Excluir",
+      tone: "danger"
+    });
+    if (!ok) return;
+    const res = await fetch(`/api/patients/${patientId}/photos?id=${encodeURIComponent(photo.id)}`, { method: "DELETE" });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setError(data.message || "Não foi possível excluir a foto.");
+      return;
+    }
+    await load();
+  }
 
   useEffect(() => {
     load();
@@ -125,7 +153,7 @@ export default function AdminPatientPhotosPage() {
       ) : photos.length ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {photos.map((photo) => (
-            <PhotoTile key={photo.id} photo={photo} expired={expired} />
+            <PhotoTile key={photo.id} photo={photo} expired={expired} onDelete={deletePhoto} />
           ))}
         </div>
       ) : !error ? (

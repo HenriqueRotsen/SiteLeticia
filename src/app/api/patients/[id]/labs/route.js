@@ -214,3 +214,45 @@ export async function PATCH(request, { params: paramsPromise }) {
     return NextResponse.json({ message: "Dados inválidos." }, { status: 400 });
   }
 }
+
+// A nutricionista exclui um exame (laudo, resultados e arquivo).
+export async function DELETE(request, { params: paramsPromise }) {
+  const params = await paramsPromise;
+  const auth = await requireNutritionist();
+  if (auth.error) return auth.error;
+
+  const reportId = request.nextUrl.searchParams.get("id");
+  if (!reportId) return NextResponse.json({ message: "Exame obrigatório." }, { status: 400 });
+
+  const supabase = createSupabaseAdmin();
+  const { data: existing } = await supabase
+    .from("lab_reports")
+    .select("id, storage_path")
+    .eq("id", reportId)
+    .eq("patient_id", params.id)
+    .maybeSingle();
+  if (!existing) return NextResponse.json({ message: "Exame não encontrado." }, { status: 404 });
+
+  await supabase.from("lab_results").delete().eq("report_id", reportId);
+  const { error } = await supabase.from("lab_reports").delete().eq("id", reportId);
+  if (error) return NextResponse.json({ message: "Não foi possível excluir o exame." }, { status: 500 });
+
+  if (existing.storage_path) {
+    try {
+      await supabase.storage
+        .from(process.env.SUPABASE_STORAGE_BUCKET_LABS || "lab-reports")
+        .remove([existing.storage_path]);
+    } catch (err) {
+      console.error("Lab storage remove failed:", err?.message || err);
+    }
+  }
+
+  await writeAuditLog({
+    actorId: auth.ctx.user.id,
+    action: "lab_delete_admin",
+    resourceType: "lab_report",
+    resourceId: reportId,
+    ip: getClientIp(request)
+  });
+  return NextResponse.json({ ok: true });
+}
