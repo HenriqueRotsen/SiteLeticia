@@ -11,6 +11,21 @@ import {
   syncWaitlistPatient
 } from "@/lib/waitlist/position";
 
+// Quem tenta se cadastrar de novo com o mesmo WhatsApp mantém a posição original.
+function alreadyRegisteredResponse(entry, status) {
+  const since = entry?.created_at
+    ? new Date(entry.created_at).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })
+    : null;
+  const message =
+    status.status === "called"
+      ? status.message
+      : `Esse WhatsApp já estava na lista${since ? ` desde ${since}` : ""}, então a posição é a do primeiro cadastro.`;
+  return NextResponse.json(
+    { ...status, alreadyRegistered: true, joinedAt: entry?.created_at || null, message },
+    { status: 409 }
+  );
+}
+
 function isDuplicatePhone(error) {
   return error?.code === "23505" || error?.message?.toLowerCase().includes("duplicate");
 }
@@ -68,14 +83,7 @@ export async function POST(request) {
 
   if (existing) {
     const status = await getWaitlistStatus(supabase, { waitlistId: existing.id });
-
-    return NextResponse.json(
-      {
-        message: "Esse WhatsApp já está na lista. Confira sua posição abaixo.",
-        ...status
-      },
-      { status: 409 }
-    );
+    return alreadyRegisteredResponse(existing, status);
   }
 
   const { data: inserted, error } = await supabase
@@ -94,14 +102,7 @@ export async function POST(request) {
       const status = duplicate
         ? await getWaitlistStatus(supabase, { waitlistId: duplicate.id })
         : { found: false };
-
-      return NextResponse.json(
-        {
-          message: "Esse WhatsApp já está na lista. Confira sua posição abaixo.",
-          ...status
-        },
-        { status: 409 }
-      );
+      return alreadyRegisteredResponse(duplicate, status);
     }
 
     return NextResponse.json(

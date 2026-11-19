@@ -2,12 +2,37 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { CircleDollarSign, Clock3, FileWarning } from "lucide-react";
+import { CircleDollarSign, Clock3, FileText, FileWarning } from "lucide-react";
 import AdminShell from "@/components/layout/AdminShell";
 import { Card, formatCurrency } from "@/components/layout/AppShell";
 import Badge, { paymentBadge } from "@/components/ui/Badge";
 import StatCard from "@/components/ui/StatCard";
-import { labelPaymentDocType } from "@/lib/labels";
+import SmartTable from "@/components/ui/SmartTable";
+import { appointmentSearchFields, dateSort, paymentFilter } from "@/components/ui/appointmentTable";
+import { formatAppointmentDateTime } from "@/lib/datetime";
+import { PAYMENT_STATUS_LABELS, labelPaymentDocType } from "@/lib/labels";
+
+const FILTERS = [
+  paymentFilter,
+  {
+    key: "documents",
+    label: "Documentos",
+    icon: FileText,
+    options: [
+      { value: "all", label: "Todos" },
+      { value: "with", label: "Com documento" },
+      { value: "without", label: "Sem documento" },
+      { value: "mismatch", label: "Valor divergente" }
+    ],
+    predicate: (row, value) => {
+      const docs = row.documents || [];
+      if (value === "with") return docs.length > 0;
+      if (value === "without") return docs.length === 0;
+      if (value === "mismatch") return docs.some((doc) => doc.amount_matches === false);
+      return true;
+    }
+  }
+];
 
 function currentMonthValue() {
   const now = new Date();
@@ -83,74 +108,92 @@ export default function AdminFinanceiroPage() {
       </div>
 
       <Card className="mt-6" title="Consultas do período">
-        {loading ? (
-          <p className="text-sm text-graphite/55">Carregando...</p>
-        ) : !appointments.length ? (
-          <p className="text-sm text-graphite/55">Nenhuma consulta neste mês.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs uppercase tracking-wide text-graphite/50">
-                  <th className="py-2">Paciente</th>
-                  <th className="py-2">Data</th>
-                  <th className="py-2">Valor</th>
-                  <th className="py-2">Status</th>
-                  <th className="py-2">Documentos</th>
-                </tr>
-              </thead>
-              <tbody>
-                {appointments.map((appt) => {
-                  const badge = paymentBadge(appt.payment_status);
-                  const docs = appt.documents || [];
-                  return (
-                    <tr key={appt.id} className="border-t border-olive-900/5">
-                      <td className="py-3">
-                        <Link href={`/admin/pacientes/${appt.patient_id}`} className="font-medium text-graphite underline-offset-2 hover:text-olive-800 hover:underline">
-                          {appt.patients?.full_name || "—"}
-                        </Link>
-                      </td>
-                      <td className="py-3">
-                        <Link href={`/admin/consultas/${appt.id}`} className="underline-offset-2 hover:text-olive-800 hover:underline">
-                          {new Date(appt.starts_at).toLocaleString("pt-BR")}
-                        </Link>
-                      </td>
-                      <td className="py-3">{formatCurrency(appt.amount_cents)}</td>
-                      <td className="py-3">
-                        <Badge variant={badge.variant}>{badge.label}</Badge>
-                      </td>
-                      <td className="py-3">
-                        <div className="flex flex-col gap-1">
-                          {docs.length
-                            ? docs.map((doc) => (
-                                <span key={doc.id} className="text-xs text-graphite/60">
-                                  {labelPaymentDocType(doc.doc_type)}
-                                  {doc.amount_matches === false ? " · divergente" : ""}
-                                  {doc.url ? (
-                                    <>
-                                      {" · "}
-                                      <a
-                                        href={doc.url}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="text-olive-800 hover:underline"
-                                      >
-                                        ver
-                                      </a>
-                                    </>
-                                  ) : null}
-                                </span>
-                              ))
-                            : "—"}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <SmartTable
+          key={month}
+          rows={appointments}
+          loading={loading}
+          itemLabel={["consulta", "consultas"]}
+          searchPlaceholder="Paciente, telefone ou data"
+          searchFields={(row) => appointmentSearchFields(row, { includePatient: true })}
+          filters={FILTERS}
+          defaultSort={{ key: "starts_at", dir: "desc" }}
+          emptyMessage="Nenhuma consulta neste mês."
+          noResultsMessage="Nenhuma consulta com esses filtros."
+          columns={[
+            {
+              key: "patient",
+              label: "Paciente",
+              mobile: "title",
+              sortValue: (row) => row.patients?.full_name,
+              sortLabels: ["A–Z", "Z–A"],
+              render: (row) => (
+                <Link
+                  href={`/admin/pacientes/${row.patient_id}`}
+                  className="font-medium text-graphite underline-offset-2 hover:text-olive-800 hover:underline"
+                >
+                  {row.patients?.full_name || "—"}
+                </Link>
+              )
+            },
+            {
+              key: "starts_at",
+              label: "Data",
+              mobile: "subtitle",
+              nowrap: true,
+              ...dateSort,
+              render: (row) => (
+                <Link href={`/admin/consultas/${row.id}`} className="underline-offset-2 hover:text-olive-800 hover:underline">
+                  {formatAppointmentDateTime(row.starts_at)}
+                </Link>
+              )
+            },
+            {
+              key: "amount",
+              label: "Valor",
+              nowrap: true,
+              sortValue: (row) => Number(row.amount_cents) || 0,
+              sortLabels: ["menor", "maior"],
+              render: (row) => formatCurrency(row.amount_cents)
+            },
+            {
+              key: "payment",
+              label: "Status",
+              mobile: "badges",
+              sortValue: (row) => PAYMENT_STATUS_LABELS[row.payment_status],
+              sortLabels: ["A–Z", "Z–A"],
+              render: (row) => {
+                const badge = paymentBadge(row.payment_status);
+                return <Badge variant={badge.variant}>{badge.label}</Badge>;
+              }
+            },
+            {
+              key: "documents",
+              label: "Documentos",
+              render: (row) => {
+                const docs = row.documents || [];
+                if (!docs.length) return "—";
+                return (
+                  <div className="flex flex-col gap-1">
+                    {docs.map((doc) => (
+                      <span key={doc.id} className="text-xs text-graphite/60">
+                        {labelPaymentDocType(doc.doc_type)}
+                        {doc.amount_matches === false ? <span className="text-amber-800"> · divergente</span> : ""}
+                        {doc.url ? (
+                          <>
+                            {" · "}
+                            <a href={doc.url} target="_blank" rel="noreferrer" className="text-olive-800 hover:underline">
+                              ver
+                            </a>
+                          </>
+                        ) : null}
+                      </span>
+                    ))}
+                  </div>
+                );
+              }
+            }
+          ]}
+        />
       </Card>
     </AdminShell>
   );

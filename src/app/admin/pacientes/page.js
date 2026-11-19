@@ -3,10 +3,46 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { RefreshCw, Search } from "lucide-react";
+import { ListOrdered, RefreshCw, Target, UserCheck } from "lucide-react";
 import AdminShell from "@/components/layout/AdminShell";
 import Badge from "@/components/ui/Badge";
-import { Card, DataTable, btnSecondary, inputClassName } from "@/components/layout/AppShell";
+import SmartTable from "@/components/ui/SmartTable";
+import { Card, btnSecondary } from "@/components/layout/AppShell";
+import { GOALS } from "@/lib/constants";
+
+const PATIENT_FILTERS = [
+  {
+    key: "waitlist",
+    label: "Fila de espera",
+    icon: ListOrdered,
+    options: [
+      { value: "all", label: "Todos" },
+      { value: "waiting", label: "Aguardando na fila" },
+      { value: "called", label: "Chamados da fila" },
+      { value: "none", label: "Fora da fila" }
+    ],
+    predicate: (row, value) =>
+      value === "none" ? !row.waitlist_status : row.waitlist_status === value
+  },
+  {
+    key: "account",
+    label: "Conta",
+    icon: UserCheck,
+    options: [
+      { value: "all", label: "Todas" },
+      { value: "yes", label: "Com conta" },
+      { value: "no", label: "Sem conta" }
+    ],
+    predicate: (row, value) => row.has_account === (value === "yes")
+  },
+  {
+    key: "goal",
+    label: "Objetivo",
+    icon: Target,
+    options: [{ value: "all", label: "Todos" }, ...GOALS.map((goal) => ({ value: goal, label: goal }))],
+    predicate: (row, value) => row.goal === value
+  }
+];
 
 function formatPhone(phone) {
   const digits = String(phone || "").replace(/\D/g, "");
@@ -23,7 +59,6 @@ export default function AdminPatientsPage() {
   const router = useRouter();
   const [patients, setPatients] = useState([]);
   const [waitlistStats, setWaitlistStats] = useState(null);
-  const [q, setQ] = useState("");
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState("");
   const [loadError, setLoadError] = useState("");
@@ -33,9 +68,7 @@ export default function AdminPatientsPage() {
     setLoading(true);
     setLoadError("");
     try {
-      const params = new URLSearchParams();
-      if (q) params.set("q", q);
-      const res = await fetch(`/api/admin/patients?${params.toString()}`);
+      const res = await fetch("/api/admin/patients");
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setPatients([]);
@@ -52,14 +85,11 @@ export default function AdminPatientsPage() {
     } finally {
       setLoading(false);
     }
-  }, [q]);
+  }, []);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      loadPatients();
-    }, q ? 250 : 0);
-    return () => clearTimeout(timer);
-  }, [loadPatients, q]);
+    loadPatients();
+  }, [loadPatients]);
 
   async function handleSync() {
     setSyncing(true);
@@ -141,17 +171,6 @@ export default function AdminPatientsPage() {
           </div>
         </Card>
       ) : null}
-      <Card className="mb-4">
-        <label className="relative block">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-graphite/40" />
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Buscar por nome ou telefone"
-            className={inputClassName("pl-9")}
-          />
-        </label>
-      </Card>
       {loadError ? (
         <Card className="mb-4 border-rose-200 bg-rose-50/80">
           <p className="text-sm text-rose-900">{loadError}</p>
@@ -159,50 +178,83 @@ export default function AdminPatientsPage() {
       ) : null}
 
       <Card title="Lista de pacientes">
-        <DataTable
-          emptyMessage={
-            loading
-              ? "Carregando pacientes..."
-              : loadError
-                ? "Não foi possível carregar a lista."
-                : "Nenhum paciente encontrado."
-          }
+        <SmartTable
+          rows={patients}
+          loading={loading}
+          itemLabel={["paciente", "pacientes"]}
+          searchPlaceholder="Nome, telefone ou objetivo"
+          searchFields={(row) => [row.full_name, row.phone, row.goal, row.cpf_masked]}
+          filters={PATIENT_FILTERS}
+          defaultSort={{ key: "created", dir: "desc" }}
+          emptyMessage={loadError ? "Não foi possível carregar a lista." : "Nenhum paciente cadastrado."}
+          noResultsMessage="Nenhum paciente com esses filtros."
+          onRowDoubleClick={(row) => router.push(`/admin/pacientes/${row.id}`)}
           columns={[
             {
               key: "name",
               label: "Nome",
+              mobile: "title",
+              sortValue: (row) => row.full_name,
+              sortLabels: ["A–Z", "Z–A"],
               render: (row) => (
-                <div className="flex flex-wrap items-center gap-2">
-                  <Link href={`/admin/pacientes/${row.id}`} className="font-medium text-graphite underline-offset-2 hover:text-olive-800 hover:underline">
-                    {row.full_name}
-                  </Link>
-                  {row.from_waitlist ? <Badge variant="warning">Fila de espera</Badge> : null}
-                  {!row.has_account ? <Badge variant="neutral">Sem conta</Badge> : null}
-                </div>
+                <Link
+                  href={`/admin/pacientes/${row.id}`}
+                  className="font-medium text-graphite underline-offset-2 hover:text-olive-800 hover:underline"
+                >
+                  {row.full_name}
+                </Link>
               )
+            },
+            {
+              key: "waitlist",
+              label: "Fila",
+              mobile: "badges",
+              sortValue: (row) => row.waitlist_position ?? null,
+              sortLabels: ["1º primeiro", "último primeiro"],
+              render: (row) =>
+                row.waitlist_position ? (
+                  <Badge variant="warning" className="whitespace-nowrap">
+                    {row.waitlist_position}º na fila
+                  </Badge>
+                ) : row.waitlist_status === "called" ? (
+                  <Badge variant="success">Chamada</Badge>
+                ) : (
+                  <span className="hidden text-graphite/35 xl:inline">—</span>
+                )
             },
             {
               key: "phone",
               label: "WhatsApp",
+              nowrap: true,
               render: (row) => formatPhone(row.phone)
             },
-            { key: "cpf_masked", label: "CPF" },
-            { key: "goal", label: "Objetivo" },
+            { key: "goal", label: "Objetivo", sortValue: (row) => row.goal, sortLabels: ["A–Z", "Z–A"] },
+            {
+              key: "account",
+              label: "Conta",
+              render: (row) =>
+                row.has_account ? <Badge variant="success">Ativa</Badge> : <Badge variant="neutral">Sem conta</Badge>
+            },
+            { key: "cpf_masked", label: "CPF", nowrap: true, render: (row) => row.cpf_masked || "—" },
+            {
+              key: "created",
+              label: "Cadastro",
+              nowrap: true,
+              sortValue: (row) => (row.created_at ? new Date(row.created_at).getTime() : null),
+              sortLabels: ["mais antigos", "mais recentes"],
+              render: (row) => (row.created_at ? new Date(row.created_at).toLocaleDateString("pt-BR") : "—")
+            },
             {
               key: "actions",
-              label: "Ações",
+              label: "",
+              mobile: "actions",
               render: (row) => (
-                <Link
-                  href={`/admin/pacientes/${row.id}`}
-                  className="font-semibold text-olive-700 hover:text-olive-800"
-                >
+                <Link href={`/admin/pacientes/${row.id}`} className="font-semibold text-olive-700 hover:text-olive-800">
                   Abrir
                 </Link>
               )
             }
           ]}
-          rows={patients.map((p) => ({ ...p, id: p.id }))}
-          onRowDoubleClick={(row) => router.push(`/admin/pacientes/${row.id}`)}
         />
       </Card>
     </AdminShell>

@@ -46,7 +46,8 @@ export const demoPatientsList = [
     full_name: "João Demo Santos",
     phone: "31988887777",
     goal: "Hipertrofia",
-    cpf_masked: "***.123.456-**"
+    cpf_masked: "***.123.456-**",
+    from_waitlist: true
   }
 ];
 

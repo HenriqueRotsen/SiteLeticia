@@ -3,13 +3,7 @@
 import { useEffect, useState } from "react";
 import { Sparkles } from "lucide-react";
 import { btnPrimary, btnSecondary } from "@/components/layout/AppShell";
-
-function flagLabel(flag) {
-  if (flag === "high") return "Acima";
-  if (flag === "low") return "Abaixo";
-  if (flag === "normal") return "Normal";
-  return "—";
-}
+import LabResultsTable from "@/components/ui/LabResultsTable";
 
 export default function LabReportReview({
   report,
@@ -47,31 +41,8 @@ export default function LabReportReview({
       </div>
 
       {(report.lab_results || []).length ? (
-        <div className="overflow-x-auto rounded-2xl border border-olive-900/10 bg-white">
-          <table className="min-w-full text-sm">
-            <thead>
-              <tr className="border-b border-olive-900/10 text-left text-xs uppercase tracking-wide text-graphite/45">
-                <th className="px-4 py-3">Marcador</th>
-                <th className="px-4 py-3">Valor</th>
-                <th className="px-4 py-3">Referência</th>
-                <th className="px-4 py-3">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {report.lab_results.map((result) => (
-                <tr key={result.id} className="border-t border-olive-900/5">
-                  <td className="px-4 py-3">{result.marker_name}</td>
-                  <td className="px-4 py-3">
-                    {result.value ?? result.value_text} {result.unit}
-                  </td>
-                  <td className="px-4 py-3">
-                    {result.ref_min ?? "—"} – {result.ref_max ?? "—"}
-                  </td>
-                  <td className="px-4 py-3">{flagLabel(result.flag)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="rounded-2xl border border-olive-900/10 bg-white p-4">
+          <LabResultsTable results={report.lab_results} />
         </div>
       ) : null}
 

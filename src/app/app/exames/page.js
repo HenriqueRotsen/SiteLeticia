@@ -15,18 +15,12 @@ import PatientShell from "@/components/layout/PatientShell";
 import { Card, btnPrimary, btnSecondary } from "@/components/layout/AppShell";
 import Badge, { labReportBadge } from "@/components/ui/Badge";
 import ExamOrderStatusList from "@/components/ui/ExamOrderStatusList";
+import LabResultsTable from "@/components/ui/LabResultsTable";
 import HelpTooltip from "@/components/ui/HelpTooltip";
 import Modal from "@/components/ui/Modal";
 import { useDialog } from "@/components/ui/ConfirmDialog";
 import PdfUploadZone from "@/components/ui/PdfUploadZone";
 import { countExamProgress } from "@/lib/labs/exam-status";
-
-function flagLabel(flag) {
-  if (flag === "high") return "Acima";
-  if (flag === "low") return "Abaixo";
-  if (flag === "normal") return "Normal";
-  return "—";
-}
 
 function statusLabel(report) {
   if (report.status === "published") return "Publicado pela Letícia";
@@ -544,31 +538,8 @@ export default function ExamesPage() {
               ) : null}
 
               {(report.lab_results || []).length ? (
-                <div className="mt-4 overflow-x-auto">
-                  <table className="min-w-full text-sm">
-                    <thead>
-                      <tr className="text-left text-xs uppercase tracking-wide text-graphite/50">
-                        <th className="py-2">Marcador</th>
-                        <th className="py-2">Valor</th>
-                        <th className="py-2">Referência</th>
-                        <th className="py-2">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {report.lab_results.map((result) => (
-                        <tr key={result.id} className="border-t border-olive-900/5">
-                          <td className="py-2">{result.marker_name}</td>
-                          <td className="py-2">
-                            {result.value ?? result.value_text} {result.unit}
-                          </td>
-                          <td className="py-2">
-                            {result.ref_min ?? "—"} – {result.ref_max ?? "—"}
-                          </td>
-                          <td className="py-2">{flagLabel(result.flag)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                <div className="mt-4">
+                  <LabResultsTable results={report.lab_results} />
                 </div>
               ) : null}
             </Card>

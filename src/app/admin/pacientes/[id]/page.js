@@ -170,7 +170,15 @@ export default function AdminPatientDetailPage() {
               <div className="min-w-0">
                 <h1 className="truncate text-2xl font-semibold text-graphite">{patient.full_name}</h1>
                 <div className="mt-1.5 flex flex-wrap gap-2">
-                  {patient.from_waitlist ? <Badge variant="warning">Fila de espera</Badge> : null}
+                  {patient.from_waitlist ? (
+                    <Badge variant="warning">
+                      {patient.waitlist_position
+                        ? `Fila de espera · ${patient.waitlist_position}º`
+                        : patient.waitlist_status === "called"
+                          ? "Fila de espera · chamada"
+                          : "Fila de espera"}
+                    </Badge>
+                  ) : null}
                   {!patient.has_account ? (
                     <Badge variant="neutral">Sem conta</Badge>
                   ) : (

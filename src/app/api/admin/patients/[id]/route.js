@@ -4,13 +4,24 @@ import { maskCpf } from "@/lib/cpf";
 import { createSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { patientAnthropometricsSchema } from "@/lib/validation/schemas";
 import { writeAuditLog, getClientIp } from "@/lib/audit";
+import { getWaitlistStatus } from "@/lib/waitlist/position";
 
 function normalizeBirthDate(value) {
   if (!value) return null;
   return String(value).slice(0, 10);
 }
 
-function mapPatientResponse(patient, latestMeasurement) {
+async function getPatientWaitlist(supabase, patient) {
+  if (!patient?.waitlist_id) return null;
+  try {
+    const status = await getWaitlistStatus(supabase, { waitlistId: patient.waitlist_id });
+    return status.found ? status : null;
+  } catch {
+    return null;
+  }
+}
+
+function mapPatientResponse(patient, latestMeasurement, waitlist = null) {
   return {
     ...patient,
     birth_date: normalizeBirthDate(patient.birth_date),
@@ -20,7 +31,9 @@ function mapPatientResponse(patient, latestMeasurement) {
     cpf_masked: maskCpf(patient.cpf),
     cpf: undefined,
     has_account: Boolean(patient.user_id),
-    from_waitlist: patient.source === "waitlist" || Boolean(patient.waitlist_id),
+    from_waitlist: Boolean(waitlist),
+    waitlist_status: waitlist?.status || null,
+    waitlist_position: waitlist?.position ?? null,
     latest_weight_kg:
       latestMeasurement?.weight_kg != null ? Number(latestMeasurement.weight_kg) : null,
     latest_weight_at: latestMeasurement?.recorded_at ?? null
@@ -77,10 +90,13 @@ export async function GET(_request, { params: paramsPromise }) {
     return NextResponse.json({ message: "Paciente não encontrado." }, { status: 404 });
   }
 
-  const latestMeasurement = await getLatestMeasurement(supabase, params.id);
+  const [latestMeasurement, waitlist] = await Promise.all([
+    getLatestMeasurement(supabase, params.id),
+    getPatientWaitlist(supabase, patient)
+  ]);
 
   return NextResponse.json({
-    patient: mapPatientResponse(patient, latestMeasurement)
+    patient: mapPatientResponse(patient, latestMeasurement, waitlist)
   });
 }
 
@@ -139,7 +155,10 @@ export async function PATCH(request, { params: paramsPromise }) {
     }
   }
 
-  const latestMeasurement = await getLatestMeasurement(supabase, params.id);
+  const [latestMeasurement, waitlist] = await Promise.all([
+    getLatestMeasurement(supabase, params.id),
+    getPatientWaitlist(supabase, patient)
+  ]);
 
   await writeAuditLog({
     actorId: auth.ctx.user.id,
@@ -150,6 +169,6 @@ export async function PATCH(request, { params: paramsPromise }) {
   });
 
   return NextResponse.json({
-    patient: mapPatientResponse(patient, latestMeasurement)
+    patient: mapPatientResponse(patient, latestMeasurement, waitlist)
   });
 }
