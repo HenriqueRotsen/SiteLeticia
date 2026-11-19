@@ -5,6 +5,11 @@ import { maskCpf } from "@/lib/cpf";
 import { writeAuditLog, getClientIp } from "@/lib/audit";
 import { patientSearchFilter, waitlistPositions } from "@/lib/waitlist/patient-search";
 
+function earliestDate(...values) {
+  const times = values.filter(Boolean).map((value) => new Date(value).getTime()).filter(Number.isFinite);
+  return times.length ? new Date(Math.min(...times)).toISOString() : null;
+}
+
 export async function GET(request) {
   const auth = await requireNutritionist();
   if (auth.error) return auth.error;
@@ -76,7 +81,9 @@ export async function GET(request) {
       from_waitlist: Boolean(entry),
       waitlist_status: entry?.status || null,
       waitlist_position: entry?.position ?? null,
-      waitlist_joined_at: entry?.createdAt || null
+      waitlist_joined_at: entry?.createdAt || null,
+      // Quem veio da fila foi importado depois (ex.: 30/08); vale a data do cadastro original.
+      registered_at: earliestDate(p.created_at, entry?.createdAt)
     };
   });
 

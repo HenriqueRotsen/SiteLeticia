@@ -240,9 +240,15 @@ export default function AdminPatientsPage() {
               key: "created",
               label: "Cadastro",
               nowrap: true,
-              sortValue: (row) => (row.created_at ? new Date(row.created_at).getTime() : null),
+              sortValue: (row) => {
+                const date = row.registered_at || row.created_at;
+                return date ? new Date(date).getTime() : null;
+              },
               sortLabels: ["mais antigos", "mais recentes"],
-              render: (row) => (row.created_at ? new Date(row.created_at).toLocaleDateString("pt-BR") : "—")
+              render: (row) => {
+                const date = row.registered_at || row.created_at;
+                return date ? new Date(date).toLocaleDateString("pt-BR") : "—";
+              }
             },
             {
               key: "actions",
