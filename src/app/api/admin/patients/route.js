@@ -5,9 +5,12 @@ import { maskCpf } from "@/lib/cpf";
 import { writeAuditLog, getClientIp } from "@/lib/audit";
 import { patientSearchFilter, waitlistPositions } from "@/lib/waitlist/patient-search";
 
-function earliestDate(...values) {
-  const times = values.filter(Boolean).map((value) => new Date(value).getTime()).filter(Number.isFinite);
-  return times.length ? new Date(Math.min(...times)).toISOString() : null;
+// Data de cadastro exibida: quem já tem conta → dia em que criou a conta;
+// quem ainda não tem → dia em que entrou na fila; demais → criação do paciente.
+function registrationInfo(patient, entry, accountCreatedAt) {
+  if (patient.user_id && accountCreatedAt) return { registered_at: accountCreatedAt, registered_via: "account" };
+  if (entry?.createdAt) return { registered_at: entry.createdAt, registered_via: "waitlist" };
+  return { registered_at: patient.created_at || null, registered_via: patient.user_id ? "account" : "admin" };
 }
 
 export async function GET(request) {
@@ -70,6 +73,17 @@ export async function GET(request) {
     ip: getClientIp(request)
   });
 
+  const accountDates = new Map();
+  const userIds = (data || []).map((p) => p.user_id).filter(Boolean);
+  if (userIds.length) {
+    const { data: profiles, error: profilesError } = await admin
+      .from("profiles")
+      .select("id, created_at")
+      .in("id", userIds);
+    if (profilesError) console.error("Profiles dates failed:", profilesError);
+    for (const profile of profiles || []) accountDates.set(profile.id, profile.created_at);
+  }
+
   const patients = (data || []).map((p) => {
     const entry = p.waitlist_id ? positions.get(p.waitlist_id) : null;
     return {
@@ -82,8 +96,7 @@ export async function GET(request) {
       waitlist_status: entry?.status || null,
       waitlist_position: entry?.position ?? null,
       waitlist_joined_at: entry?.createdAt || null,
-      // Quem veio da fila foi importado depois (ex.: 30/08); vale a data do cadastro original.
-      registered_at: earliestDate(p.created_at, entry?.createdAt)
+      ...registrationInfo(p, entry, accountDates.get(p.user_id))
     };
   });
 

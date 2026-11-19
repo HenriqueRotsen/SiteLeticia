@@ -247,7 +247,17 @@ export default function AdminPatientsPage() {
               sortLabels: ["mais antigos", "mais recentes"],
               render: (row) => {
                 const date = row.registered_at || row.created_at;
-                return date ? new Date(date).toLocaleDateString("pt-BR") : "—";
+                if (!date) return "—";
+                return (
+                  <span>
+                    {new Date(date).toLocaleDateString("pt-BR")}
+                    {row.registered_via === "waitlist" ? (
+                      <span className="block text-[11px] text-graphite/45">entrou na fila</span>
+                    ) : row.registered_via === "account" ? (
+                      <span className="block text-[11px] text-graphite/45">criou a conta</span>
+                    ) : null}
+                  </span>
+                );
               }
             },
             {
