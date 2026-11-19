@@ -18,7 +18,7 @@ const PATIENT_FILTERS = [
     options: [
       { value: "all", label: "Todos" },
       { value: "waiting", label: "Aguardando na fila" },
-      { value: "called", label: "Chamados da fila" },
+      { value: "called", label: "Já avisados" },
       { value: "none", label: "Fora da fila" }
     ],
     predicate: (row, value) =>
@@ -217,7 +217,7 @@ export default function AdminPatientsPage() {
                     {row.waitlist_position}º na fila
                   </Badge>
                 ) : row.waitlist_status === "called" ? (
-                  <Badge variant="success">Chamada</Badge>
+                  <Badge variant="success">Avisada</Badge>
                 ) : (
                   <span className="hidden text-graphite/35 xl:inline">—</span>
                 )

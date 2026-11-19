@@ -56,6 +56,26 @@ function demoReleasePackageCredit(appt) {
   if (pkg && pkg.sessions_used > 0) pkg.sessions_used -= 1;
 }
 
+// Fila de espera fictícia para o modo demonstração.
+function demoWaitlist() {
+  if (!state.waitlist) {
+    const names = ["Ana Souza", "Bruna Lima", "Carla Dias", "Daniela Reis", "Elisa Prado", "Fernanda Luz", "Gabriela Melo",
+      "Helena Rocha", "Isabela Nunes", "Joana Pires", "Karina Lopes", "Larissa Moura", "Marina Costa", "Natália Freitas"];
+    const goals = ["Emagrecimento", "Hipertrofia"];
+    state.waitlist = names.map((name, index) => ({
+      id: index + 1,
+      full_name: name,
+      phone: `319900000${String(index).padStart(2, "0")}`,
+      goal: goals[index % 2],
+      status: index < 2 ? "called" : "waiting",
+      created_at: new Date(Date.UTC(2026, 4, 20 + index)).toISOString(),
+      called_at: index < 2 ? new Date(Date.UTC(2026, 10, 10)).toISOString() : null,
+      converted_patient_id: null
+    }));
+  }
+  return state.waitlist;
+}
+
 function json(body, status = 200) {
   return NextResponse.json(body, { status });
 }
@@ -304,7 +324,7 @@ export async function handleDemoApi(request) {
     const from = url.searchParams.get("from");
     const to = url.searchParams.get("to");
     return json({
-      slots: generateDemoSlots(from, to),
+      slots: generateDemoSlots(from, to, { rules: state.availabilityRules, blocks: state.availabilityBlocks }),
       bookingEnabled: true,
       durationMin: 60,
       bufferMin: 15
@@ -945,6 +965,43 @@ export async function handleDemoApi(request) {
     return json({ reports: getDemoPendingLabReports(state.labReports) });
   }
 
+  if (path === "/api/admin/waitlist") {
+    const list = demoWaitlist();
+    if (method === "GET") {
+      let position = 0;
+      return json({
+        waitlist: list.map((entry) => ({
+          ...entry,
+          position: entry.status === "waiting" ? (position += 1) : null,
+          has_account: false
+        })),
+        signupLink: `${url.origin}/criar-conta`,
+        hasCalledAt: true
+      });
+    }
+    if (method === "POST") {
+      const body = await request.json().catch(() => ({}));
+      const ids = (body.ids || []).map(Number);
+      for (const entry of list) {
+        if (ids.includes(entry.id) && entry.status === "waiting") {
+          entry.status = "called";
+          entry.called_at = new Date().toISOString();
+        }
+      }
+      return json({ ok: true, ids });
+    }
+    if (method === "PATCH") {
+      const body = await request.json().catch(() => ({}));
+      const entry = list.find((item) => item.id === Number(body.id));
+      if (entry) Object.assign(entry, { status: "waiting", called_at: null });
+      return json({ ok: true });
+    }
+    if (method === "DELETE") {
+      state.waitlist = list.filter((item) => item.id !== Number(url.searchParams.get("id")));
+      return json({ ok: true });
+    }
+  }
+
   if (path === "/api/admin/patients" && method === "GET") {
     return json({
       patients: demoPatientsList.map((p) => ({
@@ -1247,6 +1304,17 @@ export async function handleDemoApi(request) {
     );
     const updated = state.appointments.find((a) => a.id === id);
     return json({ appointment: updated });
+  }
+
+  if (path === "/api/admin/availability/preview" && method === "GET") {
+    const blocks = state.availabilityBlocks;
+    return json({
+      slots: generateDemoSlots(url.searchParams.get("from"), url.searchParams.get("to"), {
+        rules: state.availabilityRules,
+        blocks
+      }),
+      blocks
+    });
   }
 
   if (path === "/api/admin/availability" && method === "GET") {

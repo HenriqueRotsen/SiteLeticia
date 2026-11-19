@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { CalendarClock, Clock, Plus, Repeat, Trash2 } from "lucide-react";
 import AdminShell from "@/components/layout/AdminShell";
 import { Card, btnPrimary, inputClassName } from "@/components/layout/AppShell";
+import AvailabilityMonthCard from "@/components/ui/AvailabilityMonthCard";
 import BookingToggleCard from "@/components/ui/BookingToggleCard";
 
 const weekdays = [
@@ -20,10 +21,6 @@ function formatTime(value) {
   return value?.slice(0, 5) || "—";
 }
 
-function monthLabel() {
-  const label = new Date().toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
-  return label.charAt(0).toUpperCase() + label.slice(1);
-}
 
 export default function DisponibilidadePage() {
   const [rules, setRules] = useState([]);
@@ -76,7 +73,7 @@ export default function DisponibilidadePage() {
       return;
     }
 
-    setFeedback("Horário adicionado. Vale para todo o mês, em todas as semanas.");
+    setFeedback("Horário adicionado. Vale para todas as semanas, em todos os meses.");
     load();
   }
 
@@ -98,13 +95,13 @@ export default function DisponibilidadePage() {
           <div className="max-w-2xl">
             <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-medium">
               <Repeat className="h-3.5 w-3.5" />
-              Padrão mensal recorrente
+              Padrão semanal + calendário
             </div>
-            <h2 className="mt-3 text-xl font-semibold">Agenda de {monthLabel()}</h2>
+            <h2 className="mt-3 text-xl font-semibold">Sua agenda</h2>
             <p className="mt-2 text-sm leading-6 text-olive-100/90">
-              Configure uma vez os dias e horários em que você atende. O sistema repete esse padrão em{" "}
-              <strong className="font-semibold text-white">todas as semanas do mês</strong> — não é necessário
-              reconfigurar semana a semana.
+              Os horários fixos da semana se repetem em <strong className="font-semibold text-white">todos os meses</strong>.
+              No calendário, escolha o mês e bloqueie os dias ou períodos em que não vai atender, como &quot;só a partir
+              de 20 de janeiro&quot;.
             </p>
           </div>
           <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/15">
@@ -126,7 +123,9 @@ export default function DisponibilidadePage() {
         </p>
       ) : null}
 
-      <Card className="mb-6" title="Visão do mês">
+      <AvailabilityMonthCard version={rules.length} onFeedback={setFeedback} onError={setError} />
+
+      <Card className="mb-6" title="Horários fixos da semana">
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
           {weekdays.map((day) => {
             const dayRules = rulesByWeekday.get(day.value) || [];
@@ -167,7 +166,7 @@ export default function DisponibilidadePage() {
       <Card className="mb-6">
         <h2 className="text-base font-semibold text-graphite">Adicionar horário fixo</h2>
         <p className="mt-1 text-sm text-graphite/55">
-          Escolha o dia da semana e o intervalo. O horário valerá para todas as ocorrências desse dia no mês.
+          Escolha o dia da semana e o intervalo. O horário vale para esse dia em todas as semanas.
         </p>
 
         <div className="mt-5">
@@ -246,7 +245,7 @@ export default function DisponibilidadePage() {
                       <p className="text-sm text-graphite/55">
                         {formatTime(rule.start_time)} – {formatTime(rule.end_time)}
                       </p>
-                      <p className="mt-1 text-xs text-olive-700">Repete todo mês neste dia da semana</p>
+                      <p className="mt-1 text-xs text-olive-700">Repete toda semana neste dia</p>
                     </div>
                   </div>
                   <button
