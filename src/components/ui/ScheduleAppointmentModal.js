@@ -12,6 +12,7 @@ import { TIMEZONE } from "@/lib/constants";
 import { formatAppointmentDateTime } from "@/lib/datetime";
 import { formatAddress, isAddressComplete } from "@/lib/appointments/location";
 import { zonedDateKey, zonedTimeToUtc } from "@/lib/scheduling/timezone";
+import { BOOKING_HORIZON_DAYS } from "@/lib/scheduling/month";
 
 const inputClass =
   "mt-1 w-full rounded-xl border border-olive-900/15 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-olive-500 focus:ring-2 focus:ring-olive-200";
@@ -81,7 +82,7 @@ export default function ScheduleAppointmentModal({ open, onClose, patient = null
 
     const from = new Date();
     const to = new Date();
-    to.setDate(to.getDate() + 45);
+    to.setDate(to.getDate() + BOOKING_HORIZON_DAYS);
     const requests = [
       fetch("/api/admin/clinic-address").then((r) => r.json()).catch(() => ({})),
       fetch(`/api/appointments/slots?from=${from.toISOString()}&to=${to.toISOString()}`)

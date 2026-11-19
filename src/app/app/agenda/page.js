@@ -5,6 +5,8 @@ import { CalendarDays, Check, Clock, MapPin, MessageCircle, Video } from "lucide
 import PatientShell from "@/components/layout/PatientShell";
 import { Card } from "@/components/layout/AppShell";
 import BookingPaymentPanel from "@/components/ui/BookingPaymentPanel";
+import MonthCalendar from "@/components/ui/MonthCalendar";
+import { BOOKING_HORIZON_DAYS, formatDayKey, monthKeyOf, monthTitle } from "@/lib/scheduling/month";
 import { TIMEZONE } from "@/lib/constants";
 import { zonedDateKey } from "@/lib/scheduling/timezone";
 import { site, whatsappLink } from "@/lib/marketing/content";
@@ -58,22 +60,6 @@ function formatDayHeading(iso) {
   return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
-function groupSlotsByDay(slots) {
-  const groups = new Map();
-
-  for (const slot of slots) {
-    const key = zonedDateKey(new Date(slot.startsAt), TIMEZONE);
-    if (!groups.has(key)) {
-      groups.set(key, { key, startsAt: slot.startsAt, slots: [] });
-    }
-    groups.get(key).slots.push(slot);
-  }
-
-  return Array.from(groups.values()).sort(
-    (a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime()
-  );
-}
-
 export default function AgendaPage() {
   const [slots, setSlots] = useState([]);
   const [payment, setPayment] = useState({ settings: {}, methods: [] });
@@ -86,15 +72,30 @@ export default function AgendaPage() {
   const [loadingAgenda, setLoadingAgenda] = useState(true);
   const [modality, setModality] = useState(null);
   const [packages, setPackages] = useState({ catalog: [], mine: [] });
+  const [month, setMonth] = useState(() => monthKeyOf(new Date()));
+  const [day, setDay] = useState("");
 
-  const slotGroups = useMemo(() => {
-    const visible = slots.slice(0, 40);
-    if (selected && !visible.some((slot) => slot.startsAt === selected)) {
-      const chosen = slots.find((slot) => slot.startsAt === selected);
-      if (chosen) visible.push(chosen);
+  // Horários por dia (no fuso da clínica) para o calendário do mês.
+  const slotsByDay = useMemo(() => {
+    const map = new Map();
+    for (const slot of slots) {
+      const key = zonedDateKey(new Date(slot.startsAt), TIMEZONE);
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(slot);
     }
-    return groupSlotsByDay(visible);
-  }, [slots, selected]);
+    return map;
+  }, [slots]);
+  const daySlots = day ? slotsByDay.get(day) || [] : [];
+  const firstDayKey = slots.length ? zonedDateKey(new Date(slots[0].startsAt), TIMEZONE) : "";
+  const lastMonth = slots.length ? monthKeyOf(slots[slots.length - 1].startsAt) : month;
+  const monthHasSlots = slots.some((slot) => monthKeyOf(slot.startsAt) === month);
+  const nextDayKey = [...slotsByDay.keys()].find((key) => key.slice(0, 7) > month) || "";
+
+  function goToDay(dayKey) {
+    setMonth(dayKey.slice(0, 7));
+    setDay(dayKey);
+  }
+
   const selectedDate = selected ? new Date(selected) : null;
 
   useEffect(() => {
@@ -109,7 +110,7 @@ export default function AgendaPage() {
   useEffect(() => {
     const from = new Date();
     const to = new Date();
-    to.setDate(to.getDate() + 21);
+    to.setDate(to.getDate() + BOOKING_HORIZON_DAYS);
 
     Promise.all([
       fetch(`/api/appointments/slots?from=${from.toISOString()}&to=${to.toISOString()}`).then(async (r) => ({
@@ -133,6 +134,12 @@ export default function AgendaPage() {
         );
         setSlots(list);
         setPayment(paymentData);
+        // Abre no mês do primeiro horário livre (ex.: agenda liberada em dezembro, atendimentos em janeiro).
+        if (list.length) {
+          const first = zonedDateKey(new Date(list[0].startsAt), TIMEZONE);
+          setMonth(first.slice(0, 7));
+          setDay(first);
+        }
 
         // Horário escolhido no pop-up do site (?slot=...): já deixa selecionado.
         const wanted = new URLSearchParams(window.location.search).get("slot");
@@ -142,6 +149,9 @@ export default function AgendaPage() {
           const match = list.find((slot) => new Date(slot.startsAt).getTime() === wantedTime);
           if (match) {
             setSelected(match.startsAt);
+            const matchDay = zonedDateKey(new Date(match.startsAt), TIMEZONE);
+            setMonth(matchDay.slice(0, 7));
+            setDay(matchDay);
             setSlotNotice("Reservamos o horário que você escolheu. Confirme abaixo para finalizar.");
           } else if (!Number.isNaN(wantedTime)) {
             setSlotNotice(
@@ -258,7 +268,7 @@ export default function AgendaPage() {
           <p className="text-sm text-graphite/55">Carregando agenda…</p>
         </Card>
       ) : (
-        <div className="grid gap-4 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           <Card className="lg:col-span-2">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
@@ -280,33 +290,58 @@ export default function AgendaPage() {
                   Assim que a agenda for reaberta, os horários voltam a aparecer aqui.
                 </p>
               </div>
-            ) : slotGroups.length ? (
-              <div className="mt-6 space-y-5">
-                {slotGroups.map((group) => (
-                  <section
-                    key={group.key}
-                    className="overflow-hidden rounded-2xl border border-olive-900/10 bg-linen/50"
-                  >
+            ) : slots.length ? (
+              <div className="mt-5 space-y-5">
+                {firstDayKey && firstDayKey.slice(0, 7) !== monthKeyOf(new Date()) && month === firstDayKey.slice(0, 7) ? (
+                  <p className="rounded-xl border border-olive-200 bg-olive-50 px-3 py-2 text-sm text-olive-900">
+                    Os atendimentos começam em {formatDayKey(firstDayKey, { day: "numeric", month: "long" })}.
+                  </p>
+                ) : null}
+                <MonthCalendar
+                  month={month}
+                  onMonthChange={(next) => {
+                    setMonth(next);
+                    setDay("");
+                  }}
+                  minMonth={monthKeyOf(new Date())}
+                  maxMonth={lastMonth}
+                  selectedDay={day}
+                  onSelectDay={setDay}
+                  dayInfo={(dayKey) => {
+                    const count = slotsByDay.get(dayKey)?.length || 0;
+                    return { count, disabled: !count };
+                  }}
+                />
+
+                {!monthHasSlots ? (
+                  <div className="rounded-2xl border border-dashed border-olive-300/80 bg-olive-50/40 px-4 py-6 text-center">
+                    <p className="font-medium text-graphite">Sem horários em {monthTitle(month).toLowerCase()}</p>
+                    {nextDayKey ? (
+                      <button
+                        type="button"
+                        onClick={() => goToDay(nextDayKey)}
+                        className="mt-2 text-sm font-semibold text-olive-800 hover:underline"
+                      >
+                        Ver o próximo horário livre ({formatDayKey(nextDayKey, { day: "numeric", month: "long" })})
+                      </button>
+                    ) : null}
+                  </div>
+                ) : day && daySlots.length ? (
+                  <section className="overflow-hidden rounded-2xl border border-olive-900/10 bg-linen/50">
                     <div className="flex items-center gap-2 border-b border-olive-900/10 bg-porcelain px-4 py-3">
                       <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-olive-100 text-olive-700">
                         <CalendarDays className="h-4 w-4" strokeWidth={1.75} />
                       </div>
                       <div>
-                        <p className="text-sm font-semibold text-graphite">
-                          {formatDayHeading(group.startsAt)}
-                        </p>
+                        <p className="text-sm font-semibold text-graphite">{formatDayHeading(daySlots[0].startsAt)}</p>
                         <p className="text-xs text-graphite/45">
-                          {group.slots.length === 1
-                            ? "1 horário livre"
-                            : `${group.slots.length} horários livres`}
+                          {daySlots.length === 1 ? "1 horário livre" : `${daySlots.length} horários livres`}
                         </p>
                       </div>
                     </div>
-
                     <div className="flex flex-wrap gap-2 p-4">
-                      {group.slots.map((slot) => {
+                      {daySlots.map((slot) => {
                         const isSelected = selected === slot.startsAt;
-
                         return (
                           <button
                             key={slot.startsAt}
@@ -325,7 +360,9 @@ export default function AgendaPage() {
                       })}
                     </div>
                   </section>
-                ))}
+                ) : (
+                  <p className="text-center text-sm text-graphite/55">Toque num dia marcado para ver os horários.</p>
+                )}
               </div>
             ) : (
               <div className="mt-6 rounded-2xl border border-dashed border-olive-300/80 bg-olive-50/40 px-4 py-10 text-center">

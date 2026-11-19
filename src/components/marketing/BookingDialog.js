@@ -6,6 +6,7 @@ import { Check, Clock, MapPin, MessageCircle, Video, X } from "lucide-react";
 import { TIMEZONE } from "@/lib/constants";
 import { zonedDateKey } from "@/lib/scheduling/timezone";
 import { site, whatsappLink } from "@/lib/marketing/content";
+import { BOOKING_HORIZON_DAYS } from "@/lib/scheduling/month";
 
 const BookingContext = createContext({ open: () => {} });
 
@@ -15,7 +16,7 @@ export function useBooking() {
 
 const WHATSAPP_MESSAGE = `Olá, ${site.name}! Gostaria de marcar uma consulta. Pode me orientar sobre horários e valores?`;
 const IN_PERSON_MESSAGE = `Olá, ${site.name}! Gostaria de marcar uma consulta presencial. Quais horários você tem disponíveis?`;
-const DAYS_AHEAD = 21;
+const DAYS_AHEAD = BOOKING_HORIZON_DAYS;
 
 function formatTime(iso) {
   return new Date(iso).toLocaleTimeString("pt-BR", {

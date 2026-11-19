@@ -587,12 +587,14 @@ Próximos passos: retorno em 30 dias.`,
   };
 }
 
-export function generateDemoSlots(fromIso, toIso) {
+export function generateDemoSlots(fromIso, toIso, { rules = demoAvailabilityRules, blocks = [] } = {}) {
+  const now = Date.now();
   return generateSlotsFromRules({
     from: new Date(fromIso),
     to: new Date(toIso),
-    rules: demoAvailabilityRules
-  }).slice(0, 24);
+    rules,
+    blocks
+  }).filter((slot) => new Date(slot.startsAt).getTime() > now);
 }
 
 export { patientId };

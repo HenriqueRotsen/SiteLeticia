@@ -324,7 +324,7 @@ export async function handleDemoApi(request) {
     const from = url.searchParams.get("from");
     const to = url.searchParams.get("to");
     return json({
-      slots: generateDemoSlots(from, to),
+      slots: generateDemoSlots(from, to, { rules: state.availabilityRules, blocks: state.availabilityBlocks }),
       bookingEnabled: true,
       durationMin: 60,
       bufferMin: 15
@@ -1304,6 +1304,17 @@ export async function handleDemoApi(request) {
     );
     const updated = state.appointments.find((a) => a.id === id);
     return json({ appointment: updated });
+  }
+
+  if (path === "/api/admin/availability/preview" && method === "GET") {
+    const blocks = state.availabilityBlocks;
+    return json({
+      slots: generateDemoSlots(url.searchParams.get("from"), url.searchParams.get("to"), {
+        rules: state.availabilityRules,
+        blocks
+      }),
+      blocks
+    });
   }
 
   if (path === "/api/admin/availability" && method === "GET") {
