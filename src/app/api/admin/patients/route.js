@@ -3,6 +3,7 @@ import { requireNutritionist } from "@/lib/auth";
 import { createSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { maskCpf } from "@/lib/cpf";
 import { writeAuditLog, getClientIp } from "@/lib/audit";
+import { patientSearchFilter, waitlistPositions } from "@/lib/waitlist/patient-search";
 
 export async function GET(request) {
   const auth = await requireNutritionist();
@@ -28,8 +29,9 @@ export async function GET(request) {
     .select("id, full_name, phone, goal, cpf, user_id, source, waitlist_id, created_at")
     .order("created_at", { ascending: false });
 
-  if (q) {
-    query = query.or(`full_name.ilike.%${q}%,phone.ilike.%${q}%`);
+  const searchFilter = patientSearchFilter(q);
+  if (searchFilter) {
+    query = query.or(searchFilter);
   }
 
   const { data, error } = await query;
@@ -39,17 +41,17 @@ export async function GET(request) {
   }
 
   let waitlistStats = null;
+  let positions = new Map();
   try {
-    const [{ count: waitlistTotal }, { count: waitlistUnlinked }] = await Promise.all([
-      admin.from("waitlist").select("id", { count: "exact", head: true }),
-      admin
-        .from("waitlist")
-        .select("id", { count: "exact", head: true })
-        .is("converted_patient_id", null)
-    ]);
+    const { data: entries, error: waitlistError } = await admin
+      .from("waitlist")
+      .select("id, status, created_at, converted_patient_id");
+    if (waitlistError) throw waitlistError;
+    positions = waitlistPositions(entries || []);
     waitlistStats = {
-      total: waitlistTotal || 0,
-      unlinked: waitlistUnlinked || 0
+      total: (entries || []).length,
+      waiting: (entries || []).filter((entry) => entry.status === "waiting").length,
+      unlinked: (entries || []).filter((entry) => !entry.converted_patient_id).length
     };
   } catch (statsError) {
     console.error("Waitlist stats failed:", statsError);
@@ -63,13 +65,20 @@ export async function GET(request) {
     ip: getClientIp(request)
   });
 
-  const patients = (data || []).map((p) => ({
-    ...p,
-    cpf_masked: maskCpf(p.cpf),
-    cpf: undefined,
-    has_account: Boolean(p.user_id),
-    from_waitlist: p.source === "waitlist" || Boolean(p.waitlist_id)
-  }));
+  const patients = (data || []).map((p) => {
+    const entry = p.waitlist_id ? positions.get(p.waitlist_id) : null;
+    return {
+      ...p,
+      cpf_masked: maskCpf(p.cpf),
+      cpf: undefined,
+      has_account: Boolean(p.user_id),
+      // Só conta como fila quem ainda tem cadastro na fila (removidos saem daqui).
+      from_waitlist: Boolean(entry),
+      waitlist_status: entry?.status || null,
+      waitlist_position: entry?.position ?? null,
+      waitlist_joined_at: entry?.createdAt || null
+    };
+  });
 
   if (waitlistStats) {
     waitlistStats.withoutAccount = patients.filter((p) => p.from_waitlist && !p.has_account).length;

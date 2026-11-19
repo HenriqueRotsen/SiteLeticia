@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { RefreshCw, Search } from "lucide-react";
 import AdminShell from "@/components/layout/AdminShell";
@@ -28,6 +28,7 @@ export default function AdminPatientsPage() {
   const [syncMessage, setSyncMessage] = useState("");
   const [loadError, setLoadError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [onlyWaitlist, setOnlyWaitlist] = useState(false);
 
   const loadPatients = useCallback(async () => {
     setLoading(true);
@@ -81,6 +82,14 @@ export default function AdminPatientsPage() {
     patients.filter((p) => p.from_waitlist && !p.has_account).length;
   const waitlistTotal = waitlistStats?.total ?? null;
   const unlinked = waitlistStats?.unlinked ?? 0;
+
+  // Na visão "Só fila de espera", a ordem é a da fila (1º, 2º, …).
+  const rows = useMemo(() => {
+    if (!onlyWaitlist) return patients;
+    return patients
+      .filter((p) => p.waitlist_status === "waiting")
+      .sort((a, b) => a.waitlist_position - b.waitlist_position);
+  }, [patients, onlyWaitlist]);
 
   return (
     <AdminShell
@@ -151,6 +160,26 @@ export default function AdminPatientsPage() {
             className={inputClassName("pl-9")}
           />
         </label>
+        <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Filtrar pacientes">
+          {[
+            { value: false, label: "Todos" },
+            { value: true, label: "Só fila de espera" }
+          ].map((option) => (
+            <button
+              key={option.label}
+              type="button"
+              aria-pressed={onlyWaitlist === option.value}
+              onClick={() => setOnlyWaitlist(option.value)}
+              className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                onlyWaitlist === option.value
+                  ? "border-olive-700 bg-olive-700 text-white"
+                  : "border-olive-900/10 bg-white text-graphite/70 hover:border-olive-400"
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
       </Card>
       {loadError ? (
         <Card className="mb-4 border-rose-200 bg-rose-50/80">
@@ -165,7 +194,9 @@ export default function AdminPatientsPage() {
               ? "Carregando pacientes..."
               : loadError
                 ? "Não foi possível carregar a lista."
-                : "Nenhum paciente encontrado."
+                : onlyWaitlist
+                  ? "Ninguém aguardando na fila com esse filtro."
+                  : "Nenhum paciente encontrado."
           }
           columns={[
             {
@@ -176,10 +207,21 @@ export default function AdminPatientsPage() {
                   <Link href={`/admin/pacientes/${row.id}`} className="font-medium text-graphite underline-offset-2 hover:text-olive-800 hover:underline">
                     {row.full_name}
                   </Link>
-                  {row.from_waitlist ? <Badge variant="warning">Fila de espera</Badge> : null}
                   {!row.has_account ? <Badge variant="neutral">Sem conta</Badge> : null}
                 </div>
               )
+            },
+            {
+              key: "waitlist",
+              label: "Fila",
+              render: (row) =>
+                row.waitlist_position ? (
+                  <Badge variant="warning" className="whitespace-nowrap">{row.waitlist_position}º na fila</Badge>
+                ) : row.waitlist_status === "called" ? (
+                  <Badge variant="success">Chamada</Badge>
+                ) : (
+                  <span className="text-graphite/35">—</span>
+                )
             },
             {
               key: "phone",
@@ -201,7 +243,7 @@ export default function AdminPatientsPage() {
               )
             }
           ]}
-          rows={patients.map((p) => ({ ...p, id: p.id }))}
+          rows={rows}
           onRowDoubleClick={(row) => router.push(`/admin/pacientes/${row.id}`)}
         />
       </Card>

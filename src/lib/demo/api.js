@@ -946,7 +946,14 @@ export async function handleDemoApi(request) {
   }
 
   if (path === "/api/admin/patients" && method === "GET") {
-    return json({ patients: demoPatientsList });
+    return json({
+      patients: demoPatientsList.map((p) => ({
+        ...p,
+        from_waitlist: Boolean(p.from_waitlist),
+        waitlist_status: p.from_waitlist ? "waiting" : null,
+        waitlist_position: p.from_waitlist ? 1 : null
+      }))
+    });
   }
 
   if (path.match(/^\/api\/admin\/patients\/[^/]+$/) && method === "GET") {

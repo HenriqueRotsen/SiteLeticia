@@ -184,7 +184,7 @@ export default function WaitlistBox() {
       return;
     }
 
-    if (response.status === 409 && result.position) {
+    if (response.status === 409 && (result.position || result.status === "called")) {
       setFeedback(applyWaitlistStatus(result, "info"));
       return;
     }
