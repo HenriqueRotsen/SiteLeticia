@@ -8,6 +8,11 @@ import AdminShell from "@/components/layout/AdminShell";
 import { Card, btnPrimary } from "@/components/layout/AppShell";
 import Badge, { appointmentBadge } from "@/components/ui/Badge";
 import BookingToggleCard from "@/components/ui/BookingToggleCard";
+import SmartTable from "@/components/ui/SmartTable";
+import { appointmentSearchFields, dateSort, modalityFilter, periodFilter, statusFilter } from "@/components/ui/appointmentTable";
+import { formatAppointmentDateTime } from "@/lib/datetime";
+
+const FILTERS = [periodFilter, statusFilter, modalityFilter];
 import { useDialog } from "@/components/ui/ConfirmDialog";
 
 export default function AdminAgendaPage() {
@@ -17,11 +22,13 @@ export default function AdminAgendaPage() {
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
   const [scheduling, setScheduling] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     const res = await fetch("/api/admin/appointments");
     const data = await res.json();
     setAppointments(data.appointments || []);
+    setLoading(false);
   }, []);
 
   useEffect(() => {
@@ -78,66 +85,92 @@ export default function AdminAgendaPage() {
         </p>
       ) : null}
       <Card>
-        <table className="min-w-full text-sm">
-          <thead>
-            <tr className="text-left text-xs uppercase tracking-wide text-graphite/50">
-              <th className="py-2">Paciente</th>
-              <th className="py-2">Horário</th>
-              <th className="py-2">Status</th>
-              <th className="py-2">Meet</th>
-              <th className="py-2">Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            {appointments.map((appt) => {
-              const badge = appointmentBadge(appt.status);
-
-              return (
-                <tr key={appt.id} className="border-t border-olive-900/5">
-                  <td className="py-3">
-                    <Link href={`/admin/pacientes/${appt.patient_id}`} className="font-medium text-graphite underline-offset-2 hover:text-olive-800 hover:underline">
-                      {appt.patients?.full_name || "—"}
-                    </Link>
-                  </td>
-                  <td className="py-3">
-                    <Link href={`/admin/consultas/${appt.id}`} className="underline-offset-2 hover:text-olive-800 hover:underline">
-                      {new Date(appt.starts_at).toLocaleString("pt-BR")}
-                    </Link>
-                  </td>
-                  <td className="py-3">
-                    <div className="flex flex-wrap gap-1">
-                      <Badge variant={badge.variant}>{badge.label}</Badge>
-                      {appt.modality === "in_person" ? <Badge variant="info">Presencial</Badge> : null}
-                    </div>
-                  </td>
-                  <td className="py-3">
-                    {appt.meet_link && appt.status === "scheduled" ? (
-                      <a href={appt.meet_link} target="_blank" rel="noreferrer" className="text-olive-700 underline">
-                        Abrir
-                      </a>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-                  <td className="py-3">
-                    {appt.status === "scheduled" ? (
-                      <button
-                        type="button"
-                        disabled={cancellingId === appt.id}
-                        onClick={() => cancelAppointment(appt.id)}
-                        className="text-sm font-semibold text-rose-700 hover:underline disabled:opacity-50"
-                      >
-                        {cancellingId === appt.id ? "Cancelando..." : "Cancelar"}
-                      </button>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <SmartTable
+          rows={appointments}
+          loading={loading}
+          itemLabel={["consulta", "consultas"]}
+          searchPlaceholder="Paciente, telefone ou data"
+          searchFields={(row) => appointmentSearchFields(row, { includePatient: true })}
+          filters={FILTERS}
+          initialFilters={{ period: "upcoming" }}
+          defaultSort={{ key: "starts_at", dir: "asc" }}
+          emptyMessage="Nenhuma consulta na agenda."
+          noResultsMessage="Nenhuma consulta com esses filtros."
+          columns={[
+            {
+              key: "patient",
+              label: "Paciente",
+              mobile: "title",
+              sortValue: (row) => row.patients?.full_name,
+              sortLabels: ["A–Z", "Z–A"],
+              render: (row) => (
+                <Link
+                  href={`/admin/pacientes/${row.patient_id}`}
+                  className="font-medium text-graphite underline-offset-2 hover:text-olive-800 hover:underline"
+                >
+                  {row.patients?.full_name || "—"}
+                </Link>
+              )
+            },
+            {
+              key: "starts_at",
+              label: "Horário",
+              mobile: "subtitle",
+              nowrap: true,
+              ...dateSort,
+              render: (row) => (
+                <Link href={`/admin/consultas/${row.id}`} className="underline-offset-2 hover:text-olive-800 hover:underline">
+                  {formatAppointmentDateTime(row.starts_at)}
+                </Link>
+              )
+            },
+            {
+              key: "status",
+              label: "Status",
+              mobile: "badges",
+              render: (row) => {
+                const badge = appointmentBadge(row.status);
+                return (
+                  <div className="flex flex-wrap justify-end gap-1 xl:justify-start">
+                    <Badge variant={badge.variant}>{badge.label}</Badge>
+                    {row.modality === "in_person" ? <Badge variant="info">Presencial</Badge> : null}
+                  </div>
+                );
+              }
+            },
+            {
+              key: "meet",
+              label: "Meet",
+              mobile: "actions",
+              render: (row) =>
+                row.meet_link && row.status === "scheduled" ? (
+                  <a href={row.meet_link} target="_blank" rel="noreferrer" className="font-semibold text-olive-700 underline">
+                    Abrir Meet
+                  </a>
+                ) : (
+                  <span className="hidden text-graphite/35 xl:inline">—</span>
+                )
+            },
+            {
+              key: "actions",
+              label: "Ações",
+              mobile: "actions",
+              render: (row) =>
+                row.status === "scheduled" ? (
+                  <button
+                    type="button"
+                    disabled={cancellingId === row.id}
+                    onClick={() => cancelAppointment(row.id)}
+                    className="text-sm font-semibold text-rose-700 hover:underline disabled:opacity-50"
+                  >
+                    {cancellingId === row.id ? "Cancelando..." : "Cancelar"}
+                  </button>
+                ) : (
+                  <span className="hidden text-graphite/35 xl:inline">—</span>
+                )
+            }
+          ]}
+        />
       </Card>
     </AdminShell>
   );

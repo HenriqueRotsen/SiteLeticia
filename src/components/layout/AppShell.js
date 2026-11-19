@@ -405,58 +405,6 @@ export function Card({ children, className = "", title, action }) {
   );
 }
 
-export function TableShell({ children }) {
-  return <div className="-mx-1 overflow-x-auto">{children}</div>;
-}
-
-export function DataTable({
-  columns,
-  rows,
-  emptyMessage = "Nenhum registro.",
-  onRowDoubleClick
-}) {
-  if (!rows?.length) {
-    return <p className="py-8 text-center text-sm text-graphite/45">{emptyMessage}</p>;
-  }
-
-  return (
-    <TableShell>
-      <table className="min-w-full text-sm">
-        <thead>
-          <tr className="border-b border-olive-900/10 text-left">
-            {columns.map((col) => (
-              <th
-                key={col.key}
-                className="whitespace-nowrap pb-3 pr-4 text-xs font-semibold uppercase tracking-wide text-graphite/45"
-              >
-                {col.label}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-olive-900/5">
-          {rows.map((row) => (
-            <tr
-              key={row.id}
-              className={`group transition hover:bg-linen/70 ${
-                onRowDoubleClick ? "cursor-pointer" : ""
-              }`}
-              onDoubleClick={() => onRowDoubleClick?.(row)}
-              title={onRowDoubleClick ? "Clique duplo para abrir" : undefined}
-            >
-              {columns.map((col) => (
-                <td key={col.key} className="py-3.5 pr-4 text-graphite/70">
-                  {col.render ? col.render(row) : row[col.key]}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </TableShell>
-  );
-}
-
 export function inputClassName(extra = "") {
   return `w-full rounded-xl border border-olive-900/10 bg-white px-4 py-2.5 text-sm text-graphite outline-none transition placeholder:text-graphite/40 focus:border-olive-500 focus:ring-2 focus:ring-olive-100 ${extra}`;
 }

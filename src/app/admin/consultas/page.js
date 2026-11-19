@@ -1,36 +1,31 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { CalendarPlus } from "lucide-react";
 import ScheduleAppointmentModal from "@/components/ui/ScheduleAppointmentModal";
 import AdminShell from "@/components/layout/AdminShell";
 import { Card, btnPrimary, formatCurrency } from "@/components/layout/AppShell";
 import Badge, { appointmentBadge, paymentBadge } from "@/components/ui/Badge";
-import AppointmentsToolbar from "@/components/ui/AppointmentsToolbar";
-import SortableTh from "@/components/ui/SortableTh";
-import TablePagination from "@/components/ui/TablePagination";
-import { formatAppointmentDateTime } from "@/lib/datetime";
+import SmartTable from "@/components/ui/SmartTable";
 import {
-  APPOINTMENT_PAGE_SIZE,
-  filterAppointments,
-  paginateRows,
-  sortAppointments
-} from "@/lib/appointments/table-utils";
+  appointmentSearchFields,
+  dateSort,
+  modalityFilter,
+  paymentFilter,
+  periodFilter,
+  statusFilter
+} from "@/components/ui/appointmentTable";
+import { formatAppointmentDateTime } from "@/lib/datetime";
+import { APPOINTMENT_STATUS_LABELS, PAYMENT_STATUS_LABELS } from "@/lib/labels";
 
-const DEFAULT_FILTERS = {
-  query: "",
-  period: "all",
-  status: "all",
-  paymentStatus: "all"
-};
+const FILTERS = [periodFilter, statusFilter, paymentFilter, modalityFilter];
 
 export default function AdminConsultasPage() {
+  const router = useRouter();
   const [appointments, setAppointments] = useState([]);
-  const [filters, setFilters] = useState(DEFAULT_FILTERS);
-  const [sortKey, setSortKey] = useState("starts_at");
-  const [sortDir, setSortDir] = useState("desc");
-  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [scheduling, setScheduling] = useState(false);
 
@@ -38,40 +33,13 @@ export default function AdminConsultasPage() {
     return fetch("/api/admin/appointments")
       .then((r) => r.json())
       .then((data) => setAppointments(data.appointments || []))
-      .catch(() => setError("Não foi possível carregar as consultas."));
+      .catch(() => setError("Não foi possível carregar as consultas."))
+      .finally(() => setLoading(false));
   }
 
   useEffect(() => {
     load();
   }, []);
-
-  useEffect(() => {
-    setPage(1);
-  }, [filters, sortKey, sortDir]);
-
-  const filtered = useMemo(
-    () => filterAppointments(appointments, filters, { includePatient: true }),
-    [appointments, filters]
-  );
-
-  const sorted = useMemo(
-    () => sortAppointments(filtered, sortKey, sortDir),
-    [filtered, sortKey, sortDir]
-  );
-
-  const pagination = useMemo(
-    () => paginateRows(sorted, page, APPOINTMENT_PAGE_SIZE),
-    [sorted, page]
-  );
-
-  function handleSort(key) {
-    if (sortKey === key) {
-      setSortDir((current) => (current === "asc" ? "desc" : "asc"));
-      return;
-    }
-    setSortKey(key);
-    setSortDir(key === "patient" ? "asc" : "desc");
-  }
 
   return (
     <AdminShell title="Consultas" breadcrumbs={["Admin", "Consultas"]} userName="Letícia">
@@ -88,117 +56,88 @@ export default function AdminConsultasPage() {
         </p>
       ) : null}
 
-      <Card className="mb-4">
-        <AppointmentsToolbar
-          filters={filters}
-          onChange={setFilters}
-          total={appointments.length}
-          filteredTotal={filtered.length}
-          showPatientHint
-        />
-      </Card>
-
       <Card>
-        {!pagination.rows.length ? (
-          <p className="py-8 text-center text-sm text-graphite/50">
-            Nenhuma consulta encontrada com esses filtros.
-          </p>
-        ) : (
-          <>
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <thead>
-                  <tr className="border-b border-olive-900/10">
-                    <SortableTh
-                      label="Paciente"
-                      sortKey="patient"
-                      activeKey={sortKey}
-                      direction={sortDir}
-                      onSort={handleSort}
-                    />
-                    <SortableTh
-                      label="Data"
-                      sortKey="starts_at"
-                      activeKey={sortKey}
-                      direction={sortDir}
-                      onSort={handleSort}
-                    />
-                    <SortableTh
-                      label="Status"
-                      sortKey="status"
-                      activeKey={sortKey}
-                      direction={sortDir}
-                      onSort={handleSort}
-                    />
-                    <SortableTh
-                      label="Pagamento"
-                      sortKey="payment"
-                      activeKey={sortKey}
-                      direction={sortDir}
-                      onSort={handleSort}
-                    />
-                    <SortableTh
-                      label="Valor"
-                      sortKey="amount"
-                      activeKey={sortKey}
-                      direction={sortDir}
-                      onSort={handleSort}
-                    />
-                    <th className="py-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-graphite/50">
-                      Ações
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pagination.rows.map((appt) => {
-                    const status = appointmentBadge(appt.status);
-                    const payment = paymentBadge(appt.payment_status);
-
-                    return (
-                      <tr key={appt.id} className="border-t border-olive-900/5 hover:bg-linen/50">
-                        <td className="py-3 pr-3 font-medium text-graphite">
-                          <Link href={`/admin/pacientes/${appt.patient_id}`} className="font-medium text-graphite underline-offset-2 hover:text-olive-800 hover:underline">
-                            {appt.patients?.full_name || "—"}
-                          </Link>
-                        </td>
-                        <td className="py-3 pr-3 whitespace-nowrap text-graphite/70">
-                          <Link href={`/admin/consultas/${appt.id}`} className="underline-offset-2 hover:text-olive-800 hover:underline">
-                            {formatAppointmentDateTime(appt.starts_at)}
-                          </Link>
-                        </td>
-                        <td className="py-3 pr-3">
-                          <Badge variant={status.variant}>{status.label}</Badge>
-                        </td>
-                        <td className="py-3 pr-3">
-                          <Badge variant={payment.variant}>{payment.label}</Badge>
-                        </td>
-                        <td className="py-3 pr-3 whitespace-nowrap text-graphite/70">
-                          {formatCurrency(appt.amount_cents)}
-                        </td>
-                        <td className="py-3 pr-3">
-                          <Link
-                            href={`/admin/consultas/${appt.id}`}
-                            className="font-semibold text-olive-800 hover:underline"
-                          >
-                            Detalhes
-                          </Link>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            <TablePagination
-              page={pagination.page}
-              totalPages={pagination.totalPages}
-              total={pagination.total}
-              pageSize={APPOINTMENT_PAGE_SIZE}
-              onPageChange={setPage}
-            />
-          </>
-        )}
+        <SmartTable
+          rows={appointments}
+          loading={loading}
+          itemLabel={["consulta", "consultas"]}
+          searchPlaceholder="Paciente, telefone ou data"
+          searchFields={(row) => appointmentSearchFields(row, { includePatient: true })}
+          filters={FILTERS}
+          defaultSort={{ key: "starts_at", dir: "desc" }}
+          emptyMessage="Nenhuma consulta ainda."
+          noResultsMessage="Nenhuma consulta encontrada com esses filtros."
+          onRowDoubleClick={(row) => router.push(`/admin/consultas/${row.id}`)}
+          columns={[
+            {
+              key: "patient",
+              label: "Paciente",
+              mobile: "title",
+              sortValue: (row) => row.patients?.full_name,
+              sortLabels: ["A–Z", "Z–A"],
+              render: (row) => (
+                <Link
+                  href={`/admin/pacientes/${row.patient_id}`}
+                  className="font-medium text-graphite underline-offset-2 hover:text-olive-800 hover:underline"
+                >
+                  {row.patients?.full_name || "—"}
+                </Link>
+              )
+            },
+            {
+              key: "starts_at",
+              label: "Data",
+              mobile: "subtitle",
+              nowrap: true,
+              ...dateSort,
+              render: (row) => (
+                <Link href={`/admin/consultas/${row.id}`} className="underline-offset-2 hover:text-olive-800 hover:underline">
+                  {formatAppointmentDateTime(row.starts_at)}
+                  {row.modality === "in_person" ? " · Presencial" : ""}
+                </Link>
+              )
+            },
+            {
+              key: "status",
+              label: "Status",
+              mobile: "badges",
+              sortValue: (row) => APPOINTMENT_STATUS_LABELS[row.status],
+              sortLabels: ["A–Z", "Z–A"],
+              render: (row) => {
+                const badge = appointmentBadge(row.status);
+                return <Badge variant={badge.variant}>{badge.label}</Badge>;
+              }
+            },
+            {
+              key: "payment",
+              label: "Pagamento",
+              sortValue: (row) => PAYMENT_STATUS_LABELS[row.payment_status],
+              sortLabels: ["A–Z", "Z–A"],
+              render: (row) => {
+                const badge = paymentBadge(row.payment_status);
+                return <Badge variant={badge.variant}>{badge.label}</Badge>;
+              }
+            },
+            {
+              key: "amount",
+              label: "Valor",
+              nowrap: true,
+              sortValue: (row) => Number(row.amount_cents) || 0,
+              sortLabels: ["menor", "maior"],
+              render: (row) => formatCurrency(row.amount_cents)
+            },
+            {
+              key: "actions",
+              label: "",
+              mobile: "actions",
+              render: (row) => (
+                <Link href={`/admin/consultas/${row.id}`} className="font-semibold text-olive-800 hover:underline">
+                  Detalhes
+                </Link>
+              )
+            }
+          ]}
+        />
       </Card>
     </AdminShell>
   );

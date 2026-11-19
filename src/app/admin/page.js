@@ -14,7 +14,9 @@ import {
 import { CalendarDays, CircleDollarSign, FlaskConical, Users } from "lucide-react";
 import AdminShell from "@/components/layout/AdminShell";
 import InstallAppCard from "@/components/pwa/InstallAppCard";
-import { Card, DataTable, formatCurrency } from "@/components/layout/AppShell";
+import { Card, formatCurrency } from "@/components/layout/AppShell";
+import SmartTable from "@/components/ui/SmartTable";
+import { formatAppointmentDateTime } from "@/lib/datetime";
 import Badge, { appointmentBadge, paymentBadge } from "@/components/ui/Badge";
 import StatCard from "@/components/ui/StatCard";
 import { AppointmentJoinButton } from "@/components/ui/UpcomingAppointments";
@@ -159,12 +161,15 @@ export default function AdminDashboardPage() {
       </div>
 
       <Card className="mt-6" title="Próximas consultas">
-        <DataTable
+        <SmartTable
+          pageSize={5}
+          itemLabel={["consulta", "consultas"]}
           emptyMessage="Nenhuma consulta agendada."
           columns={[
             {
               key: "patient",
               label: "Paciente",
+              mobile: "title",
               render: (row) => (
                 <Link href={`/admin/pacientes/${row.patient_id}`} className="font-medium text-graphite underline-offset-2 hover:text-olive-800 hover:underline">
                   {row.patients?.full_name || "—"}
@@ -174,15 +179,18 @@ export default function AdminDashboardPage() {
             {
               key: "when",
               label: "Data e hora",
+              mobile: "subtitle",
+              nowrap: true,
               render: (row) => (
                 <Link href={`/admin/consultas/${row.id}`} className="underline-offset-2 hover:text-olive-800 hover:underline">
-                  {new Date(row.starts_at).toLocaleString("pt-BR")}
+                  {formatAppointmentDateTime(row.starts_at)}
                 </Link>
               )
             },
             {
               key: "status",
               label: "Status",
+              mobile: "badges",
               render: (row) => {
                 const badge = appointmentBadge(row.status);
                 return <Badge variant={badge.variant}>{badge.label}</Badge>;
@@ -204,10 +212,11 @@ export default function AdminDashboardPage() {
             {
               key: "meet",
               label: "Local",
+              mobile: "actions",
               render: (row) => <AppointmentJoinButton appointment={row} size="sm" />
             }
           ]}
-          rows={(data.upcoming || []).map((appt) => ({ ...appt, id: appt.id }))}
+          rows={data.upcoming || []}
         />
         <div className="mt-4 border-t border-olive-900/10 pt-4">
           <Link href="/admin/consultas" className="text-sm font-semibold text-olive-700 hover:text-olive-800">
