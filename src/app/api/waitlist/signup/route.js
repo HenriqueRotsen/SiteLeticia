@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { GOALS } from "@/lib/constants";
+import { antiSpamDecision, verifyRecaptcha } from "@/lib/waitlist/antispam";
+import { getClientIp } from "@/lib/audit";
 import {
   computeWaitlistPosition,
   getWaitlistEntryByPhone,
@@ -13,46 +15,8 @@ function isDuplicatePhone(error) {
   return error?.code === "23505" || error?.message?.toLowerCase().includes("duplicate");
 }
 
-async function verifyRecaptcha(token) {
-  const secret = process.env.RECAPTCHA_SECRET_KEY;
-
-  if (!secret) {
-    return { ok: true };
-  }
-
-  if (!token) {
-    return {
-      ok: false,
-      message: "Não foi possível validar a proteção anti-spam."
-    };
-  }
-
-  const params = new URLSearchParams({
-    secret,
-    response: token
-  });
-
-  const response = await fetch("https://www.google.com/recaptcha/api/siteverify", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded"
-    },
-    body: params
-  });
-  const result = await response.json();
-
-  if (!result.success || result.score < 0.5 || result.action !== "waitlist_signup") {
-    return {
-      ok: false,
-      message: "Cadastro bloqueado pela proteção anti-spam. Tente novamente."
-    };
-  }
-
-  return { ok: true };
-}
-
 export async function POST(request) {
-  const { fullName, phone: rawPhone, goal, recaptchaToken } = await request.json();
+  const { fullName, phone: rawPhone, goal, recaptchaToken, website, elapsedMs } = await request.json();
   const phone = normalizeWaitlistPhone(rawPhone);
   const cleanName = fullName?.trim();
 
@@ -64,9 +28,29 @@ export async function POST(request) {
   }
 
   const recaptcha = await verifyRecaptcha(recaptchaToken);
+  const decision = antiSpamDecision({
+    recaptcha,
+    honeypot: typeof website === "string" && website.trim() !== "",
+    elapsedMs: Number.isFinite(Number(elapsedMs)) ? Number(elapsedMs) : undefined,
+    ip: getClientIp(request) || "unknown"
+  });
 
-  if (!recaptcha.ok) {
-    return NextResponse.json({ message: recaptcha.message }, { status: 400 });
+  // Registro sem dados pessoais, para entender recusas e notas baixas.
+  if (!decision.ok || recaptcha.status !== "pass") {
+    console.warn(
+      "[waitlist-antispam]",
+      JSON.stringify({ allowed: decision.ok, block: decision.reason || null, recaptcha: recaptcha.reason, ...recaptcha.details })
+    );
+  }
+
+  if (!decision.ok) {
+    return NextResponse.json(
+      {
+        message:
+          "Não conseguimos confirmar o cadastro agora. Aguarde alguns segundos e tente de novo, ou fale com a Letícia pelo WhatsApp."
+      },
+      { status: 400 }
+    );
   }
 
   let supabase;

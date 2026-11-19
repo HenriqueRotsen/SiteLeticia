@@ -2,7 +2,7 @@
 
 import Script from "next/script";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { GOALS } from "@/lib/constants";
 
 const initialSignup = {
@@ -82,6 +82,12 @@ export default function WaitlistBox() {
   const [lookup, setLookup] = useState(initialLookup);
   const [feedback, setFeedback] = useState(null);
   const [loading, setLoading] = useState(false);
+  const honeypotRef = useRef(null);
+  const formStartedAt = useRef(0);
+
+  useEffect(() => {
+    formStartedAt.current = Date.now();
+  }, []);
 
   const recaptchaSiteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
 
@@ -103,18 +109,27 @@ export default function WaitlistBox() {
       return null;
     }
 
-    if (!window.grecaptcha) {
-      throw new Error("Proteção anti-spam ainda está carregando. Tente novamente.");
+    // Espera o script carregar por alguns segundos; se não carregar (bloqueador, rede lenta),
+    // segue sem o token e o servidor usa as outras proteções.
+    for (let i = 0; i < 20 && !window.grecaptcha; i += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 200));
     }
+    if (!window.grecaptcha) return null;
 
-    return new Promise((resolve, reject) => {
-      window.grecaptcha.ready(() => {
-        window.grecaptcha
-          .execute(recaptchaSiteKey, { action: "waitlist_signup" })
-          .then(resolve)
-          .catch(() => reject(new Error("Não foi possível validar o reCAPTCHA.")));
-      });
+    const token = new Promise((resolve) => {
+      try {
+        window.grecaptcha.ready(() => {
+          window.grecaptcha
+            .execute(recaptchaSiteKey, { action: "waitlist_signup" })
+            .then(resolve)
+            .catch(() => resolve(null));
+        });
+      } catch {
+        resolve(null);
+      }
     });
+    const timeout = new Promise((resolve) => setTimeout(() => resolve(null), 6000));
+    return Promise.race([token, timeout]);
   }
 
   async function handleSignup(event) {
@@ -154,7 +169,9 @@ export default function WaitlistBox() {
         fullName,
         phone,
         goal: signup.goal,
-        recaptchaToken
+        recaptchaToken,
+        website: honeypotRef.current?.value || "",
+        elapsedMs: Date.now() - formStartedAt.current
       })
     });
     const result = await response.json();
@@ -238,6 +255,11 @@ export default function WaitlistBox() {
 
       {activeTab === "signup" ? (
         <form className="mt-6 space-y-4" onSubmit={handleSignup}>
+          {/* Campo isca: invisível para pessoas, robôs costumam preencher. */}
+          <div aria-hidden="true" style={{ position: "absolute", left: "-10000px", width: 1, height: 1, overflow: "hidden" }}>
+            <label htmlFor="website">Site</label>
+            <input ref={honeypotRef} id="website" name="website" type="text" tabIndex={-1} autoComplete="off" defaultValue="" />
+          </div>
           <div>
             <label className="mb-2 block text-sm font-semibold text-graphite" htmlFor="fullName">
               Nome completo
