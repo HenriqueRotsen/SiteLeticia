@@ -175,7 +175,7 @@ export default function AdminPatientDetailPage() {
                       {patient.waitlist_position
                         ? `Fila de espera · ${patient.waitlist_position}º`
                         : patient.waitlist_status === "called"
-                          ? "Fila de espera · chamada"
+                          ? "Fila de espera · avisada"
                           : "Fila de espera"}
                     </Badge>
                   ) : null}

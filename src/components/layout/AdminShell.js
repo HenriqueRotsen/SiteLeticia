@@ -9,6 +9,7 @@ import {
   FlaskConical,
   LayoutDashboard,
   Library,
+  ListOrdered,
   Link2,
   MapPin,
   Package,
@@ -24,6 +25,7 @@ const navSections = [
     items: [
       { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
       { href: "/admin/pacientes", label: "Pacientes", icon: Users },
+      { href: "/admin/fila", label: "Fila de espera", icon: ListOrdered, bottomBar: false },
       { href: "/admin/consultas", label: "Consultas", icon: Stethoscope },
       { href: "/admin/exames", label: "Exames pendentes", icon: FlaskConical },
       { href: "/admin/financeiro", label: "Financeiro", icon: CircleDollarSign }
@@ -52,6 +54,7 @@ const ADMIN_CRUMB_HREFS = {
   Admin: "/admin",
   Dashboard: "/admin",
   Pacientes: "/admin/pacientes",
+  "Fila de espera": "/admin/fila",
   Consultas: "/admin/consultas",
   Detalhe: null,
   Financeiro: "/admin/financeiro",

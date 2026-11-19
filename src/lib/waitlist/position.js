@@ -82,7 +82,7 @@ export async function getWaitlistStatus(supabase, { phone, waitlistId } = {}) {
       waitlistId: entry.id,
       fullName: entry.full_name,
       message:
-        "Sua vaga foi liberada. Em breve a equipe entrará em contato pelo WhatsApp cadastrado."
+        "Chegou a sua vez! As consultas já estão liberadas para você: crie sua conta (ou entre) e marque o melhor horário."
     };
   }
 

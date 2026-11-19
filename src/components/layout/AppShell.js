@@ -170,7 +170,8 @@ export default function AppShell({
   const [menuOpen, setMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const flatNav = useMemo(() => navSections.flatMap((section) => section.items), [navSections]);
-  const mobileNav = flatNav.slice(0, 4);
+  // Barra inferior do celular: os 4 primeiros itens que não pediram para ficar só no menu.
+  const mobileNav = flatNav.filter((item) => item.bottomBar !== false).slice(0, 4);
 
   useEffect(() => {
     setMenuOpen(false);
