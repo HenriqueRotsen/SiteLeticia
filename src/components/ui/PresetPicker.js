@@ -5,6 +5,12 @@ import { Library, Loader2 } from "lucide-react";
 import { btnSecondary } from "@/components/layout/AppShell";
 import PresetApplyModal from "@/components/ui/PresetApplyModal";
 import SearchableSelect from "@/components/ui/SearchableSelect";
+import { countPresetSupplements } from "@/lib/presets/supplements";
+
+function supplementHint({ combos, products }) {
+  const productText = `${products} ${products === 1 ? "produto" : "produtos"}`;
+  return combos ? `${combos} ${combos === 1 ? "combo" : "combos"} · ${productText}` : productText;
+}
 
 /**
  * Seletor de pacotes/presets editáveis para aplicar na etapa atual.
@@ -55,10 +61,10 @@ export default function PresetPicker({
     () =>
       presets.map((preset) => {
         const examCount = (preset.content?.exams || []).length;
-        const itemCount = (preset.content?.items || []).length;
+        const supplementCount = countPresetSupplements(preset.content);
         let hint = "";
         if (type === "exam_order" && examCount) hint = `${examCount} exames`;
-        if (type === "supplement_pack" && itemCount) hint = `${itemCount} itens`;
+        if (type === "supplement_pack" && supplementCount.products) hint = supplementHint(supplementCount);
         if (type === "referral_letter" && preset.content?.specialty) {
           hint = preset.content.specialty;
         }

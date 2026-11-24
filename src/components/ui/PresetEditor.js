@@ -3,6 +3,7 @@
 import { Plus, Trash2 } from "lucide-react";
 import { btnSecondary, inputClassName } from "@/components/layout/AppShell";
 import VariableInsertButton, { VariableField } from "@/components/ui/VariableInsertButton";
+import SupplementEntriesEditor, { SupplementAddButtons, SupplementPreview } from "@/components/ui/SupplementEntriesEditor";
 
 function appendToken(value, token) {
   const base = String(value || "");
@@ -11,129 +12,36 @@ function appendToken(value, token) {
   return `${base} ${token}`;
 }
 
+// content.entries chega já no formato novo (a página converte presets antigos ao abrir).
 function SupplementEditor({ content, onChange }) {
-  const items = content.items || [];
-
-  function updateItem(index, patch) {
-    const next = items.map((item, i) => (i === index ? { ...item, ...patch } : item));
-    onChange({ ...content, items: next });
-  }
-
-  function removeItem(index) {
-    onChange({ ...content, items: items.filter((_, i) => i !== index) });
-  }
-
-  function addItem() {
-    onChange({
-      ...content,
-      items: [...items, { productName: "", dosage: "", posology: "", notes: "" }]
-    });
-  }
+  const entries = content.entries || [];
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold uppercase tracking-wide text-graphite/45">
-          Produtos ({items.length})
-        </p>
-        <button type="button" className={btnSecondary()} onClick={addItem}>
-          <Plus className="h-4 w-4" />
-          Adicionar
-        </button>
-      </div>
-
-      {items.map((item, index) => (
-        <div
-          key={`sup-${index}`}
-          className="space-y-2 rounded-2xl border border-violet-100 bg-violet-50/30 p-3"
-        >
-          <div className="flex items-start justify-between gap-2">
-            <p className="text-xs font-semibold text-violet-800">Item {index + 1}</p>
-            <button
-              type="button"
-              className="text-rose-500"
-              onClick={() => removeItem(index)}
-              aria-label="Remover item"
-            >
-              <Trash2 className="h-4 w-4" />
-            </button>
-          </div>
-          <VariableField
-            label="Produto"
-            onInsert={(token) =>
-              updateItem(index, { productName: appendToken(item.productName, token) })
-            }
-          >
-            <input
-              className={inputClassName()}
-              value={item.productName || ""}
-              onChange={(e) => updateItem(index, { productName: e.target.value })}
-              placeholder="Nome do suplemento"
-            />
-          </VariableField>
-          <div className="grid gap-2 sm:grid-cols-2 sm:items-end">
-            <VariableField
-              label="Dosagem"
-              onInsert={(token) =>
-                updateItem(index, { dosage: appendToken(item.dosage, token) })
-              }
-            >
-              <input
-                className={inputClassName()}
-                value={item.dosage || ""}
-                onChange={(e) => updateItem(index, { dosage: e.target.value })}
-                placeholder="Ex.: 300 mg"
-              />
-            </VariableField>
-            <VariableField
-              label="Posologia"
-              onInsert={(token) =>
-                updateItem(index, { posology: appendToken(item.posology, token) })
-              }
-            >
-              <input
-                className={inputClassName()}
-                value={item.posology || ""}
-                onChange={(e) => updateItem(index, { posology: e.target.value })}
-                placeholder="Ex.: 1x ao dia"
-              />
-            </VariableField>
-          </div>
-          <VariableField
-            label="Observações"
-            onInsert={(token) => updateItem(index, { notes: appendToken(item.notes, token) })}
-          >
-            <input
-              className={inputClassName()}
-              value={item.notes || ""}
-              onChange={(e) => updateItem(index, { notes: e.target.value })}
-              placeholder="Opcional"
-            />
-          </VariableField>
+    <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs leading-5 text-graphite/55">
+            <strong className="font-semibold text-graphite">Combo</strong>: vários componentes numa cápsula só, com uma
+            posologia. <strong className="font-semibold text-graphite">Avulso</strong>: um suplemento com posologia própria.
+          </p>
+          <SupplementAddButtons entries={entries} onChange={(next) => onChange({ ...content, entries: next })} />
         </div>
-      ))}
-
-      <label className="block text-xs font-medium text-graphite/55">
-        Posologia do pacote (combo)
-        <input
-          className={`mt-1 ${inputClassName()}`}
-          value={content.packPosology || ""}
-          onChange={(e) => onChange({ ...content, packPosology: e.target.value })}
-          placeholder="Ex.: 1 dose no café da manhã — usada no combo inteiro"
-        />
-      </label>
-
-      <VariableField
-        label="Notas do pacote"
-        onInsert={(token) => onChange({ ...content, notes: appendToken(content.notes, token) })}
-      >
-        <textarea
-          className={`min-h-[70px] ${inputClassName()}`}
-          value={content.notes || ""}
-          onChange={(e) => onChange({ ...content, notes: e.target.value })}
-          placeholder="Observações gerais do pacote. Use {{}} para variáveis."
-        />
-      </VariableField>
+        <SupplementEntriesEditor entries={entries} onChange={(next) => onChange({ ...content, entries: next })} />
+        <VariableField
+          label="Notas do preset"
+          onInsert={(token) => onChange({ ...content, notes: appendToken(content.notes, token) })}
+        >
+          <textarea
+            className={`min-h-[70px] ${inputClassName()}`}
+            value={content.notes || ""}
+            onChange={(e) => onChange({ ...content, notes: e.target.value })}
+            placeholder="Observações gerais. Use {{}} para variáveis, como {{paciente}}."
+          />
+        </VariableField>
+      </div>
+      <div className="lg:sticky lg:top-0">
+        <SupplementPreview entries={entries} />
+      </div>
     </div>
   );
 }

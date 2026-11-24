@@ -1,12 +1,20 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, ClipboardList, Pill, Plus, Stethoscope, Trash2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { CheckCircle2, ClipboardList, Layers, Pill, Plus, Stethoscope, ToggleLeft, Trash2 } from "lucide-react";
 import AdminShell from "@/components/layout/AdminShell";
 import { Card, btnPrimary, btnSecondary, inputClassName } from "@/components/layout/AppShell";
 import Badge from "@/components/ui/Badge";
 import Modal from "@/components/ui/Modal";
 import PresetEditor from "@/components/ui/PresetEditor";
+import SmartTable from "@/components/ui/SmartTable";
+import { useDialog } from "@/components/ui/ConfirmDialog";
+import {
+  countPresetSupplements,
+  presetSearchText,
+  presetSupplementEntries,
+  supplementPresetContent
+} from "@/lib/presets/supplements";
 
 const TYPE_META = {
   supplement_pack: {
@@ -27,7 +35,7 @@ const TYPE_META = {
 };
 
 function emptyContent(type) {
-  if (type === "supplement_pack") return { items: [], packPosology: "", notes: "" };
+  if (type === "supplement_pack") return { entries: [], notes: "" };
   if (type === "exam_order") return { exams: [], collectionNotes: [], observations: "" };
   return {
     specialty: "",
@@ -38,10 +46,66 @@ function emptyContent(type) {
   };
 }
 
+// Resumo do conteúdo para a lista ("2 combos · 7 produtos", "12 exames"…).
+function contentSummary(preset) {
+  if (preset.type === "supplement_pack") {
+    const { combos, products } = countPresetSupplements(preset.content);
+    const productText = `${products} ${products === 1 ? "produto" : "produtos"}`;
+    return combos ? `${combos} ${combos === 1 ? "combo" : "combos"} · ${productText}` : productText;
+  }
+  if (preset.type === "exam_order") {
+    const count = (preset.content?.exams || []).length;
+    return `${count} ${count === 1 ? "exame" : "exames"}`;
+  }
+  return preset.content?.specialty || "Parecer";
+}
+
+// O editor trabalha sempre no formato novo (combos + avulsos); presets antigos são convertidos ao abrir.
+function editableContent(preset) {
+  if (!preset.content) return emptyContent(preset.type);
+  if (preset.type === "supplement_pack") {
+    return { entries: presetSupplementEntries(preset.content, preset.title), notes: preset.content.notes || "" };
+  }
+  return structuredClone(preset.content);
+}
+
+function contentForSave(editing) {
+  if (editing.type === "supplement_pack") {
+    return supplementPresetContent(editing.content?.entries || [], editing.content?.notes || "");
+  }
+  return editing.content;
+}
+
+const FILTERS = [
+  {
+    key: "type",
+    label: "Tipo",
+    icon: Layers,
+    options: [
+      { value: "all", label: "Todos" },
+      ...Object.entries(TYPE_META).map(([value, meta]) => ({ value, label: meta.label }))
+    ],
+    predicate: (row, value) => row.type === value
+  },
+  {
+    key: "status",
+    label: "Situação",
+    icon: ToggleLeft,
+    options: [
+      { value: "all", label: "Ativos e inativos" },
+      { value: "active", label: "Ativos" },
+      { value: "inactive", label: "Inativos" }
+    ],
+    predicate: (row, value) => (value === "active" ? row.active !== false : row.active === false)
+  }
+];
+
 export default function AdminPresetsPage() {
   const [presets, setPresets] = useState([]);
-  const [filter, setFilter] = useState("all");
+  const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(null);
+  const originalRef = useRef("");
+  const { confirm } = useDialog();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
@@ -53,6 +117,7 @@ export default function AdminPresetsPage() {
   async function load(resync = false) {
     const res = await fetch(`/api/admin/presets?active=all${resync ? "&resync=1" : ""}`);
     const data = await res.json().catch(() => ({}));
+    setLoading(false);
     if (!res.ok && !(data.presets || []).length) {
       setError(data.message || "Erro ao carregar presets.");
       return;
@@ -72,17 +137,27 @@ export default function AdminPresetsPage() {
     load();
   }, []);
 
-  const filtered = useMemo(() => {
-    if (filter === "all") return presets;
-    return presets.filter((item) => item.type === filter);
-  }, [presets, filter]);
-
   function startEdit(preset) {
-    setEditing({
-      ...preset,
-      content: preset.content ? structuredClone(preset.content) : emptyContent(preset.type)
-    });
+    const next = { ...preset, content: editableContent(preset) };
+    originalRef.current = JSON.stringify({ title: next.title, content: contentForSave(next) });
+    setEditing(next);
     setError("");
+  }
+
+  async function closeEditor() {
+    if (!editing) return;
+    const current = JSON.stringify({ title: editing.title, content: contentForSave(editing) });
+    if (current !== originalRef.current) {
+      const ok = await confirm({
+        title: "Descartar alterações?",
+        message: "Você mudou este preset e ainda não salvou.",
+        confirmLabel: "Descartar",
+        cancelLabel: "Continuar editando",
+        tone: "danger"
+      });
+      if (!ok) return;
+    }
+    setEditing(null);
   }
 
   function updateContent(content) {
@@ -90,9 +165,7 @@ export default function AdminPresetsPage() {
   }
 
   function openCreateModal() {
-    const defaultType =
-      filter !== "all" && TYPE_META[filter] ? filter : "supplement_pack";
-    setCreateType(defaultType);
+    setCreateType("supplement_pack");
     setCreateTitle("");
     setCreateOpen(true);
     setError("");
@@ -146,7 +219,7 @@ export default function AdminPresetsPage() {
       body: JSON.stringify({
         title: editing.title,
         active: editing.active,
-        content: editing.content
+        content: contentForSave(editing)
       })
     });
     const data = await res.json().catch(() => ({}));
@@ -160,7 +233,7 @@ export default function AdminPresetsPage() {
           type: editing.type,
           title: editing.title,
           slug: editing.slug,
-          content: editing.content,
+          content: contentForSave(editing),
           active: editing.active !== false,
           sortOrder: editing.sortOrder ?? 0
         })
@@ -171,7 +244,7 @@ export default function AdminPresetsPage() {
         setError(createData.message || data.message || "Erro ao salvar preset.");
         return;
       }
-      setEditing(createData.preset || editing);
+      if (createData.preset) startEdit(createData.preset);
       await load();
       setSuccessModal({
         title: "Alterações salvas",
@@ -186,7 +259,8 @@ export default function AdminPresetsPage() {
       return;
     }
 
-    setEditing(data.preset || editing);
+    if (data.preset) startEdit(data.preset);
+    else originalRef.current = JSON.stringify({ title: editing.title, content: contentForSave(editing) });
     await load();
     setSuccessModal({
       title: "Alterações salvas",
@@ -247,7 +321,7 @@ export default function AdminPresetsPage() {
   return (
     <AdminShell
       title="Presets de prescrição"
-      subtitle="Edite pacotes e templates em formulário"
+      subtitle="Modelos de suplementação, exames e encaminhamentos"
       breadcrumbs={["Admin", "Configurações", "Presets"]}
       userName="Letícia"
     >
@@ -257,133 +331,135 @@ export default function AdminPresetsPage() {
         </p>
       ) : null}
 
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap gap-2">
-          {[
-            { id: "all", label: "Todos" },
-            { id: "supplement_pack", label: "Suplementação" },
-            { id: "exam_order", label: "Exames" },
-            { id: "referral_letter", label: "Encaminhamentos" }
-          ].map((option) => (
-            <button
-              key={option.id}
-              type="button"
-              onClick={() => setFilter(option.id)}
-              className={
-                filter === option.id
-                  ? "rounded-full bg-olive-800 px-3 py-1.5 text-xs font-semibold text-white"
-                  : "rounded-full border border-olive-900/10 bg-white px-3 py-1.5 text-xs font-medium text-graphite/60"
-              }
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <button type="button" className={btnPrimary()} onClick={openCreateModal}>
-            <Plus className="h-4 w-4" strokeWidth={1.75} />
-            Novo modelo
-          </button>
-          <button type="button" className={btnSecondary()} onClick={() => load(true)}>
-            Restaurar modelos
-          </button>
-        </div>
+      <div className="mb-4 flex flex-wrap justify-end gap-2">
+        <button type="button" className={btnPrimary()} onClick={openCreateModal}>
+          <Plus className="h-4 w-4" strokeWidth={1.75} />
+          Novo modelo
+        </button>
+        <button type="button" className={btnSecondary()} onClick={() => load(true)}>
+          Restaurar modelos
+        </button>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)] lg:items-start">
-        <Card className="flex min-h-0 flex-col overflow-hidden lg:sticky lg:top-[calc(var(--demo-banner-height,0px)+5.5rem)] lg:max-h-[calc(100dvh-var(--demo-banner-height,0px)-6.5rem)]">
-          <div className="max-h-[calc(100dvh-15rem)] min-h-0 flex-1 space-y-2 overflow-y-auto pr-1 lg:max-h-none">
-            {filtered.map((preset) => {
-              const meta = TYPE_META[preset.type] || TYPE_META.supplement_pack;
-              const Icon = meta.icon;
-              const doseHint =
-                preset.type === "supplement_pack"
-                  ? `${(preset.content?.items || []).length} itens`
-                  : preset.type === "exam_order"
-                    ? `${(preset.content?.exams || []).length} exames`
-                    : "parecer";
-
-              return (
-                <button
-                  key={preset.id}
-                  type="button"
-                  onClick={() => startEdit(preset)}
-                  className={`flex w-full items-center gap-3 rounded-xl border px-3 py-3 text-left transition ${
-                    editing?.id === preset.id
-                      ? "border-olive-400 bg-olive-50"
-                      : "border-olive-900/8 bg-white hover:border-olive-300"
-                  }`}
-                >
-                  <span
-                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${meta.tone}`}
+      <Card>
+        <SmartTable
+          rows={presets}
+          loading={loading}
+          itemLabel={["modelo", "modelos"]}
+          searchPlaceholder="Buscar suplemento, exame, encaminhamento…"
+          searchFields={(row) => [presetSearchText(row), TYPE_META[row.type]?.label]}
+          filters={FILTERS}
+          defaultSort={{ key: "title", dir: "asc" }}
+          pageSize={25}
+          emptyMessage="Nenhum modelo cadastrado."
+          noResultsMessage="Nenhum modelo com essa busca."
+          onRowDoubleClick={startEdit}
+          columns={[
+            {
+              key: "title",
+              label: "Modelo",
+              mobile: "title",
+              sortValue: (row) => row.title,
+              sortLabels: ["A–Z", "Z–A"],
+              render: (row) => {
+                const meta = TYPE_META[row.type] || TYPE_META.supplement_pack;
+                const Icon = meta.icon;
+                return (
+                  <button
+                    type="button"
+                    onClick={() => startEdit(row)}
+                    className="flex items-center gap-3 text-left"
                   >
-                    <Icon className="h-4 w-4" strokeWidth={1.75} />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold">{preset.title}</p>
-                    <p className="text-xs text-graphite/45">
-                      {meta.label} · {doseHint}
-                    </p>
-                  </div>
-                  <Badge variant={preset.active !== false ? "success" : "neutral"}>
-                    {preset.active !== false ? "Ativo" : "Inativo"}
-                  </Badge>
+                    <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${meta.tone}`}>
+                      <Icon className="h-4 w-4" strokeWidth={1.75} />
+                    </span>
+                    <span className="font-semibold text-graphite underline-offset-2 hover:text-olive-800 hover:underline">
+                      {row.title}
+                    </span>
+                  </button>
+                );
+              }
+            },
+            {
+              key: "type",
+              label: "Tipo",
+              mobile: "subtitle",
+              sortValue: (row) => TYPE_META[row.type]?.label,
+              sortLabels: ["A–Z", "Z–A"],
+              render: (row) => TYPE_META[row.type]?.label || "—"
+            },
+            { key: "summary", label: "Conteúdo", render: contentSummary },
+            {
+              key: "status",
+              label: "Situação",
+              mobile: "badges",
+              render: (row) => (
+                <Badge variant={row.active !== false ? "success" : "neutral"}>
+                  {row.active !== false ? "Ativo" : "Inativo"}
+                </Badge>
+              )
+            },
+            {
+              key: "actions",
+              label: "",
+              mobile: "actions",
+              render: (row) => (
+                <button type="button" onClick={() => startEdit(row)} className="font-semibold text-olive-800 hover:underline">
+                  Abrir
                 </button>
-              );
-            })}
-            {!filtered.length ? (
-              <p className="text-sm text-graphite/50">Nenhum preset neste filtro.</p>
-            ) : null}
-          </div>
-        </Card>
+              )
+            }
+          ]}
+        />
+      </Card>
 
-        <Card title={editing ? "Editar modelo" : "Selecione um modelo"}>
-          {editing ? (
-            <div className="space-y-4">
-              <label className="block text-xs font-medium text-graphite/55">
-                Título do pacote
-                <input
-                  className={`mt-1 ${inputClassName()}`}
-                  value={editing.title}
-                  onChange={(e) => setEditing({ ...editing, title: e.target.value })}
-                />
-              </label>
-
-              <PresetEditor
-                type={editing.type}
-                content={editing.content || emptyContent(editing.type)}
-                onChange={updateContent}
-              />
-
-              <div className="flex flex-wrap gap-2 border-t border-olive-900/8 pt-4">
-                <button type="button" className={btnPrimary()} disabled={saving} onClick={saveEdit}>
-                  {saving ? "Salvando..." : "Salvar alterações"}
-                </button>
-                <button type="button" className={btnSecondary()} onClick={toggleActive}>
-                  {editing.active !== false ? "Desativar" : "Ativar"}
-                </button>
-                <button
-                  type="button"
-                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-800 transition hover:bg-rose-100 disabled:opacity-60"
-                  disabled={saving}
-                  onClick={() => setConfirmDeleteOpen(true)}
-                >
-                  <Trash2 className="h-4 w-4" strokeWidth={1.75} />
-                  Excluir
-                </button>
-                <button type="button" className={btnSecondary()} onClick={() => setEditing(null)}>
-                  Fechar
-                </button>
-              </div>
+      <Modal open={Boolean(editing)} onClose={closeEditor} title={editing?.title || "Modelo"} size="xl">
+        {editing ? (
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center gap-2 text-xs text-graphite/55">
+              <span>{TYPE_META[editing.type]?.label}</span>
+              <Badge variant={editing.active !== false ? "success" : "neutral"}>
+                {editing.active !== false ? "Ativo" : "Inativo"}
+              </Badge>
             </div>
-          ) : (
-            <p className="text-sm text-graphite/55">
-              Escolha um modelo à esquerda para editar, ou clique em{" "}
-              <span className="font-medium text-graphite">Novo modelo</span> para criar um preset.
-            </p>
-          )}
-        </Card>
-      </div>
+            <label className="block text-xs font-medium text-graphite/55">
+              Título do modelo
+              <input
+                className={`mt-1 ${inputClassName()}`}
+                value={editing.title}
+                onChange={(e) => setEditing({ ...editing, title: e.target.value })}
+              />
+            </label>
+
+            <PresetEditor
+              type={editing.type}
+              content={editing.content || emptyContent(editing.type)}
+              onChange={updateContent}
+            />
+
+            <div className="sticky bottom-0 -mx-5 -mb-5 flex flex-wrap gap-2 border-t border-olive-900/10 bg-porcelain/95 px-5 py-4 backdrop-blur-xs sm:-mx-6 sm:-mb-6 sm:px-6">
+              <button type="button" className={btnPrimary()} disabled={saving} onClick={saveEdit}>
+                {saving ? "Salvando..." : "Salvar alterações"}
+              </button>
+              <button type="button" className={btnSecondary()} onClick={toggleActive}>
+                {editing.active !== false ? "Desativar" : "Ativar"}
+              </button>
+              <button
+                type="button"
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-800 transition hover:bg-rose-100 disabled:opacity-60"
+                disabled={saving}
+                onClick={() => setConfirmDeleteOpen(true)}
+              >
+                <Trash2 className="h-4 w-4" strokeWidth={1.75} />
+                Excluir
+              </button>
+              <button type="button" className={`${btnSecondary()} sm:ml-auto`} onClick={closeEditor}>
+                Fechar
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </Modal>
 
       <Modal
         open={createOpen}
