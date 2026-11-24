@@ -2,10 +2,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Trash2 } from "lucide-react";
+import { CreditCard, Trash2 } from "lucide-react";
 import { useParams } from "next/navigation";
 import PatientShell from "@/components/layout/PatientShell";
-import { Card, formatCurrency } from "@/components/layout/AppShell";
+import { Card, btnPrimary, formatCurrency } from "@/components/layout/AppShell";
+import { PaymentMethodChoice } from "@/components/ui/BookingPaymentPanel";
+import { consultationPaymentOptions, paymentMethodLabel } from "@/lib/payments/card";
 import Badge, { appointmentBadge, paymentBadge } from "@/components/ui/Badge";
 import PaymentDocUploadZone from "@/components/ui/PaymentDocUploadZone";
 import { formatAppointmentDateTime, resolveAppointmentAmountCents } from "@/lib/datetime";
@@ -60,6 +62,23 @@ export default function PatientConsultaDetailPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  async function switchMethod(next) {
+    if (!appointment || next === (appointment.payment_method === "card" ? "card" : "pix")) return;
+    setError("");
+    const res = await fetch(`/api/appointments/${appointment.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ paymentMethod: next })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setError(data.message || "Não foi possível alterar a forma de pagamento.");
+      return;
+    }
+    setAppointment((current) => ({ ...current, ...data.appointment }));
+    setFeedback(next === "card" ? "Pagamento alterado para cartão de crédito." : "Pagamento alterado para PIX.");
+  }
 
   async function uploadProof(file) {
     setUploading(true);
@@ -158,13 +177,13 @@ export default function PatientConsultaDetailPage() {
   const isPaid = appointment.payment_status === "paid" || appointment.payment_status === "waived";
   const amountCents = resolveAppointmentAmountCents(appointment, payment.settings);
   const showCancel = canCancelAppointment(appointment);
+  const canPay = !isPaid && appointment.status !== "cancelled" && amountCents > 0;
+  const paymentOptions = consultationPaymentOptions(payment.settings || {});
+  const method = appointment.payment_method === "card" ? "card" : "pix";
+  const cardOption = paymentOptions.find((option) => option.method === "card") || null;
   const pixCode =
-    !isPaid && appointment.status !== "cancelled" && amountCents > 0
-      ? pixCodeForAmount(
-          (appointment.type === "return" && payment.settings?.return_pix_code) || payment.settings?.consultation_pix_code,
-          amountCents
-        )
-      : null;
+    canPay && method === "pix" ? pixCodeForAmount(payment.settings?.consultation_pix_code, amountCents) : null;
+  const canSwitch = canPay && !appointment.patient_package_id && paymentOptions.length > 1;
 
   return (
     <PatientShell title="Detalhe da consulta" breadcrumbs={["Paciente", "Consultas", "Detalhe"]}>
@@ -198,6 +217,7 @@ export default function PatientConsultaDetailPage() {
           </div>
           <p className="mt-4 text-sm font-medium text-graphite">
             Valor: {formatCurrency(amountCents)}
+            {amountCents > 0 ? ` · ${paymentMethodLabel(method)}` : ""}
           </p>
 
           {appointment.modality === "in_person" ? (
@@ -315,10 +335,32 @@ export default function PatientConsultaDetailPage() {
         </Card>
       </div>
 
-      {pixCode ? (
-        <div className="mt-4">
-          <PixPayment code={pixCode} amountCents={amountCents} title="Pague esta consulta com PIX" />
-        </div>
+      {canPay ? (
+        <Card className="mt-4">
+          <h3 className="font-semibold text-graphite">Pagamento</h3>
+          {canSwitch ? (
+            <div className="mt-3">
+              <PaymentMethodChoice options={paymentOptions} value={method} onChange={switchMethod} />
+            </div>
+          ) : null}
+          {method === "card" && cardOption ? (
+            <div className="mt-4 rounded-2xl border border-olive-900/10 bg-linen/50 p-4">
+              <p className="text-sm leading-6 text-graphite/70">
+                Pague {formatCurrency(amountCents)} no cartão pelo link
+                {cardOption.installments > 1 ? ` (em até ${cardOption.installments}x)` : ""}. Depois, se quiser, envie o
+                comprovante aqui: a Letícia confirma assim que o pagamento cair.
+              </p>
+              <a href={cardOption.link} target="_blank" rel="noopener noreferrer" className={`${btnPrimary()} mt-3`}>
+                <CreditCard className="h-4 w-4" strokeWidth={1.85} />
+                Pagar no cartão
+              </a>
+            </div>
+          ) : pixCode ? (
+            <div className="mt-4">
+              <PixPayment code={pixCode} amountCents={amountCents} title="Pague esta consulta com PIX" />
+            </div>
+          ) : null}
+        </Card>
       ) : null}
 
       <Card className="mt-4">

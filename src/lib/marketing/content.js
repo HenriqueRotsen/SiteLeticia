@@ -212,7 +212,7 @@ export const researchPrinciples = [
 ];
 
 export const contactReasons = [
-  "Agendamento de consulta ou retorno",
+  "Agendamento de consulta",
   "Dúvidas sobre acompanhamento nutricional",
   "Parcerias e convites para palestras",
   "Imprensa e oportunidades acadêmicas"

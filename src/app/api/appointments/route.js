@@ -20,6 +20,12 @@ import { writeAuditLog, getClientIp } from "@/lib/audit";
 import { preconsultEmail, sendEmail } from "@/lib/email/resend";
 import { getSiteUrl } from "@/lib/site-url";
 import { packageAppointmentFields, releasePackageCredit, reservePackageCredit } from "@/lib/packages/credits";
+import {
+  consultationPaymentOptions,
+  isMissingPaymentColumn,
+  paymentMethodLabel,
+  pickOption
+} from "@/lib/payments/card";
 
 export async function POST(request) {
   const auth = await requirePatient();
@@ -57,10 +63,8 @@ export async function POST(request) {
   // A ficha pré-consulta é opcional: não bloqueia o agendamento.
   const isFirstConsultation = (priorCount || 0) === 0;
 
-  const priceCents =
-    body.type === "return" && settings?.return_price_cents != null
-      ? settings.return_price_cents
-      : settings?.consultation_price_cents || 0;
+  // PIX ou cartão (no cartão o valor já inclui a taxa repassada).
+  const payment = pickOption(consultationPaymentOptions(settings || {}), body.paymentMethod);
 
   const { data: existing } = await supabase
     .from("appointments")
@@ -77,22 +81,29 @@ export async function POST(request) {
   // Paciente com pacote pago e saldo: a consulta usa um crédito (sai paga, valor 0).
   const usedPackage = await reservePackageCredit(supabase, auth.ctx.patient.id);
 
-  const { data: appointment, error } = await supabase
-    .from("appointments")
-    .insert({
-      patient_id: auth.ctx.patient.id,
-      starts_at: startsAt.toISOString(),
-      ends_at: endsAt.toISOString(),
-      duration_min: CONSULTATION_DURATION_MIN,
-      buffer_min: CONSULTATION_BUFFER_MIN,
-      type: body.type,
-      status: "scheduled",
-      payment_status: "pending",
-      amount_cents: priceCents,
-      ...packageAppointmentFields(usedPackage)
-    })
-    .select("*")
-    .single();
+  const row = {
+    patient_id: auth.ctx.patient.id,
+    starts_at: startsAt.toISOString(),
+    ends_at: endsAt.toISOString(),
+    duration_min: CONSULTATION_DURATION_MIN,
+    buffer_min: CONSULTATION_BUFFER_MIN,
+    type: "consultation",
+    status: "scheduled",
+    payment_status: "pending",
+    amount_cents: payment.cents,
+    payment_method: payment.method,
+    ...packageAppointmentFields(usedPackage)
+  };
+  let { data: appointment, error } = await supabase.from("appointments").insert(row).select("*").single();
+  if (error && isMissingPaymentColumn(error)) {
+    // Antes da migração do cartão: grava como antes (PIX).
+    const { payment_method: _method, ...legacy } = row;
+    ({ data: appointment, error } = await supabase
+      .from("appointments")
+      .insert({ ...legacy, amount_cents: settings?.consultation_price_cents || 0 })
+      .select("*")
+      .single());
+  }
 
   if (error) {
     await releasePackageCredit(supabase, usedPackage?.id);
@@ -120,7 +131,7 @@ export async function POST(request) {
         const event = await createGoogleCalendarEvent({
           accessToken: token,
           summary: `Consulta nutricional — ${auth.ctx.patient.full_name}`,
-          description: `Paciente: ${auth.ctx.patient.full_name}\nTipo: ${body.type}`,
+          description: `Paciente: ${auth.ctx.patient.full_name}\nPagamento: ${paymentMethodLabel(appointment.payment_method || "pix")}`,
           startIso: startsAt.toISOString(),
           endIso: endsAt.toISOString(),
           attendeeEmail: auth.ctx.user.email,
@@ -213,10 +224,7 @@ export async function GET() {
           !(Number(appt.amount_cents) > 0)
       )
       .map(async (appt) => {
-        const priceCents =
-          appt.type === "return" && settings?.return_price_cents != null
-            ? settings.return_price_cents
-            : settings?.consultation_price_cents || 0;
+        const priceCents = pickOption(consultationPaymentOptions(settings || {}), appt.payment_method).cents;
         if (!(Number(priceCents) > 0)) return;
         const { data: updated } = await supabase
           .from("appointments")

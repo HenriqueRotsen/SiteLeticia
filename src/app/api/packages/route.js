@@ -4,7 +4,8 @@ import { requirePatient } from "@/lib/auth";
 import { createSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { writeAuditLog, getClientIp } from "@/lib/audit";
 import { isMissingTable } from "@/lib/packages/credits";
-import { patientPackageRow } from "@/lib/packages/schema";
+import { patientPackageRow, withoutCardFields } from "@/lib/packages/schema";
+import { isMissingPaymentColumn } from "@/lib/payments/card";
 
 // Pacotes à venda + os pacotes do paciente.
 export async function GET() {
@@ -13,9 +14,9 @@ export async function GET() {
 
   const supabase = createSupabaseAdmin();
   const [{ data: catalog, error }, { data: mine }, { data: settings }] = await Promise.all([
-    supabase.from("consultation_packages").select("id, name, description, sessions, price_cents, pix_code").eq("active", true).order("sort_order").order("sessions"),
+    supabase.from("consultation_packages").select("*").eq("active", true).order("sort_order").order("sessions"),
     supabase.from("patient_packages").select("*").eq("patient_id", auth.ctx.patient.id).order("created_at", { ascending: false }),
-    supabase.from("payment_settings").select("consultation_price_cents").limit(1).maybeSingle()
+    supabase.from("payment_settings").select("*").limit(1).maybeSingle()
   ]);
 
   if (error && !isMissingTable(error)) {
@@ -23,13 +24,25 @@ export async function GET() {
   }
 
   return NextResponse.json({
-    catalog: catalog || [],
+    // Só o que o paciente precisa ver (sem campos internos).
+    catalog: (catalog || []).map((pkg) => ({
+      id: pkg.id,
+      name: pkg.name,
+      description: pkg.description,
+      sessions: pkg.sessions,
+      price_cents: pkg.price_cents,
+      pix_code: pkg.pix_code || null,
+      card_price_cents: pkg.card_price_cents || null,
+      card_link: pkg.card_link || null
+    })),
     mine: mine || [],
-    regularPriceCents: settings?.consultation_price_cents || 0
+    regularPriceCents: settings?.consultation_price_cents || 0,
+    cardFeePercent: Number(settings?.card_fee_percent) || 0,
+    cardMaxInstallments: Number(settings?.card_max_installments) || 1
   });
 }
 
-const schema = z.object({ packageId: z.string().min(1) });
+const schema = z.object({ packageId: z.string().min(1), paymentMethod: z.enum(["pix", "card"]).default("pix") });
 
 // O paciente contrata um pacote: fica aguardando pagamento até a Letícia validar.
 export async function POST(request) {
@@ -65,11 +78,14 @@ export async function POST(request) {
     );
   }
 
-  const { data, error } = await supabase
-    .from("patient_packages")
-    .insert(patientPackageRow(pkg, auth.ctx.patient.id))
-    .select("*")
-    .single();
+  const { data: settings } = await supabase.from("payment_settings").select("*").limit(1).maybeSingle();
+  const row = patientPackageRow(pkg, auth.ctx.patient.id, { paymentMethod: body.paymentMethod, settings: settings || {} });
+  let { data, error } = await supabase.from("patient_packages").insert(row).select("*").single();
+  if (error && isMissingPaymentColumn(error)) {
+    // Antes da migração do cartão: contrata no PIX.
+    const pixRow = patientPackageRow(pkg, auth.ctx.patient.id);
+    ({ data, error } = await supabase.from("patient_packages").insert(withoutCardFields(pixRow)).select("*").single());
+  }
   if (error) {
     return NextResponse.json({ message: "Não foi possível contratar o pacote." }, { status: 500 });
   }

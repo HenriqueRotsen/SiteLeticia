@@ -30,7 +30,7 @@ function formatDateInput(value) {
 function appointmentLabel(appt) {
   if (!appt) return "—";
   const when = formatDateTime(appt.starts_at);
-  const type = appt.type === "return" ? "Retorno" : "Consulta";
+  const type = appt.modality === "in_person" ? "Presencial" : "Online";
   return `${when} · ${type}`;
 }
 
@@ -442,7 +442,7 @@ export default function AdminProntuarioPage() {
                     className={`mt-1 ${inputClassName()}`}
                     value={draft.title}
                     onChange={(e) => setDraft({ ...draft, title: e.target.value })}
-                    placeholder="Ex.: Retorno · 16/10"
+                    placeholder="Ex.: Reavaliação · 16/10"
                   />
                 </label>
 

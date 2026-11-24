@@ -3,53 +3,58 @@
 // Pacotes na área do paciente: os que ele tem (com saldo) e os que pode contratar.
 
 import { useCallback, useEffect, useState } from "react";
-import { MessageCircle, Package } from "lucide-react";
-import { Card, btnPrimary, formatCurrency } from "@/components/layout/AppShell";
+import { CreditCard, MessageCircle, Package } from "lucide-react";
+import { Card, btnPrimary, btnSecondary, formatCurrency } from "@/components/layout/AppShell";
 import Badge from "@/components/ui/Badge";
-import { PaymentMethodCard } from "@/components/ui/BookingPaymentPanel";
-import { useDialog } from "@/components/ui/ConfirmDialog";
+import Modal from "@/components/ui/Modal";
+import { PaymentMethodChoice } from "@/components/ui/BookingPaymentPanel";
+import { packagePaymentOptions, pickOption } from "@/lib/payments/card";
 import { packageSavings, packageStatusLabel, perSessionCents, remainingSessions } from "@/lib/packages/pricing";
 import { site, whatsappLink } from "@/lib/marketing/content";
 import { pixCodeForAmount } from "@/lib/payments/pix-brcode";
 import PixPayment from "@/components/ui/PixPayment";
 
 export default function PatientPackagesSection() {
-  const { confirm } = useDialog();
-  const [data, setData] = useState({ catalog: [], mine: [], regularPriceCents: 0 });
-  const [methods, setMethods] = useState([]);
+  const [data, setData] = useState({ catalog: [], mine: [], regularPriceCents: 0, cardSettings: {} });
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState("");
+  const [buying, setBuying] = useState(null);
+  const [buyMethod, setBuyMethod] = useState("pix");
 
   const load = useCallback(async () => {
-    const [packagesRes, paymentRes] = await Promise.all([
-      fetch("/api/packages").then((r) => r.json()).catch(() => ({})),
-      fetch("/api/payment-info").then((r) => r.json()).catch(() => ({}))
-    ]);
+    const packagesRes = await fetch("/api/packages")
+      .then((r) => r.json())
+      .catch(() => ({}));
     setData({
       catalog: packagesRes.catalog || [],
       mine: packagesRes.mine || [],
-      regularPriceCents: packagesRes.regularPriceCents || 0
+      regularPriceCents: packagesRes.regularPriceCents || 0,
+      cardSettings: {
+        card_fee_percent: packagesRes.cardFeePercent || 0,
+        card_max_installments: packagesRes.cardMaxInstallments || 1
+      }
     });
-    setMethods(paymentRes.methods || []);
   }, []);
 
   useEffect(() => {
     load();
   }, [load]);
 
-  async function buy(pkg) {
-    const ok = await confirm({
-      title: `Contratar “${pkg.name}”?`,
-      message: `${pkg.sessions} consultas por ${formatCurrency(pkg.price_cents)}. Depois é só fazer o pagamento e enviar o comprovante para a Letícia.`,
-      confirmLabel: "Contratar"
-    });
-    if (!ok) return;
+  function startBuy(pkg) {
+    setBuyMethod("pix");
+    setBuying(pkg);
+  }
+
+  async function buy() {
+    const pkg = buying;
+    if (!pkg) return;
+    setBuying(null);
     setBusyId(pkg.id);
     setError("");
     const res = await fetch("/api/packages", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ packageId: pkg.id })
+      body: JSON.stringify({ packageId: pkg.id, paymentMethod: buyMethod })
     });
     const result = await res.json().catch(() => ({}));
     setBusyId("");
@@ -60,10 +65,13 @@ export default function PatientPackagesSection() {
     load();
   }
 
-  const { catalog, mine, regularPriceCents } = data;
+  const { catalog, mine, regularPriceCents, cardSettings } = data;
   const visibleMine = mine.filter((pkg) => pkg.payment_status !== "cancelled");
   const pending = visibleMine.find((pkg) => pkg.payment_status === "pending");
-  const pendingPix = pending ? pixCodeForAmount(pending.pix_code, pending.price_cents) : null;
+  const pendingCard = pending?.payment_method === "card" && pending.card_link ? pending.card_link : null;
+  const pendingPix = pending && !pendingCard ? pixCodeForAmount(pending.pix_code, pending.price_cents) : null;
+  const buyOptions = buying ? packagePaymentOptions(buying, cardSettings) : [];
+  const buyChosen = buying ? pickOption(buyOptions, buyMethod) : null;
   if (!catalog.length && !visibleMine.length) return null;
 
   return (
@@ -97,18 +105,18 @@ export default function PatientPackagesSection() {
         <div className="mb-5 rounded-2xl border border-amber-200 bg-amber-50/70 p-4">
           <p className="font-semibold text-amber-950">Falta o pagamento do pacote</p>
           <p className="mt-1 text-sm leading-6 text-amber-900/80">
-            Pague {formatCurrency(pending.price_cents)} {pendingPix ? "com o PIX abaixo" : "por uma das formas abaixo"} e
-            envie o comprovante para a Letícia. Assim que ela confirmar, suas consultas já saem pagas pelo pacote.
+            Pague {formatCurrency(pending.price_cents)}{" "}
+            {pendingCard ? "no cartão pelo link abaixo" : pendingPix ? "com o PIX abaixo" : "combinando com a Letícia"} e envie o
+            comprovante. Assim que ela confirmar, suas consultas já saem pagas pelo pacote.
           </p>
-          {pendingPix ? (
+          {pendingCard ? (
+            <a href={pendingCard} target="_blank" rel="noopener noreferrer" className={`${btnPrimary()} mt-3`}>
+              <CreditCard className="h-4 w-4" strokeWidth={1.85} />
+              Pagar no cartão
+            </a>
+          ) : pendingPix ? (
             <div className="mt-3">
               <PixPayment code={pendingPix} amountCents={pending.price_cents} title="PIX do pacote" />
-            </div>
-          ) : methods.length ? (
-            <div className="mt-3 space-y-2">
-              {methods.map((method) => (
-                <PaymentMethodCard key={method.id} method={method} />
-              ))}
             </div>
           ) : null}
           <a
@@ -139,14 +147,22 @@ export default function PatientPackagesSection() {
                     {savings.discountPercent ? <Badge variant="success">-{savings.discountPercent}%</Badge> : null}
                   </div>
                   {pkg.description ? <p className="mt-2 text-sm leading-6 text-graphite/60">{pkg.description}</p> : null}
-                  <p className="mt-3 text-xl font-semibold text-graphite">{formatCurrency(pkg.price_cents)}</p>
+                  <p className="mt-3 text-xl font-semibold text-graphite">
+                    {formatCurrency(pkg.price_cents)}
+                    {pkg.card_link ? <span className="text-sm font-medium text-graphite/50"> no PIX</span> : null}
+                  </p>
+                  {pkg.card_link ? (
+                    <p className="text-xs text-graphite/55">
+                      ou {formatCurrency(pickOption(packagePaymentOptions(pkg, cardSettings), "card").cents)} no cartão
+                    </p>
+                  ) : null}
                   <p className="text-xs text-graphite/50">
                     {pkg.sessions} consultas · {formatCurrency(perSessionCents(pkg))} cada
                     {savings.savingsCents ? ` · você economiza ${formatCurrency(savings.savingsCents)}` : ""}
                   </p>
                   <button
                     type="button"
-                    onClick={() => buy(pkg)}
+                    onClick={() => startBuy(pkg)}
                     disabled={Boolean(pending) || busyId === pkg.id}
                     className={`${btnPrimary()} mt-4 self-start`}
                   >
@@ -158,6 +174,28 @@ export default function PatientPackagesSection() {
           </div>
         </>
       ) : null}
+      <Modal open={Boolean(buying)} onClose={() => setBuying(null)} title={buying ? `Contratar “${buying.name}”` : ""} size="sm">
+        {buying ? (
+          <div className="space-y-4">
+            <p className="text-sm leading-6 text-graphite/70">
+              {buying.sessions} consultas. Depois de contratar, é só pagar e enviar o comprovante para a Letícia.
+            </p>
+            {buyOptions.length > 1 ? (
+              <PaymentMethodChoice options={buyOptions} value={buyMethod} onChange={setBuyMethod} />
+            ) : (
+              <p className="text-lg font-semibold text-graphite">{formatCurrency(buying.price_cents)} no PIX</p>
+            )}
+            <div className="flex flex-col-reverse gap-2 border-t border-olive-900/10 pt-4 sm:flex-row sm:justify-end">
+              <button type="button" onClick={() => setBuying(null)} className={btnSecondary()}>
+                Voltar
+              </button>
+              <button type="button" onClick={buy} className={btnPrimary()}>
+                Contratar por {formatCurrency(buyChosen?.cents ?? buying.price_cents)}
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </Modal>
     </Card>
   );
 }

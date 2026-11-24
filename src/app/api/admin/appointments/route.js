@@ -12,6 +12,7 @@ import { getSiteUrl } from "@/lib/site-url";
 import { formatAddress, googleMapsLink, isAddressComplete } from "@/lib/appointments/location";
 import { appointmentWhatsappLink } from "@/lib/appointments/whatsapp";
 import { packageAppointmentFields, releasePackageCredit, reservePackageCredit } from "@/lib/packages/credits";
+import { CARD_MIGRATION_MESSAGE, consultationPaymentOptions, isMissingPaymentColumn, paymentMethodLabel, pickOption } from "@/lib/payments/card";
 
 export async function GET(request) {
   const auth = await requireNutritionist();
@@ -99,10 +100,7 @@ export async function POST(request) {
     return NextResponse.json({ message: "Já existe uma consulta nesse horário." }, { status: 409 });
   }
 
-  const priceCents =
-    body.type === "return" && settings?.return_price_cents != null
-      ? settings.return_price_cents
-      : settings?.consultation_price_cents || 0;
+  const payment = pickOption(consultationPaymentOptions(settings || {}), body.paymentMethod);
 
   // Paciente com pacote pago e saldo: a consulta usa um crédito (sai paga, valor 0).
   const usedPackage = await reservePackageCredit(supabase, patient.id);
@@ -113,11 +111,13 @@ export async function POST(request) {
     ends_at: endsAt.toISOString(),
     duration_min: CONSULTATION_DURATION_MIN,
     buffer_min: CONSULTATION_BUFFER_MIN,
-    type: body.type,
+    type: "consultation",
     status: "scheduled",
     payment_status: "pending",
-    amount_cents: priceCents,
+    amount_cents: payment.cents,
     notes: body.notes || null,
+    // Cartão só é gravado quando escolhido: PIX funciona mesmo antes da migração do cartão.
+    ...(payment.method === "card" ? { payment_method: "card" } : {}),
     // Só manda as colunas novas quando precisa: consulta online funciona mesmo antes da migração.
     ...(inPerson ? { modality: "in_person", location } : {}),
     ...packageAppointmentFields(usedPackage)
@@ -128,6 +128,9 @@ export async function POST(request) {
     await releasePackageCredit(supabase, usedPackage?.id);
     if (/modality|location/.test(String(error.message || ""))) {
       return NextResponse.json({ message: MIGRATION_MESSAGE }, { status: 503 });
+    }
+    if (isMissingPaymentColumn(error)) {
+      return NextResponse.json({ message: CARD_MIGRATION_MESSAGE }, { status: 503 });
     }
     return NextResponse.json({ message: "Não foi possível marcar a consulta." }, { status: 500 });
   }
@@ -158,7 +161,7 @@ export async function POST(request) {
           summary: `Consulta ${inPerson ? "presencial" : "online"} — ${patient.full_name}`,
           description: [
             `Paciente: ${patient.full_name}`,
-            `Tipo: ${body.type === "return" ? "Retorno" : "Consulta"}`,
+            `Pagamento: ${paymentMethodLabel(payment.method)}`,
             inPerson ? `Endereço: ${location}` : null,
             mapsUrl ? `Como chegar: ${mapsUrl}` : null
           ]

@@ -7,10 +7,11 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Check, Clock, MapPin, MessageCircle, Video } from "lucide-react";
 import Modal from "@/components/ui/Modal";
-import { btnPrimary, btnSecondary } from "@/components/layout/AppShell";
+import { btnPrimary, btnSecondary, formatCurrency } from "@/components/layout/AppShell";
 import { TIMEZONE } from "@/lib/constants";
 import { formatAppointmentDateTime } from "@/lib/datetime";
 import { formatAddress, isAddressComplete } from "@/lib/appointments/location";
+import { consultationPaymentOptions, paymentMethodLabel } from "@/lib/payments/card";
 import { zonedDateKey, zonedTimeToUtc } from "@/lib/scheduling/timezone";
 import { BOOKING_HORIZON_DAYS } from "@/lib/scheduling/month";
 
@@ -64,7 +65,8 @@ export default function ScheduleAppointmentModal({ open, onClose, patient = null
   const [patients, setPatients] = useState([]);
   const [patientId, setPatientId] = useState(patient?.id || "");
   const [modality, setModality] = useState("online");
-  const [type, setType] = useState("consultation");
+  const [paymentMethod, setPaymentMethod] = useState("pix");
+  const [paymentSettings, setPaymentSettings] = useState({});
   const [dateKey, setDateKey] = useState(todayKey());
   const [time, setTime] = useState("");
   const [slots, setSlots] = useState([]);
@@ -83,6 +85,11 @@ export default function ScheduleAppointmentModal({ open, onClose, patient = null
     const from = new Date();
     const to = new Date();
     to.setDate(to.getDate() + BOOKING_HORIZON_DAYS);
+    setPaymentMethod("pix");
+    fetch("/api/admin/payment-settings")
+      .then((r) => r.json())
+      .then((data) => setPaymentSettings(data.settings || {}))
+      .catch(() => {});
     const requests = [
       fetch("/api/admin/clinic-address").then((r) => r.json()).catch(() => ({})),
       fetch(`/api/appointments/slots?from=${from.toISOString()}&to=${to.toISOString()}`)
@@ -108,6 +115,7 @@ export default function ScheduleAppointmentModal({ open, onClose, patient = null
     [slots, dateKey]
   );
   const hasAddress = isAddressComplete(address);
+  const paymentOptions = consultationPaymentOptions(paymentSettings);
   const startsAt = toIso(dateKey, time);
   const selectedPatient = patient || patients.find((item) => item.id === patientId) || null;
   const canSubmit = Boolean(selectedPatient && startsAt && (modality === "online" || hasAddress)) && !saving;
@@ -120,7 +128,7 @@ export default function ScheduleAppointmentModal({ open, onClose, patient = null
     const res = await fetch("/api/admin/appointments", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ patientId: selectedPatient.id, startsAt, type, modality })
+      body: JSON.stringify({ patientId: selectedPatient.id, startsAt, modality, paymentMethod })
     });
     const data = await res.json().catch(() => ({}));
     setSaving(false);
@@ -226,11 +234,15 @@ export default function ScheduleAppointmentModal({ open, onClose, patient = null
 
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block text-sm font-medium text-graphite">
-            Tipo
-            <select className={inputClass} value={type} onChange={(e) => setType(e.target.value)}>
-              <option value="consultation">Consulta</option>
-              <option value="return">Retorno</option>
+            Pagamento
+            <select className={inputClass} value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
+              {paymentOptions.map((option) => (
+                <option key={option.method} value={option.method}>
+                  {paymentMethodLabel(option.method)} · {formatCurrency(option.cents)}
+                </option>
+              ))}
             </select>
+            <span className="mt-1 block text-xs font-normal text-graphite/50">Se o paciente tiver pacote, sai pelo pacote.</span>
           </label>
           <label className="block text-sm font-medium text-graphite">
             Dia

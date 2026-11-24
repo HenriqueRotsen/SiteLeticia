@@ -68,9 +68,8 @@ function dietBadgeVariant(status) {
   return "neutral";
 }
 
-function appointmentTypeLabel(type) {
-  if (type === "return") return "Retorno";
-  return "Consulta";
+function appointmentKindLabel(appt) {
+  return appt?.modality === "in_person" ? "Consulta presencial" : "Consulta online";
 }
 
 function EmptyState({ icon: Icon, message }) {
@@ -333,7 +332,7 @@ export default function AdminPatientDetailPage() {
                               {formatDateTime(appt.starts_at)}
                             </p>
                             <p className="mt-0.5 text-xs text-graphite/50">
-                              {appointmentTypeLabel(appt.type)}
+                              {appointmentKindLabel(appt)}
                               {appt.modality === "in_person" ? " · Presencial" : " · Online"}
                             </p>
                           </div>
@@ -369,7 +368,7 @@ export default function AdminPatientDetailPage() {
                               {formatDateTime(appt.starts_at)}
                             </p>
                             <p className="mt-0.5 text-xs text-graphite/45">
-                              {appointmentTypeLabel(appt.type)}
+                              {appointmentKindLabel(appt)}
                               {appt.modality === "in_person" ? " · Presencial" : " · Online"}
                             </p>
                           </div>

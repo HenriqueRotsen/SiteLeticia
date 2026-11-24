@@ -126,7 +126,8 @@ export default function PatientPackagesCard({ patientId, version = 0 }) {
                     <div className="min-w-0">
                       <p className="break-words text-sm font-semibold text-graphite">{pkg.name}</p>
                       <p className="mt-0.5 text-xs text-graphite/50">
-                        {formatCurrency(pkg.price_cents)} · {pkg.sessions_used} de {pkg.sessions_total} consultas usadas
+                        {formatCurrency(pkg.price_cents)} ({pkg.payment_method === "card" ? "cartão" : "PIX"}) · {pkg.sessions_used} de{" "}
+                        {pkg.sessions_total} consultas usadas
                         {pkg.payment_status === "paid" ? ` · ${left} restantes` : ""}
                       </p>
                     </div>
