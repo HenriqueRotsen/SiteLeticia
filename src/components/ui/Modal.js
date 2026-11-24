@@ -26,7 +26,7 @@ export default function Modal({ open, onClose, title, children, size = "lg" }) {
   if (!open || typeof document === "undefined") return null;
 
   const maxWidth =
-    size === "lg" ? "max-w-3xl" : size === "sm" ? "max-w-md" : "max-w-lg";
+    size === "xl" ? "max-w-5xl" : size === "lg" ? "max-w-3xl" : size === "sm" ? "max-w-md" : "max-w-lg";
   const showHeader = Boolean(title);
 
   return createPortal(
