@@ -8,10 +8,18 @@ import { CreditCard, QrCode } from "lucide-react";
 import AdminShell from "@/components/layout/AdminShell";
 import { Card, btnPrimary, formatCurrency, inputClassName } from "@/components/layout/AppShell";
 import PixCodeField from "@/components/ui/PixCodeField";
-import { CardPriceFields, MoneyReaisField } from "@/components/ui/PaymentPriceFields";
+import {
+  CardPriceFields,
+  CardTermsFields,
+  MoneyReaisField,
+  feeToText,
+  parseFeeText
+} from "@/components/ui/PaymentPriceFields";
 import { centsToReais, reaisToCents } from "@/lib/money";
 import {
   clampInstallments,
+  effectiveFeePercent,
+  effectiveInstallments,
   installmentCents,
   isValidPaymentLink,
   suggestCardPriceCents
@@ -23,8 +31,8 @@ export default function PagamentoConfigPage() {
     consultationPixCode: "",
     consultationCardReais: 0,
     consultationCardLink: "",
-    cardFeePercent: "",
-    cardMaxInstallments: 1,
+    consultationCardFee: "",
+    consultationCardInstallments: 1,
     instructions: "",
     cancellationPolicy: ""
   });
@@ -42,8 +50,11 @@ export default function PagamentoConfigPage() {
           consultationPixCode: s.consultation_pix_code || "",
           consultationCardReais: centsToReais(s.consultation_card_price_cents),
           consultationCardLink: s.consultation_card_link || "",
-          cardFeePercent: s.card_fee_percent != null && Number(s.card_fee_percent) ? String(s.card_fee_percent).replace(".", ",") : "",
-          cardMaxInstallments: clampInstallments(s.card_max_installments || 1),
+          // Sem taxa/parcelas próprias da consulta, parte da configuração geral antiga.
+          consultationCardFee: feeToText(
+            s.consultation_card_fee_percent ?? (Number(s.card_fee_percent) ? s.card_fee_percent : null)
+          ),
+          consultationCardInstallments: effectiveInstallments(s.consultation_card_installments, s.card_max_installments),
           instructions: s.instructions || "",
           cancellationPolicy: s.cancellation_policy || ""
         });
@@ -52,10 +63,10 @@ export default function PagamentoConfigPage() {
   }, []);
 
   const set = (key) => (value) => setSettings((current) => ({ ...current, [key]: value }));
-  const feePercent = Number(String(settings.cardFeePercent).replace(",", ".")) || 0;
+  const feePercent = effectiveFeePercent(parseFeeText(settings.consultationCardFee), 0);
   const pixCents = reaisToCents(settings.consultationPriceReais);
   const cardCents = reaisToCents(settings.consultationCardReais) || suggestCardPriceCents(pixCents, feePercent);
-  const installments = clampInstallments(settings.cardMaxInstallments);
+  const installments = clampInstallments(settings.consultationCardInstallments);
   const preview = useMemo(
     () => ({ extra: Math.max(0, cardCents - pixCents), each: installmentCents(cardCents, installments) }),
     [cardCents, pixCents, installments]
@@ -76,8 +87,8 @@ export default function PagamentoConfigPage() {
         consultationPixCode: settings.consultationPixCode || null,
         consultationCardPriceCents: reaisToCents(settings.consultationCardReais) || null,
         consultationCardLink: settings.consultationCardLink.trim() || null,
-        cardFeePercent: Math.min(30, Math.max(0, feePercent)),
-        cardMaxInstallments: installments,
+        consultationCardFeePercent: parseFeeText(settings.consultationCardFee),
+        consultationCardInstallments: installments,
         instructions: settings.instructions,
         cancellationPolicy: settings.cancellationPolicy
       })
@@ -108,45 +119,10 @@ export default function PagamentoConfigPage() {
       breadcrumbs={["Admin", "Configurações", "Pagamento"]}
       userName="Letícia"
     >
-      <Card className="mb-4" title="Cartão de crédito">
-        <p className="-mt-2 mb-4 text-sm leading-6 text-graphite/60">
-          O paciente escolhe entre PIX e cartão. No cartão, o preço inclui a taxa da maquininha/link, para você receber o
-          mesmo valor do PIX. Pacotes usam a mesma taxa (cada um tem o próprio link em Pacotes).
-        </p>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <label className="block text-sm font-medium text-graphite">
-            Taxa do cartão (%)
-            <input
-              type="text"
-              inputMode="decimal"
-              value={settings.cardFeePercent}
-              onChange={(e) => set("cardFeePercent")(e.target.value.replace(/[^\d,.]/g, "").slice(0, 5))}
-              placeholder="Ex.: 4,99"
-              className={inputClassName("mt-1")}
-            />
-            <span className="mt-1 block text-xs font-normal text-graphite/50">
-              A taxa que a maquininha/banco cobra (com o parcelamento que você oferece).
-            </span>
-          </label>
-          <label className="block text-sm font-medium text-graphite">
-            Parcelas
-            <select
-              value={installments}
-              onChange={(e) => set("cardMaxInstallments")(Number(e.target.value))}
-              className={inputClassName("mt-1")}
-            >
-              {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
-                <option key={n} value={n}>
-                  {n === 1 ? "Só à vista" : `Em até ${n}x`}
-                </option>
-              ))}
-            </select>
-            <span className="mt-1 block text-xs font-normal text-graphite/50">
-              Só aparece para o paciente; o parcelamento é feito no link.
-            </span>
-          </label>
-        </div>
-      </Card>
+      <p className="mb-4 max-w-3xl text-sm leading-6 text-graphite/60">
+        O paciente escolhe entre PIX e cartão. No cartão, o preço inclui a taxa do link de pagamento, para você receber o
+        mesmo valor do PIX. Cada produto tem as próprias parcelas e a própria taxa: a consulta aqui, os planos em Pacotes.
+      </p>
 
       <Card className="mb-4" title="Consulta">
         <div className="grid gap-5 lg:grid-cols-2">
@@ -171,6 +147,12 @@ export default function PagamentoConfigPage() {
             <p className="flex items-center gap-2 font-semibold text-graphite">
               <CreditCard className="h-4 w-4 text-olive-700" /> Cartão de crédito
             </p>
+            <CardTermsFields
+              installments={installments}
+              onInstallments={set("consultationCardInstallments")}
+              feeText={settings.consultationCardFee}
+              onFeeText={set("consultationCardFee")}
+            />
             <CardPriceFields
               pixCents={pixCents}
               feePercent={feePercent}

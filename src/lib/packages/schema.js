@@ -12,7 +12,9 @@ export const packageInputSchema = z.object({
   active: z.boolean().optional().default(true),
   pixCode: z.string().max(600).nullable().optional(),
   cardPriceCents: z.number().int().min(0).nullable().optional(),
-  cardLink: z.string().max(600).nullable().optional()
+  cardLink: z.string().max(600).nullable().optional(),
+  cardFeePercent: z.number().min(0).max(30).nullable().optional(),
+  cardInstallments: z.number().int().min(1).max(12).nullable().optional()
 });
 
 export function packageRow(input) {
@@ -25,6 +27,8 @@ export function packageRow(input) {
     ...(input.pixCode !== undefined ? { pix_code: String(input.pixCode || "").replace(/[\r\n]+/g, "").trim() || null } : {}),
     ...(input.cardPriceCents !== undefined ? { card_price_cents: input.cardPriceCents || null } : {}),
     ...(input.cardLink !== undefined ? { card_link: normalizePaymentLink(input.cardLink) } : {}),
+    ...(input.cardFeePercent !== undefined ? { card_fee_percent: input.cardFeePercent ?? null } : {}),
+    ...(input.cardInstallments !== undefined ? { card_installments: input.cardInstallments || null } : {}),
     updated_at: new Date().toISOString()
   };
 }

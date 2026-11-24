@@ -81,6 +81,8 @@ export const paymentSettingsSchema = z.object({
   consultationPixCode: z.string().max(600).nullable().optional(),
   consultationCardPriceCents: z.number().int().min(0).nullable().optional(),
   consultationCardLink: z.string().max(600).nullable().optional(),
+  consultationCardFeePercent: z.number().min(0).max(30).nullable().optional(),
+  consultationCardInstallments: z.number().int().min(1).max(12).nullable().optional(),
   cardFeePercent: z.number().min(0).max(30).optional(),
   cardMaxInstallments: z.number().int().min(1).max(12).optional()
 });

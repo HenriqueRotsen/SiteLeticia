@@ -11,7 +11,7 @@ export function paymentMethodLabel(method) {
 
 /**
  * Preço no cartão que deixa o mesmo valor líquido do PIX depois da taxa
- * (valor ÷ (1 − taxa)), arredondado para cima no real inteiro.
+ * (valor ÷ (1 − taxa)), arredondado para cima de R$ 10 em R$ 10.
  */
 export function suggestCardPriceCents(pixCents, feePercent) {
   const pix = Math.max(0, Math.round(Number(pixCents) || 0));
@@ -19,7 +19,19 @@ export function suggestCardPriceCents(pixCents, feePercent) {
   if (!pix || fee <= 0) return pix;
   if (fee >= 100) return pix;
   const gross = pix / (1 - fee / 100);
-  return Math.ceil(gross / 100) * 100;
+  // Tira o ruído de ponto flutuante antes de arredondar (ex.: 1000,0000001).
+  return Math.ceil(Math.round(gross) / 1000) * 1000;
+}
+
+/** Taxa do produto; vazia = a taxa geral (configurações antigas). */
+export function effectiveFeePercent(productFee, generalFee = 0) {
+  const own = productFee === null || productFee === undefined || productFee === "" ? NaN : Number(productFee);
+  return Number.isFinite(own) && own >= 0 ? own : Number(generalFee) || 0;
+}
+
+/** Parcelas do produto; vazia = o parcelamento geral (configurações antigas). */
+export function effectiveInstallments(productInstallments, generalInstallments = 1) {
+  return Number(productInstallments) >= 1 ? clampInstallments(productInstallments) : clampInstallments(generalInstallments);
 }
 
 export function cardExtraCents(pixCents, cardCents) {
@@ -80,8 +92,8 @@ export function consultationPaymentOptions(settings = {}) {
     pixCode: settings.consultation_pix_code,
     cardCents: settings.consultation_card_price_cents,
     cardLink: settings.consultation_card_link,
-    feePercent: settings.card_fee_percent,
-    maxInstallments: settings.card_max_installments
+    feePercent: effectiveFeePercent(settings.consultation_card_fee_percent, settings.card_fee_percent),
+    maxInstallments: effectiveInstallments(settings.consultation_card_installments, settings.card_max_installments)
   });
 }
 
@@ -91,8 +103,8 @@ export function packagePaymentOptions(pkg = {}, settings = {}) {
     pixCode: pkg.pix_code,
     cardCents: pkg.card_price_cents,
     cardLink: pkg.card_link,
-    feePercent: settings.card_fee_percent,
-    maxInstallments: settings.card_max_installments
+    feePercent: effectiveFeePercent(pkg.card_fee_percent, settings.card_fee_percent),
+    maxInstallments: effectiveInstallments(pkg.card_installments, settings.card_max_installments)
   });
 }
 

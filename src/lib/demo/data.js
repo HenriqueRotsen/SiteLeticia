@@ -65,6 +65,8 @@ export const demoPaymentSettings = {
   card_max_installments: 3,
   consultation_card_price_cents: null,
   consultation_card_link: "https://pagamento.exemplo.com/consulta-demo",
+  consultation_card_fee_percent: 4.99,
+  consultation_card_installments: 1,
   booking_enabled: true,
   // PIX copia e cola fictício (não paga nada de verdade).
   consultation_pix_code:
