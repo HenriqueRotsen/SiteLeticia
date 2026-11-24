@@ -12,7 +12,7 @@ import { zonedDateKey } from "@/lib/scheduling/timezone";
 import { site, whatsappLink } from "@/lib/marketing/content";
 import Link from "next/link";
 import { pickUsablePackage, remainingSessions } from "@/lib/packages/pricing";
-import { pixCodeForAmount } from "@/lib/payments/pix-brcode";
+import { consultationPaymentOptions } from "@/lib/payments/card";
 
 const IN_PERSON_MESSAGE = `Olá, ${site.name}! Gostaria de marcar uma consulta presencial. Quais horários você tem disponíveis?`;
 
@@ -74,6 +74,7 @@ export default function AgendaPage() {
   const [packages, setPackages] = useState({ catalog: [], mine: [] });
   const [month, setMonth] = useState(() => monthKeyOf(new Date()));
   const [day, setDay] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("pix");
 
   // Horários por dia (no fuso da clínica) para o calendário do mês.
   const slotsByDay = useMemo(() => {
@@ -174,7 +175,7 @@ export default function AgendaPage() {
     const res = await fetch("/api/appointments", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ startsAt: selected, type: "consultation" })
+      body: JSON.stringify({ startsAt: selected, paymentMethod: usablePackage ? "pix" : paymentMethod })
     });
     const data = await res.json();
     setLoading(false);
@@ -185,7 +186,8 @@ export default function AgendaPage() {
     setFeedback(
       data.calendarWarning || (data.usedPackage ? `Consulta agendada pelo pacote “${data.usedPackage.name}”.` : "Consulta agendada com sucesso!")
     );
-    window.location.href = "/app/consultas";
+    // Vai direto para a consulta, onde fica o PIX ou o botão de pagar no cartão.
+    window.location.href = data.appointment?.id ? `/app/consultas/${data.appointment.id}` : "/app/consultas";
   }
 
   return (
@@ -387,11 +389,10 @@ export default function AgendaPage() {
               feedback={feedback}
               onConfirm={book}
               confirmLabel={bookingEnabled ? "Confirmar agendamento" : "Agendamentos pausados"}
-              pixCode={
-                usablePackage
-                  ? null
-                  : pixCodeForAmount(payment.settings?.consultation_pix_code, payment.settings?.consultation_price_cents)
-              }
+              options={consultationPaymentOptions(payment.settings || {})}
+              method={paymentMethod}
+              onMethodChange={setPaymentMethod}
+              coveredByPackage={usablePackage ? usablePackage.name : null}
             />
           </Card>
         </div>

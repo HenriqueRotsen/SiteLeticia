@@ -59,13 +59,16 @@ export const demoNutritionist = {
 
 export const demoPaymentSettings = {
   consultation_price_cents: 25000,
-  return_price_cents: 18000,
   currency: "BRL",
+  // Cartão de crédito fictício: taxa repassada e link de exemplo.
+  card_fee_percent: 4.99,
+  card_max_installments: 3,
+  consultation_card_price_cents: null,
+  consultation_card_link: "https://pagamento.exemplo.com/consulta-demo",
   booking_enabled: true,
   // PIX copia e cola fictício (não paga nada de verdade).
   consultation_pix_code:
     "00020126580014br.gov.bcb.pix013600000000-demo-0000-0000-0000000000005204000053039865406250.005802BR5918LETICIA CUNHA DEMO6014BELO HORIZONTE62080504DEMO630417CC",
-  return_pix_code: null,
   clinic_address: {
     placeName: "Consultório Letícia Cunha",
     cep: "30130100",

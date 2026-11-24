@@ -20,6 +20,7 @@ import { formatAddress, isAddressComplete, sanitizeAddress } from "@/lib/appoint
 import { appointmentWhatsappLink } from "@/lib/appointments/whatsapp";
 import { pickUsablePackage } from "@/lib/packages/pricing";
 import { patientPackageRow } from "@/lib/packages/schema";
+import { consultationPaymentOptions, normalizePaymentLink, pickOption } from "@/lib/payments/card";
 
 let state = createInitialDemoState();
 
@@ -29,13 +30,15 @@ function demoPackages() {
       {
         id: "pkg-demo-4",
         name: "Acompanhamento trimestral",
-        description: "1 consulta + 3 retornos, um por mês.",
+        description: "4 consultas, uma por mês.",
         sessions: 4,
         price_cents: 85000,
         active: true,
         sort_order: 0,
         pix_code:
-          "00020126580014br.gov.bcb.pix013600000000-demo-0000-0000-0000000000005204000053039865406850.005802BR5918LETICIA CUNHA DEMO6014BELO HORIZONTE62080504DEMO6304A5BB"
+          "00020126580014br.gov.bcb.pix013600000000-demo-0000-0000-0000000000005204000053039865406850.005802BR5918LETICIA CUNHA DEMO6014BELO HORIZONTE62080504DEMO6304A5BB",
+        card_price_cents: null,
+        card_link: "https://pagamento.exemplo.com/pacote-demo"
       }
     ];
   }
@@ -54,6 +57,12 @@ function demoUsePackageCredit(patient) {
 function demoReleasePackageCredit(appt) {
   const pkg = (state.patientPackages || []).find((item) => item.id === appt.patient_package_id);
   if (pkg && pkg.sessions_used > 0) pkg.sessions_used -= 1;
+}
+
+// PIX ou cartão (valor do cartão já com a taxa).
+function demoPaymentFields(method) {
+  const option = pickOption(consultationPaymentOptions(state.paymentSettings), method);
+  return { payment_method: option.method, amount_cents: option.cents };
 }
 
 // Fila de espera fictícia para o modo demonstração.
@@ -269,10 +278,10 @@ export async function handleDemoApi(request) {
       ends_at: endsAt.toISOString(),
       duration_min: 60,
       buffer_min: 15,
-      type: body.type || "consultation",
+      type: "consultation",
       status: "scheduled",
       payment_status: "pending",
-      amount_cents: state.paymentSettings.consultation_price_cents,
+      ...demoPaymentFields(body.paymentMethod),
       meet_link: state.googleConnected ? "https://meet.google.com/demo-nova-consulta" : null
     };
     const { usedPackage, ...credit } = demoUsePackageCredit(patientId);
@@ -292,6 +301,15 @@ export async function handleDemoApi(request) {
   const patientCancelMatch = path.match(/^\/api\/appointments\/([^/]+)$/);
   if (patientCancelMatch && method === "PATCH") {
     const body = await request.json().catch(() => ({}));
+    if (body.paymentMethod === "pix" || body.paymentMethod === "card") {
+      const target = state.appointments.find((a) => a.id === patientCancelMatch[1]);
+      if (!target) return json({ message: "Consulta não encontrada." }, 404);
+      if (target.payment_status !== "pending" || target.patient_package_id) {
+        return json({ message: "O pagamento desta consulta não pode mais ser alterado." }, 400);
+      }
+      Object.assign(target, demoPaymentFields(body.paymentMethod));
+      return json({ appointment: target });
+    }
     if (body.status !== "cancelled") return json({ message: "Ação inválida." }, 400);
     const appt = state.appointments.find((a) => a.id === patientCancelMatch[1]);
     if (!appt) return json({ message: "Consulta não encontrada." }, 404);
@@ -1100,7 +1118,11 @@ export async function handleDemoApi(request) {
   }
 
   if (path === "/api/admin/packages" && method === "GET") {
-    return json({ packages: demoPackages(), regularPriceCents: state.paymentSettings.consultation_price_cents });
+    return json({
+      packages: demoPackages(),
+      regularPriceCents: state.paymentSettings.consultation_price_cents,
+      cardFeePercent: state.paymentSettings.card_fee_percent || 0
+    });
   }
 
   if (path === "/api/admin/packages" && method === "POST") {
@@ -1113,7 +1135,9 @@ export async function handleDemoApi(request) {
       price_cents: Number(body.priceCents) || 0,
       active: body.active !== false,
       sort_order: 0,
-      pix_code: body.pixCode || null
+      pix_code: body.pixCode || null,
+      card_price_cents: body.cardPriceCents || null,
+      card_link: normalizePaymentLink(body.cardLink)
     };
     if (pkg.name.length < 2 || pkg.sessions < 2) return json({ message: "Confira nome, quantidade de consultas e preço." }, 400);
     demoPackages().push(pkg);
@@ -1131,7 +1155,9 @@ export async function handleDemoApi(request) {
       sessions: Number(body.sessions),
       price_cents: Number(body.priceCents),
       active: body.active !== false,
-      pix_code: body.pixCode || null
+      pix_code: body.pixCode || null,
+      card_price_cents: body.cardPriceCents || null,
+      card_link: normalizePaymentLink(body.cardLink)
     });
     return json({ package: pkg });
   }
@@ -1172,7 +1198,9 @@ export async function handleDemoApi(request) {
     return json({
       catalog: demoPackages().filter((item) => item.active),
       mine: state.patientPackages.filter((item) => item.patient_id === patientId),
-      regularPriceCents: state.paymentSettings.consultation_price_cents
+      regularPriceCents: state.paymentSettings.consultation_price_cents,
+      cardFeePercent: state.paymentSettings.card_fee_percent || 0,
+      cardMaxInstallments: state.paymentSettings.card_max_installments || 1
     });
   }
   if (path === "/api/packages" && method === "POST") {
@@ -1182,7 +1210,12 @@ export async function handleDemoApi(request) {
     if (state.patientPackages.some((item) => item.patient_id === patientId && item.payment_status === "pending")) {
       return json({ message: "Você já tem um pacote aguardando pagamento." }, 409);
     }
-    const row = { id: `ppkg-${Date.now()}`, created_at: new Date().toISOString(), ...patientPackageRow(pkg, patientId) };
+    const row = {
+      id: `ppkg-${Date.now()}`,
+      created_at: new Date().toISOString(),
+      payment_method: "pix",
+      ...patientPackageRow(pkg, patientId, { paymentMethod: body.paymentMethod, settings: state.paymentSettings })
+    };
     state.patientPackages.unshift(row);
     return json({ package: row });
   }
@@ -1217,13 +1250,10 @@ export async function handleDemoApi(request) {
       ends_at: new Date(startsAt.getTime() + 60 * 60 * 1000).toISOString(),
       duration_min: 60,
       buffer_min: 15,
-      type: body.type || "consultation",
+      type: "consultation",
       status: "scheduled",
       payment_status: "pending",
-      amount_cents:
-        body.type === "return"
-          ? state.paymentSettings.return_price_cents
-          : state.paymentSettings.consultation_price_cents,
+      ...demoPaymentFields(body.paymentMethod),
       modality: inPerson ? "in_person" : "online",
       location: inPerson ? formatAddress(state.paymentSettings.clinic_address) : null,
       meet_link: !inPerson && state.googleConnected ? "https://meet.google.com/demo-marcada-pela-nutri" : null,
@@ -1355,11 +1385,13 @@ export async function handleDemoApi(request) {
     state.paymentSettings = {
       ...state.paymentSettings,
       consultation_price_cents: body.consultationPriceCents,
-      return_price_cents: body.returnPriceCents,
       instructions: body.instructions,
       cancellation_policy: body.cancellationPolicy,
       ...(body.consultationPixCode !== undefined ? { consultation_pix_code: body.consultationPixCode } : {}),
-      ...(body.returnPixCode !== undefined ? { return_pix_code: body.returnPixCode } : {})
+      ...(body.consultationCardPriceCents !== undefined ? { consultation_card_price_cents: body.consultationCardPriceCents } : {}),
+      ...(body.consultationCardLink !== undefined ? { consultation_card_link: normalizePaymentLink(body.consultationCardLink) } : {}),
+      ...(body.cardFeePercent !== undefined ? { card_fee_percent: body.cardFeePercent } : {}),
+      ...(body.cardMaxInstallments !== undefined ? { card_max_installments: body.cardMaxInstallments } : {})
     };
     return json({ settings: state.paymentSettings });
   }

@@ -74,7 +74,7 @@ export function appointmentSearchFields(row, { includePatient = false } = {}) {
     includePatient ? row.patients?.phone : null,
     APPOINTMENT_STATUS_LABELS[row.status],
     PAYMENT_STATUS_LABELS[row.payment_status],
-    row.type === "return" ? "retorno" : "consulta",
+    row.payment_method === "card" ? "cartão" : "pix",
     row.modality === "in_person" ? "presencial" : "online",
     new Date(row.starts_at).toLocaleDateString("pt-BR")
   ];

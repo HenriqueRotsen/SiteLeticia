@@ -153,7 +153,14 @@ export default function AdminFinanceiroPage() {
               nowrap: true,
               sortValue: (row) => Number(row.amount_cents) || 0,
               sortLabels: ["menor", "maior"],
-              render: (row) => formatCurrency(row.amount_cents)
+              render: (row) => (
+                <span>
+                  {formatCurrency(row.amount_cents)}
+                  <span className="block text-[11px] text-graphite/45">
+                    {row.patient_package_id ? "Pacote" : row.payment_method === "card" ? "Cartão" : "PIX"}
+                  </span>
+                </span>
+              )
             },
             {
               key: "payment",

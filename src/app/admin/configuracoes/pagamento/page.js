@@ -1,206 +1,228 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import AdminShell from "@/components/layout/AdminShell";
-import { Card } from "@/components/layout/AppShell";
-import { centsToReais, formatReais, parseReaisInput, reaisToCents } from "@/lib/money";
-import PixCodeField from "@/components/ui/PixCodeField";
+// Valores e formas de pagamento: PIX (mais barato) e cartão de crédito por link,
+// com a taxa do cartão repassada ao paciente.
 
-function MoneyReaisField({ label, value, onChange, placeholder }) {
-  return (
-    <label className="text-sm">
-      {label}
-      <input
-        type="text"
-        inputMode="numeric"
-        autoComplete="off"
-        value={formatReais(value)}
-        onChange={(event) => onChange(parseReaisInput(event.target.value))}
-        onKeyDown={(event) => {
-          if (event.key === "ArrowUp") {
-            event.preventDefault();
-            onChange((Number(value) || 0) + 1);
-          }
-          if (event.key === "ArrowDown") {
-            event.preventDefault();
-            onChange(Math.max(0, (Number(value) || 0) - 1));
-          }
-        }}
-        className="mt-1 w-full rounded-xl border px-3 py-2"
-        placeholder={placeholder}
-      />
-      <span className="mt-1 block text-xs text-graphite/45">Valor em reais (de R$ 1 em R$ 1)</span>
-    </label>
-  );
-}
+import { useEffect, useMemo, useState } from "react";
+import { CreditCard, QrCode } from "lucide-react";
+import AdminShell from "@/components/layout/AdminShell";
+import { Card, btnPrimary, formatCurrency, inputClassName } from "@/components/layout/AppShell";
+import PixCodeField from "@/components/ui/PixCodeField";
+import { CardPriceFields, MoneyReaisField } from "@/components/ui/PaymentPriceFields";
+import { centsToReais, reaisToCents } from "@/lib/money";
+import {
+  clampInstallments,
+  installmentCents,
+  isValidPaymentLink,
+  suggestCardPriceCents
+} from "@/lib/payments/card";
 
 export default function PagamentoConfigPage() {
   const [settings, setSettings] = useState({
     consultationPriceReais: 0,
-    returnPriceReais: null,
-    instructions: "",
-    cancellationPolicy: "",
     consultationPixCode: "",
-    returnPixCode: ""
+    consultationCardReais: 0,
+    consultationCardLink: "",
+    cardFeePercent: "",
+    cardMaxInstallments: 1,
+    instructions: "",
+    cancellationPolicy: ""
   });
-  const [methods, setMethods] = useState([]);
-  const [methodForm, setMethodForm] = useState({
-    type: "pix",
-    label: "PIX",
-    details: { pixKey: "" },
-    active: true,
-    sortOrder: 0
-  });
-  const [feedback, setFeedback] = useState("");
-
-  async function load() {
-    const [s, m] = await Promise.all([
-      fetch("/api/admin/payment-settings").then((r) => r.json()),
-      fetch("/api/admin/payment-methods").then((r) => r.json())
-    ]);
-    if (s.settings) {
-      setSettings({
-        consultationPriceReais: centsToReais(s.settings.consultation_price_cents),
-        returnPriceReais:
-          s.settings.return_price_cents == null
-            ? null
-            : centsToReais(s.settings.return_price_cents),
-        instructions: s.settings.instructions || "",
-        cancellationPolicy: s.settings.cancellation_policy || "",
-        consultationPixCode: s.settings.consultation_pix_code || "",
-        returnPixCode: s.settings.return_pix_code || ""
-      });
-    }
-    setMethods(m.methods || []);
-  }
+  const [saving, setSaving] = useState(false);
+  const [feedback, setFeedback] = useState({ tone: "", text: "" });
 
   useEffect(() => {
-    load();
+    fetch("/api/admin/payment-settings")
+      .then((r) => r.json())
+      .then((data) => {
+        const s = data.settings;
+        if (!s) return;
+        setSettings({
+          consultationPriceReais: centsToReais(s.consultation_price_cents),
+          consultationPixCode: s.consultation_pix_code || "",
+          consultationCardReais: centsToReais(s.consultation_card_price_cents),
+          consultationCardLink: s.consultation_card_link || "",
+          cardFeePercent: s.card_fee_percent != null && Number(s.card_fee_percent) ? String(s.card_fee_percent).replace(".", ",") : "",
+          cardMaxInstallments: clampInstallments(s.card_max_installments || 1),
+          instructions: s.instructions || "",
+          cancellationPolicy: s.cancellation_policy || ""
+        });
+      })
+      .catch(() => {});
   }, []);
 
-  async function saveSettings() {
+  const set = (key) => (value) => setSettings((current) => ({ ...current, [key]: value }));
+  const feePercent = Number(String(settings.cardFeePercent).replace(",", ".")) || 0;
+  const pixCents = reaisToCents(settings.consultationPriceReais);
+  const cardCents = reaisToCents(settings.consultationCardReais) || suggestCardPriceCents(pixCents, feePercent);
+  const installments = clampInstallments(settings.cardMaxInstallments);
+  const preview = useMemo(
+    () => ({ extra: Math.max(0, cardCents - pixCents), each: installmentCents(cardCents, installments) }),
+    [cardCents, pixCents, installments]
+  );
+
+  async function save() {
+    if (!isValidPaymentLink(settings.consultationCardLink)) {
+      setFeedback({ tone: "error", text: "O link do cartão precisa começar com https://." });
+      return;
+    }
+    setSaving(true);
+    setFeedback({ tone: "", text: "" });
     const res = await fetch("/api/admin/payment-settings", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        consultationPriceCents: reaisToCents(settings.consultationPriceReais),
-        returnPriceCents:
-          settings.returnPriceReais == null || settings.returnPriceReais === ""
-            ? null
-            : reaisToCents(settings.returnPriceReais),
-        instructions: settings.instructions,
-        cancellationPolicy: settings.cancellationPolicy,
+        consultationPriceCents: pixCents,
         consultationPixCode: settings.consultationPixCode || null,
-        returnPixCode: settings.returnPixCode || null
+        consultationCardPriceCents: reaisToCents(settings.consultationCardReais) || null,
+        consultationCardLink: settings.consultationCardLink.trim() || null,
+        cardFeePercent: Math.min(30, Math.max(0, feePercent)),
+        cardMaxInstallments: installments,
+        instructions: settings.instructions,
+        cancellationPolicy: settings.cancellationPolicy
       })
     });
     const data = await res.json().catch(() => ({}));
-    setFeedback(res.ok ? "Configurações salvas." : data.message || "Erro ao salvar.");
+    setSaving(false);
+    if (!res.ok) {
+      setFeedback({ tone: "error", text: data.message || "Erro ao salvar." });
+      return;
+    }
+    setFeedback(
+      data.warning
+        ? { tone: "warning", text: `Valores salvos. ${data.warning}` }
+        : { tone: "success", text: "Configurações salvas." }
+    );
   }
 
-  async function addMethod() {
-    const res = await fetch("/api/admin/payment-methods", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(methodForm)
-    });
-    if (res.ok) {
-      setMethodForm({ type: "pix", label: "PIX", details: { pixKey: "" }, active: true, sortOrder: 0 });
-      load();
-    }
-  }
+  const feedbackClass = {
+    success: "border-olive-200 bg-olive-50 text-olive-900",
+    warning: "border-amber-200 bg-amber-50 text-amber-900",
+    error: "border-rose-200 bg-rose-50 text-rose-800"
+  }[feedback.tone];
 
   return (
-    <AdminShell title="Pagamento" breadcrumbs={["Admin", "Configurações", "Pagamento"]} userName="Letícia">
-      <Card className="mb-4">
-        <h2 className="font-semibold">Valores</h2>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <MoneyReaisField
-            label="Consulta (R$)"
-            value={settings.consultationPriceReais}
-            onChange={(value) => setSettings((c) => ({ ...c, consultationPriceReais: value }))}
-            placeholder="R$ 0"
-          />
-          <MoneyReaisField
-            label="Retorno (R$)"
-            value={settings.returnPriceReais ?? 0}
-            onChange={(value) =>
-              setSettings((c) => ({ ...c, returnPriceReais: value === 0 ? null : value }))
-            }
-            placeholder="R$ 0"
-          />
-        </div>
-        <div className="mt-5 rounded-2xl border border-olive-900/10 bg-white/60 p-4">
-          <h3 className="text-sm font-semibold text-graphite">PIX copia e cola</h3>
-          <p className="mt-1 text-xs leading-5 text-graphite/55">
-            No app do banco, gere um PIX com o valor exato e cole o código aqui. O paciente vê o QR code e o código
-            para copiar, já com o valor certo. Os códigos dos pacotes ficam em Pacotes.
-          </p>
-          <div className="mt-3 grid gap-4 lg:grid-cols-2">
-            <PixCodeField
-              label="Consulta avulsa"
-              value={settings.consultationPixCode}
-              onChange={(value) => setSettings((c) => ({ ...c, consultationPixCode: value }))}
-              expectedCents={reaisToCents(settings.consultationPriceReais)}
+    <AdminShell
+      title="Pagamento"
+      subtitle="PIX com o melhor preço e cartão de crédito com a taxa repassada"
+      breadcrumbs={["Admin", "Configurações", "Pagamento"]}
+      userName="Letícia"
+    >
+      <Card className="mb-4" title="Cartão de crédito">
+        <p className="-mt-2 mb-4 text-sm leading-6 text-graphite/60">
+          O paciente escolhe entre PIX e cartão. No cartão, o preço inclui a taxa da maquininha/link, para você receber o
+          mesmo valor do PIX. Pacotes usam a mesma taxa (cada um tem o próprio link em Pacotes).
+        </p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="block text-sm font-medium text-graphite">
+            Taxa do cartão (%)
+            <input
+              type="text"
+              inputMode="decimal"
+              value={settings.cardFeePercent}
+              onChange={(e) => set("cardFeePercent")(e.target.value.replace(/[^\d,.]/g, "").slice(0, 5))}
+              placeholder="Ex.: 4,99"
+              className={inputClassName("mt-1")}
             />
-            <PixCodeField
-              label="Retorno"
-              value={settings.returnPixCode}
-              onChange={(value) => setSettings((c) => ({ ...c, returnPixCode: value }))}
-              expectedCents={settings.returnPriceReais ? reaisToCents(settings.returnPriceReais) : null}
-              hint="Opcional. Só se o retorno tiver valor diferente."
-            />
-          </div>
+            <span className="mt-1 block text-xs font-normal text-graphite/50">
+              A taxa que a maquininha/banco cobra (com o parcelamento que você oferece).
+            </span>
+          </label>
+          <label className="block text-sm font-medium text-graphite">
+            Parcelas
+            <select
+              value={installments}
+              onChange={(e) => set("cardMaxInstallments")(Number(e.target.value))}
+              className={inputClassName("mt-1")}
+            >
+              {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
+                <option key={n} value={n}>
+                  {n === 1 ? "Só à vista" : `Em até ${n}x`}
+                </option>
+              ))}
+            </select>
+            <span className="mt-1 block text-xs font-normal text-graphite/50">
+              Só aparece para o paciente; o parcelamento é feito no link.
+            </span>
+          </label>
         </div>
-        <textarea
-          value={settings.instructions}
-          onChange={(e) => setSettings((c) => ({ ...c, instructions: e.target.value }))}
-          className="mt-3 w-full rounded-xl border px-3 py-2"
-          rows={3}
-          placeholder="Instruções de pagamento"
-        />
-        <textarea
-          value={settings.cancellationPolicy}
-          onChange={(e) => setSettings((c) => ({ ...c, cancellationPolicy: e.target.value }))}
-          className="mt-3 w-full rounded-xl border px-3 py-2"
-          rows={3}
-          placeholder="Política de cancelamento"
-        />
-        <button type="button" onClick={saveSettings} className="mt-4 rounded-xl bg-olive-700 px-4 py-2 text-white">
-          Salvar configurações
-        </button>
-        {feedback ? <p className="mt-2 text-sm">{feedback}</p> : null}
       </Card>
 
-      <Card>
-        <h2 className="font-semibold">Formas de pagamento</h2>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <input
-            value={methodForm.label}
-            onChange={(e) => setMethodForm((c) => ({ ...c, label: e.target.value }))}
-            className="rounded-xl border px-3 py-2"
-            placeholder="Nome (ex: PIX)"
-          />
-          <input
-            value={methodForm.details.pixKey || ""}
-            onChange={(e) =>
-              setMethodForm((c) => ({ ...c, details: { ...c.details, pixKey: e.target.value } }))
-            }
-            className="rounded-xl border px-3 py-2"
-            placeholder="Chave PIX"
-          />
+      <Card className="mb-4" title="Consulta">
+        <div className="grid gap-5 lg:grid-cols-2">
+          <div className="space-y-4 rounded-2xl border border-olive-900/10 bg-white/60 p-4">
+            <p className="flex items-center gap-2 font-semibold text-graphite">
+              <QrCode className="h-4 w-4 text-olive-700" /> PIX
+            </p>
+            <MoneyReaisField
+              label="Preço no PIX"
+              value={settings.consultationPriceReais}
+              onChange={set("consultationPriceReais")}
+              hint="O valor da consulta. É o mais barato."
+            />
+            <PixCodeField
+              label="PIX copia e cola"
+              value={settings.consultationPixCode}
+              onChange={set("consultationPixCode")}
+              expectedCents={pixCents}
+            />
+          </div>
+          <div className="space-y-4 rounded-2xl border border-olive-900/10 bg-white/60 p-4">
+            <p className="flex items-center gap-2 font-semibold text-graphite">
+              <CreditCard className="h-4 w-4 text-olive-700" /> Cartão de crédito
+            </p>
+            <CardPriceFields
+              pixCents={pixCents}
+              feePercent={feePercent}
+              cardReais={settings.consultationCardReais}
+              onCardReais={set("consultationCardReais")}
+              link={settings.consultationCardLink}
+              onLink={set("consultationCardLink")}
+              stacked
+            />
+            <p className="rounded-xl bg-linen/70 px-3 py-2 text-xs leading-5 text-graphite/65">
+              O paciente vê: <strong className="text-graphite">PIX {formatCurrency(pixCents)}</strong> ou{" "}
+              <strong className="text-graphite">cartão {formatCurrency(cardCents)}</strong>
+              {installments > 1 ? ` (em até ${installments}x de ${formatCurrency(preview.each)})` : ""}
+              {preview.extra ? ` · ${formatCurrency(preview.extra)} a mais no cartão` : ""}.
+            </p>
+          </div>
         </div>
-        <button type="button" onClick={addMethod} className="mt-4 rounded-xl border px-4 py-2">
-          Adicionar forma
-        </button>
-        <ul className="mt-4 space-y-2 text-sm">
-          {methods.map((m) => (
-            <li key={m.id} className="rounded-xl bg-white/70 px-3 py-2">
-              {m.label} {m.details?.pixKey ? `· ${m.details.pixKey}` : ""}
-            </li>
-          ))}
-        </ul>
       </Card>
+
+      <Card className="mb-4" title="Textos para o paciente">
+        <div className="grid gap-4 lg:grid-cols-2">
+          <label className="block text-sm font-medium text-graphite">
+            Instruções de pagamento
+            <textarea
+              value={settings.instructions}
+              onChange={(e) => set("instructions")(e.target.value)}
+              className={inputClassName("mt-1")}
+              rows={3}
+              placeholder="Ex.: Depois de pagar, envie o comprovante em Minhas consultas."
+            />
+          </label>
+          <label className="block text-sm font-medium text-graphite">
+            Política de cancelamento
+            <textarea
+              value={settings.cancellationPolicy}
+              onChange={(e) => set("cancellationPolicy")(e.target.value)}
+              className={inputClassName("mt-1")}
+              rows={3}
+              placeholder="Ex.: Cancelamentos com pelo menos 24h de antecedência."
+            />
+          </label>
+        </div>
+      </Card>
+
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <button type="button" onClick={save} disabled={saving} className={btnPrimary()}>
+          {saving ? "Salvando…" : "Salvar configurações"}
+        </button>
+        {feedback.text ? (
+          <p className={`rounded-xl border px-3 py-2 text-sm ${feedbackClass}`}>{feedback.text}</p>
+        ) : null}
+      </div>
     </AdminShell>
   );
 }

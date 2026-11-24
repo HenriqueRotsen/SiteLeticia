@@ -12,6 +12,7 @@ import { formatAppointmentDateTime } from "@/lib/datetime";
 import { labelPaymentDocType } from "@/lib/labels";
 import { googleMapsEmbedUrl, googleMapsLink } from "@/lib/appointments/location";
 import { useDialog } from "@/components/ui/ConfirmDialog";
+import { paymentMethodLabel } from "@/lib/payments/card";
 
 export default function AdminConsultaDetailPage() {
   const params = useParams();
@@ -218,7 +219,10 @@ export default function AdminConsultaDetailPage() {
             </div>
             <div>
               <dt className="text-xs uppercase tracking-wide text-graphite/45">Valor</dt>
-              <dd className="mt-1 font-medium">{formatCurrency(appointment.amount_cents)}</dd>
+              <dd className="mt-1 font-medium">
+                {formatCurrency(appointment.amount_cents)}
+                {appointment.patient_package_id ? " · pacote" : ` · ${paymentMethodLabel(appointment.payment_method)}`}
+              </dd>
             </div>
             <div>
               <dt className="text-xs uppercase tracking-wide text-graphite/45">Modalidade</dt>

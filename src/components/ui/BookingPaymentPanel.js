@@ -1,100 +1,88 @@
 "use client";
 
-import { useState } from "react";
+// Resumo do agendamento: valor, escolha entre PIX e cartão, PIX copia e cola e textos da Letícia.
+
+import { Check, CreditCard, Info, QrCode, Receipt, ShieldCheck } from "lucide-react";
 import PixPayment from "@/components/ui/PixPayment";
-import {
-  Banknote,
-  Check,
-  Copy,
-  CreditCard,
-  Info,
-  QrCode,
-  Receipt,
-  ShieldCheck
-} from "lucide-react";
 import { btnPrimary, formatCurrency } from "@/components/layout/AppShell";
+import { cardExtraCents, pickOption } from "@/lib/payments/card";
+import { pixCodeForAmount } from "@/lib/payments/pix-brcode";
 
-const methodIcons = {
-  pix: QrCode,
-  cash: Banknote,
-  card: CreditCard
-};
+// Escolha PIX x cartão. `options` vem de consultationPaymentOptions / packagePaymentOptions.
+export function PaymentMethodChoice({ options, value, onChange }) {
+  if (!options || options.length < 2) return null;
+  const pix = pickOption(options, "pix");
+  const card = pickOption(options, "card");
+  const extra = cardExtraCents(pix.cents, card.cents);
 
-export function PaymentMethodCard({ method }) {
-  const [copied, setCopied] = useState(false);
-  const Icon = methodIcons[method.type] || CreditCard;
-  const pixKey = method.details?.pixKey;
-
-  async function copyPixKey() {
-    if (!pixKey) return;
-    try {
-      await navigator.clipboard.writeText(pixKey);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 2000);
-    } catch {
-      setCopied(false);
-    }
-  }
+  const item = (option, Icon, title, detail, badge) => {
+    const active = value === option.method;
+    return (
+      <button
+        key={option.method}
+        type="button"
+        onClick={() => onChange(option.method)}
+        aria-pressed={active}
+        className={`flex w-full items-start gap-3 rounded-2xl border p-3.5 text-left transition ${
+          active ? "border-olive-700 bg-olive-50 ring-2 ring-olive-200" : "border-olive-900/10 bg-white hover:border-olive-400"
+        }`}
+      >
+        <span
+          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
+            active ? "bg-olive-700 text-white" : "bg-linen text-olive-800"
+          }`}
+        >
+          <Icon className="h-4 w-4" strokeWidth={1.85} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="font-semibold text-graphite">{title}</span>
+            {badge ? (
+              <span className="rounded-full bg-olive-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-olive-800">
+                {badge}
+              </span>
+            ) : null}
+          </span>
+          <span className="mt-0.5 block text-sm font-semibold text-graphite">{formatCurrency(option.cents)}</span>
+          <span className="block text-xs leading-5 text-graphite/55">{detail}</span>
+        </span>
+        {active ? <Check className="mt-1 h-4 w-4 shrink-0 text-olive-700" /> : null}
+      </button>
+    );
+  };
 
   return (
-    <article className="overflow-hidden rounded-2xl border border-olive-900/10 bg-white">
-      <div className="flex items-center gap-3 border-b border-olive-900/5 bg-linen/60 px-4 py-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-olive-100 text-olive-700">
-          <Icon className="h-5 w-5" strokeWidth={1.75} />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="font-semibold text-graphite">{method.label}</p>
-          {method.details?.instructions ? (
-            <p className="text-xs text-graphite/50">{method.details.instructions}</p>
-          ) : null}
-        </div>
-        {method.type === "pix" ? (
-          <span className="rounded-full bg-olive-100 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-olive-800">
-            Preferencial
-          </span>
-        ) : null}
-      </div>
-
-      <div className="space-y-3 p-4">
-        {pixKey ? (
-          <div>
-            <p className="text-xs font-medium uppercase tracking-wide text-graphite/45">Chave PIX</p>
-            <div className="mt-2 flex items-center gap-2">
-              <code className="min-w-0 flex-1 truncate rounded-xl bg-linen px-3 py-2 text-sm text-graphite">
-                {pixKey}
-              </code>
-              <button
-                type="button"
-                onClick={copyPixKey}
-                className="inline-flex shrink-0 items-center gap-1 rounded-xl border border-olive-900/10 bg-white px-3 py-2 text-xs font-semibold text-olive-700 transition hover:bg-olive-50"
-              >
-                {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                {copied ? "Copiado" : "Copiar"}
-              </button>
-            </div>
-          </div>
-        ) : null}
-
-        {!pixKey && method.details?.instructions ? (
-          <p className="text-sm leading-6 text-graphite/65">{method.details.instructions}</p>
-        ) : null}
-      </div>
-    </article>
+    <div className="space-y-2" role="group" aria-label="Forma de pagamento">
+      {item(pix, QrCode, "PIX", "QR code ou copia e cola, na hora.", extra ? "Mais barato" : null)}
+      {item(
+        card,
+        CreditCard,
+        "Cartão de crédito",
+        `${card.installments > 1 ? `Em até ${card.installments}x de ${formatCurrency(card.installmentCents)} · ` : ""}pelo link de pagamento${
+          extra ? ` (taxa do cartão: +${formatCurrency(extra)})` : ""
+        }.`
+      )}
+    </div>
   );
 }
 
 export default function BookingPaymentPanel({
   payment,
+  options = [],
+  method = "pix",
+  onMethodChange,
+  coveredByPackage = null,
   selectedSummary,
   loading,
   disabled,
   feedback,
   onConfirm,
-  confirmLabel = "Confirmar agendamento",
-  pixCode = null
+  confirmLabel = "Confirmar agendamento"
 }) {
   const settings = payment.settings || {};
-  const methods = payment.methods || [];
+  const chosen = pickOption(options, method);
+  // Só mostra o QR se o valor do PIX copia e cola bater com o da consulta.
+  const pixCode = chosen?.method === "pix" ? pixCodeForAmount(chosen.pixCode, chosen.cents) : null;
 
   return (
     <div className="space-y-4">
@@ -103,9 +91,13 @@ export default function BookingPaymentPanel({
           <div>
             <p className="text-sm font-medium text-olive-100">Valor da consulta</p>
             <p className="mt-2 text-3xl font-semibold tracking-tight">
-              {formatCurrency(settings.consultation_price_cents)}
+              {coveredByPackage ? "Pacote" : formatCurrency(chosen?.cents ?? settings.consultation_price_cents)}
             </p>
-            <p className="mt-2 text-xs text-olive-100/80">Sessão de 60 minutos</p>
+            <p className="mt-2 text-xs text-olive-100/80">
+              {coveredByPackage
+                ? `Usa 1 consulta do pacote “${coveredByPackage}”.`
+                : `Sessão de 60 minutos${chosen?.method === "card" ? " · no cartão" : options.length > 1 ? " · no PIX" : ""}`}
+            </p>
           </div>
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/15">
             <Receipt className="h-6 w-6" strokeWidth={1.75} />
@@ -126,18 +118,23 @@ export default function BookingPaymentPanel({
         </div>
       )}
 
-      {pixCode ? (
-        <PixPayment code={pixCode} amountCents={settings.consultation_price_cents} title="PIX da consulta" compact />
+      {!coveredByPackage && options.length > 1 ? (
+        <div>
+          <p className="mb-2 text-sm font-semibold text-graphite">Como prefere pagar?</p>
+          <PaymentMethodChoice options={options} value={method} onChange={onMethodChange} />
+        </div>
       ) : null}
 
-      <div>
-        <p className="mb-3 text-sm font-semibold text-graphite">Formas de pagamento</p>
-        <div className="space-y-3">
-          {methods.map((method) => (
-            <PaymentMethodCard key={method.id} method={method} />
-          ))}
-        </div>
-      </div>
+      {!coveredByPackage && pixCode ? (
+        <PixPayment code={pixCode} amountCents={chosen.cents} title="PIX da consulta" compact />
+      ) : null}
+
+      {!coveredByPackage && chosen?.method === "card" ? (
+        <p className="rounded-2xl border border-olive-900/10 bg-white p-4 text-sm leading-6 text-graphite/70">
+          Depois de confirmar, o botão <strong className="text-graphite">Pagar no cartão</strong> aparece na sua
+          consulta. A Letícia confirma o pagamento assim que ele cair.
+        </p>
+      ) : null}
 
       {settings.instructions ? (
         <div className="flex gap-3 rounded-2xl border border-amber-200/80 bg-amber-50/80 p-4">
@@ -159,19 +156,12 @@ export default function BookingPaymentPanel({
         </div>
       ) : null}
 
-      <button
-        type="button"
-        disabled={disabled || loading}
-        onClick={onConfirm}
-        className={btnPrimary("w-full py-3.5")}
-      >
+      <button type="button" disabled={disabled || loading} onClick={onConfirm} className={btnPrimary("w-full py-3.5")}>
         {loading ? "Agendando..." : confirmLabel}
       </button>
 
       {feedback ? (
-        <p className="rounded-xl border border-olive-200 bg-olive-50 px-4 py-3 text-sm text-olive-800">
-          {feedback}
-        </p>
+        <p className="rounded-xl border border-olive-200 bg-olive-50 px-4 py-3 text-sm text-olive-800">{feedback}</p>
       ) : null}
     </div>
   );

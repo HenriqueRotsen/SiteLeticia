@@ -115,7 +115,12 @@ export default function AdminConsultasPage() {
               sortLabels: ["A–Z", "Z–A"],
               render: (row) => {
                 const badge = paymentBadge(row.payment_status);
-                return <Badge variant={badge.variant}>{badge.label}</Badge>;
+                return (
+                  <span className="inline-flex flex-wrap items-center gap-1">
+                    <Badge variant={badge.variant}>{badge.label}</Badge>
+                    {row.payment_method === "card" && !row.patient_package_id ? <Badge variant="info">Cartão</Badge> : null}
+                  </span>
+                );
               }
             },
             {
