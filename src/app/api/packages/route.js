@@ -33,7 +33,9 @@ export async function GET() {
       price_cents: pkg.price_cents,
       pix_code: pkg.pix_code || null,
       card_price_cents: pkg.card_price_cents || null,
-      card_link: pkg.card_link || null
+      card_link: pkg.card_link || null,
+      card_fee_percent: pkg.card_fee_percent ?? null,
+      card_installments: pkg.card_installments ?? null
     })),
     mine: mine || [],
     regularPriceCents: settings?.consultation_price_cents || 0,

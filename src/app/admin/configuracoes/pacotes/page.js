@@ -11,15 +11,33 @@ import { centsToReais, formatReais, parseReaisInput, reaisToCents } from "@/lib/
 import { packageSavings, perSessionCents, priceFromDiscount } from "@/lib/packages/pricing";
 import PixCodeField from "@/components/ui/PixCodeField";
 import { describePixCode } from "@/lib/payments/pix-brcode";
-import { CardPriceFields } from "@/components/ui/PaymentPriceFields";
-import { isValidPaymentLink, packagePaymentOptions, pickOption } from "@/lib/payments/card";
+import { CardPriceFields, CardTermsFields, feeToText, parseFeeText } from "@/components/ui/PaymentPriceFields";
+import {
+  effectiveFeePercent,
+  effectiveInstallments,
+  isValidPaymentLink,
+  packagePaymentOptions,
+  pickOption
+} from "@/lib/payments/card";
 
 const inputClass =
   "mt-1 w-full rounded-xl border border-olive-900/15 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-olive-500 focus:ring-2 focus:ring-olive-200";
 
-const EMPTY_FORM = { id: null, name: "", description: "", sessions: 4, priceReais: 0, active: true, pixCode: "", cardReais: 0, cardLink: "" };
+const EMPTY_FORM = {
+  id: null,
+  name: "",
+  description: "",
+  sessions: 4,
+  priceReais: 0,
+  active: true,
+  pixCode: "",
+  cardReais: 0,
+  cardLink: "",
+  cardFee: "",
+  cardInstallments: 1
+};
 
-function PackageForm({ initial, regularPriceCents, cardFeePercent, onCancel, onSaved }) {
+function PackageForm({ initial, regularPriceCents, onCancel, onSaved }) {
   const [form, setForm] = useState(initial);
   const [discount, setDiscount] = useState(() => {
     const { discountPercent } = packageSavings(
@@ -75,7 +93,9 @@ function PackageForm({ initial, regularPriceCents, cardFeePercent, onCancel, onS
         active: form.active,
         pixCode: form.pixCode || null,
         cardPriceCents: reaisToCents(form.cardReais) || null,
-        cardLink: form.cardLink.trim() || null
+        cardLink: form.cardLink.trim() || null,
+        cardFeePercent: parseFeeText(form.cardFee),
+        cardInstallments: form.cardInstallments
       })
     });
     const data = await res.json().catch(() => ({}));
@@ -169,9 +189,17 @@ function PackageForm({ initial, regularPriceCents, cardFeePercent, onCancel, onS
 
       <div className="rounded-2xl border border-olive-900/10 bg-white/60 p-4">
         <p className="mb-3 text-sm font-semibold text-graphite">Cartão de crédito</p>
+        <div className="mb-4">
+          <CardTermsFields
+            installments={form.cardInstallments}
+            onInstallments={(value) => setForm((current) => ({ ...current, cardInstallments: value }))}
+            feeText={form.cardFee}
+            onFeeText={(value) => setForm((current) => ({ ...current, cardFee: value }))}
+          />
+        </div>
         <CardPriceFields
           pixCents={priceCents}
-          feePercent={cardFeePercent}
+          feePercent={parseFeeText(form.cardFee) ?? 0}
           cardReais={form.cardReais}
           onCardReais={(value) => setForm((current) => ({ ...current, cardReais: value }))}
           link={form.cardLink}
@@ -203,7 +231,7 @@ export default function PacotesConfigPage() {
   const { confirm } = useDialog();
   const [packages, setPackages] = useState([]);
   const [regularPriceCents, setRegularPriceCents] = useState(0);
-  const [cardFeePercent, setCardFeePercent] = useState(0);
+  const [cardDefaults, setCardDefaults] = useState({ card_fee_percent: 0, card_max_installments: 1 });
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(null);
   const [error, setError] = useState("");
@@ -214,7 +242,10 @@ export default function PacotesConfigPage() {
     const data = await res.json().catch(() => ({}));
     setPackages(data.packages || []);
     setRegularPriceCents(data.regularPriceCents || 0);
-    setCardFeePercent(Number(data.cardFeePercent) || 0);
+    setCardDefaults({
+      card_fee_percent: Number(data.cardFeePercent) || 0,
+      card_max_installments: Number(data.cardMaxInstallments) || 1
+    });
     setError(data.needsMigration ? data.message : res.ok ? "" : data.message || "Erro ao carregar.");
     setLoading(false);
   }, []);
@@ -227,7 +258,9 @@ export default function PacotesConfigPage() {
     setFeedback("");
     setEditing({
       ...EMPTY_FORM,
-      priceReais: regularPriceCents ? centsToReais(priceFromDiscount(4, regularPriceCents, 15)) : 0
+      priceReais: regularPriceCents ? centsToReais(priceFromDiscount(4, regularPriceCents, 15)) : 0,
+      cardFee: feeToText(cardDefaults.card_fee_percent || null),
+      cardInstallments: effectiveInstallments(null, cardDefaults.card_max_installments)
     });
   }
 
@@ -242,7 +275,9 @@ export default function PacotesConfigPage() {
       active: pkg.active,
       pixCode: pkg.pix_code || "",
       cardReais: centsToReais(pkg.card_price_cents),
-      cardLink: pkg.card_link || ""
+      cardLink: pkg.card_link || "",
+      cardFee: feeToText(effectiveFeePercent(pkg.card_fee_percent, cardDefaults.card_fee_percent) || null),
+      cardInstallments: effectiveInstallments(pkg.card_installments, cardDefaults.card_max_installments)
     });
   }
 
@@ -331,11 +366,17 @@ export default function PacotesConfigPage() {
                 <p className="mt-4 text-2xl font-semibold text-graphite">
                   {formatCurrency(pkg.price_cents)} <span className="text-sm font-medium text-graphite/50">no PIX</span>
                 </p>
-                {pkg.card_link ? (
-                  <p className="text-sm text-graphite/60">
-                    {formatCurrency(pickOption(packagePaymentOptions(pkg, { card_fee_percent: cardFeePercent }), "card").cents)} no cartão
-                  </p>
-                ) : null}
+                {pkg.card_link
+                  ? (() => {
+                      const card = pickOption(packagePaymentOptions(pkg, cardDefaults), "card");
+                      return (
+                        <p className="text-sm text-graphite/60">
+                          {formatCurrency(card.cents)} no cartão
+                          {card.installments > 1 ? ` (em até ${card.installments}x de ${formatCurrency(card.installmentCents)})` : " à vista"}
+                        </p>
+                      );
+                    })()
+                  : null}
                 <p className="text-xs text-graphite/50">
                   {formatCurrency(perSessionCents(pkg))} por consulta
                   {savings.savingsCents ? ` · economia de ${formatCurrency(savings.savingsCents)}` : ""}
@@ -366,7 +407,6 @@ export default function PacotesConfigPage() {
             key={editing.id || "new"}
             initial={editing}
             regularPriceCents={regularPriceCents}
-            cardFeePercent={cardFeePercent}
             onCancel={() => setEditing(null)}
             onSaved={(warning) => {
               setEditing(null);

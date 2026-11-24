@@ -15,7 +15,9 @@ const CARD_COLUMNS = new Set([
   "card_fee_percent",
   "card_max_installments",
   "consultation_card_price_cents",
-  "consultation_card_link"
+  "consultation_card_link",
+  "consultation_card_fee_percent",
+  "consultation_card_installments"
 ]);
 
 export async function GET() {
@@ -67,6 +69,8 @@ export async function PUT(request) {
   if (body.consultationCardPriceCents !== undefined) {
     payload.consultation_card_price_cents = body.consultationCardPriceCents || null;
   }
+  if (body.consultationCardFeePercent !== undefined) payload.consultation_card_fee_percent = body.consultationCardFeePercent ?? null;
+  if (body.consultationCardInstallments !== undefined) payload.consultation_card_installments = body.consultationCardInstallments || null;
   if (body.cardFeePercent !== undefined) payload.card_fee_percent = body.cardFeePercent;
   if (body.cardMaxInstallments !== undefined) payload.card_max_installments = body.cardMaxInstallments;
 

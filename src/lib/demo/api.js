@@ -38,7 +38,9 @@ function demoPackages() {
         pix_code:
           "00020126580014br.gov.bcb.pix013600000000-demo-0000-0000-0000000000005204000053039865406850.005802BR5918LETICIA CUNHA DEMO6014BELO HORIZONTE62080504DEMO6304A5BB",
         card_price_cents: null,
-        card_link: "https://pagamento.exemplo.com/pacote-demo"
+        card_link: "https://pagamento.exemplo.com/pacote-demo",
+        card_fee_percent: 6.99,
+        card_installments: 3
       }
     ];
   }
@@ -1121,7 +1123,8 @@ export async function handleDemoApi(request) {
     return json({
       packages: demoPackages(),
       regularPriceCents: state.paymentSettings.consultation_price_cents,
-      cardFeePercent: state.paymentSettings.card_fee_percent || 0
+      cardFeePercent: state.paymentSettings.card_fee_percent || 0,
+      cardMaxInstallments: state.paymentSettings.card_max_installments || 1
     });
   }
 
@@ -1137,7 +1140,9 @@ export async function handleDemoApi(request) {
       sort_order: 0,
       pix_code: body.pixCode || null,
       card_price_cents: body.cardPriceCents || null,
-      card_link: normalizePaymentLink(body.cardLink)
+      card_link: normalizePaymentLink(body.cardLink),
+      card_fee_percent: body.cardFeePercent ?? null,
+      card_installments: body.cardInstallments || null
     };
     if (pkg.name.length < 2 || pkg.sessions < 2) return json({ message: "Confira nome, quantidade de consultas e preço." }, 400);
     demoPackages().push(pkg);
@@ -1157,7 +1162,9 @@ export async function handleDemoApi(request) {
       active: body.active !== false,
       pix_code: body.pixCode || null,
       card_price_cents: body.cardPriceCents || null,
-      card_link: normalizePaymentLink(body.cardLink)
+      card_link: normalizePaymentLink(body.cardLink),
+      card_fee_percent: body.cardFeePercent ?? null,
+      card_installments: body.cardInstallments || null
     });
     return json({ package: pkg });
   }
@@ -1390,6 +1397,8 @@ export async function handleDemoApi(request) {
       ...(body.consultationPixCode !== undefined ? { consultation_pix_code: body.consultationPixCode } : {}),
       ...(body.consultationCardPriceCents !== undefined ? { consultation_card_price_cents: body.consultationCardPriceCents } : {}),
       ...(body.consultationCardLink !== undefined ? { consultation_card_link: normalizePaymentLink(body.consultationCardLink) } : {}),
+      ...(body.consultationCardFeePercent !== undefined ? { consultation_card_fee_percent: body.consultationCardFeePercent } : {}),
+      ...(body.consultationCardInstallments !== undefined ? { consultation_card_installments: body.consultationCardInstallments } : {}),
       ...(body.cardFeePercent !== undefined ? { card_fee_percent: body.cardFeePercent } : {}),
       ...(body.cardMaxInstallments !== undefined ? { card_max_installments: body.cardMaxInstallments } : {})
     };

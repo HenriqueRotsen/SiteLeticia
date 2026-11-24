@@ -8,10 +8,18 @@ alter table public.payment_settings
   add column if not exists consultation_card_price_cents integer,
   add column if not exists consultation_card_link text;
 
--- Preço e link do cartão em cada pacote.
+-- Taxa e parcelas da consulta no cartão (vazio = a taxa/parcelas gerais acima).
+alter table public.payment_settings
+  add column if not exists consultation_card_fee_percent numeric(5,2),
+  add column if not exists consultation_card_installments smallint;
+
+-- Preço, link, taxa e parcelas do cartão em cada pacote
+-- (ex.: plano de 3 meses em até 3x, plano de 6 meses em até 6x, cada um com a sua taxa).
 alter table public.consultation_packages
   add column if not exists card_price_cents integer,
-  add column if not exists card_link text;
+  add column if not exists card_link text,
+  add column if not exists card_fee_percent numeric(5,2),
+  add column if not exists card_installments smallint;
 
 -- Forma escolhida na compra do pacote (o valor fica em price_cents).
 alter table public.patient_packages

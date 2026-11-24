@@ -18,6 +18,7 @@ export async function GET() {
   ]);
   const regularPriceCents = settings?.consultation_price_cents || 0;
   const cardFeePercent = Number(settings?.card_fee_percent) || 0;
+  const cardMaxInstallments = Number(settings?.card_max_installments) || 1;
 
   if (error) {
     if (isMissingTable(error)) {
@@ -26,7 +27,7 @@ export async function GET() {
     return NextResponse.json({ message: "Não foi possível carregar os pacotes." }, { status: 500 });
   }
 
-  return NextResponse.json({ packages: data || [], regularPriceCents, cardFeePercent });
+  return NextResponse.json({ packages: data || [], regularPriceCents, cardFeePercent, cardMaxInstallments });
 }
 
 export async function POST(request) {
