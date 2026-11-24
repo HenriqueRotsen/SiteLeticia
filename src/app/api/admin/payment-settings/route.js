@@ -10,6 +10,14 @@ function pixValue(raw) {
   return code || null;
 }
 
+// Colunas criadas por migrate-pagamento-cartao.sql.
+const CARD_COLUMNS = new Set([
+  "card_fee_percent",
+  "card_max_installments",
+  "consultation_card_price_cents",
+  "consultation_card_link"
+]);
+
 export async function GET() {
   const auth = await requireNutritionist();
   if (auth.error) return auth.error;
@@ -71,7 +79,7 @@ export async function PUT(request) {
   let warning = null;
   // Sem a migração do cartão: salva o resto e avisa.
   if (result.error && !/pix_code/.test(String(result.error.message || "")) && isMissingPaymentColumn(result.error)) {
-    const withoutCard = Object.fromEntries(Object.entries(payload).filter(([key]) => !/^card_|_card_/.test(key)));
+    const withoutCard = Object.fromEntries(Object.entries(payload).filter(([key]) => !CARD_COLUMNS.has(key)));
     result = await save(withoutCard);
     if (!result.error) warning = CARD_MIGRATION_MESSAGE;
   }
